@@ -1,0 +1,113 @@
+{
+  "sections": {
+    "home": {
+      "label": "Главная",
+      "url": "/",
+      "icon": "home",
+      "children": ["loans", "deposits", "payments", "investments", "profile"]
+    },
+    "loans": {
+      "label": "Кредиты",
+      "url": "/loans",
+      "icon": "credit_card",
+      "keywords": ["кредит", "займ", "ссуда", "деньги", "рассрочка"],
+      "children": ["loans_cash", "loans_mortgage", "loans_auto", "loans_refinance"]
+    },
+    "loans_cash": {
+      "label": "Кредит наличными",
+      "url": "/loans/cash",
+      "icon": "money",
+      "keywords": ["наличные", "потребительский", "кредит наличными", "нал"]
+    },
+    "loans_mortgage": {
+      "label": "Ипотека",
+      "url": "/loans/mortgage",
+      "icon": "house",
+      "keywords": ["ипотека", "жильё", "квартира", "дом", "недвижимость"]
+    },
+    "loans_auto": {
+      "label": "Автокредит",
+      "url": "/loans/auto",
+      "icon": "car",
+      "keywords": ["автокредит", "авто", "машина", "автомобиль"]
+    },
+    "loans_refinance": {
+      "label": "Рефинансирование",
+      "url": "/loans/refinance",
+      "icon": "refresh",
+      "keywords": ["рефинансирование", "снизить ставку", "объединить кредиты"]
+    },
+    "deposits": {
+      "label": "Вклады",
+      "url": "/deposits",
+      "icon": "savings",
+      "keywords": ["вклад", "депозит", "накопления", "сберегательный"],
+      "children": ["deposits_classic", "deposits_savings", "deposits_child"]
+    },
+    "deposits_classic": {
+      "label": "Классический вклад",
+      "url": "/deposits/classic",
+      "keywords": ["классический вклад", "срочный вклад"]
+    },
+    "deposits_savings": {
+      "label": "Накопительный счёт",
+      "url": "/deposits/savings",
+      "keywords": ["накопительный", "копить", "откладывать"]
+    },
+    "deposits_child": {
+      "label": "Детский вклад",
+      "url": "/deposits/child",
+      "keywords": ["детский", "для ребёнка", "детские накопления"]
+    },
+    "payments": {
+      "label": "Платежи",
+      "url": "/payments",
+      "icon": "payment",
+      "keywords": ["платёж", "оплата", "перевод", "жкх", "коммунальные"],
+      "children": ["payments_transfer", "payments_utilities", "payments_phone"]
+    },
+    "payments_transfer": {
+      "label": "Переводы",
+      "url": "/payments/transfer",
+      "keywords": ["перевод", "отправить деньги", "сбп", "по номеру"]
+    },
+    "payments_utilities": {
+      "label": "ЖКХ и услуги",
+      "url": "/payments/utilities",
+      "keywords": ["жкх", "коммунальные", "свет", "газ", "вода"]
+    },
+    "payments_phone": {
+      "label": "Мобильная связь",
+      "url": "/payments/phone",
+      "keywords": ["телефон", "мобильная связь", "пополнить телефон"]
+    },
+    "investments": {
+      "label": "Инвестиции",
+      "url": "/investments",
+      "icon": "trending_up",
+      "keywords": ["инвестиции", "акции", "облигации", "биржа", "иис"],
+      "children": ["investments_stocks", "investments_bonds", "investments_iis"]
+    },
+    "investments_stocks": {
+      "label": "Акции и ETF",
+      "url": "/investments/stocks",
+      "keywords": ["акции", "etf", "фонды", "биржа"]
+    },
+    "investments_bonds": {
+      "label": "Облигации",
+      "url": "/investments/bonds",
+      "keywords": ["облигации", "офз", "корпоративные"]
+    },
+    "investments_iis": {
+      "label": "ИИС",
+      "url": "/investments/iis",
+      "keywords": ["иис", "индивидуальный инвестиционный счёт", "налоговый вычет"]
+    },
+    "profile": {
+      "label": "Профиль",
+      "url": "/profile",
+      "icon": "person",
+      "keywords": ["профиль", "личный кабинет", "настройки", "данные"]
+    }
+  }
+}
