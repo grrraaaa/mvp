@@ -1,13 +1,13 @@
-export const DEMO_ORG_NAME = "DEMO ЮРИДИЧЕСКОЕ ЛИЦО";
+export const MOCK_ORG_NAME = "DEMO ЮРИДИЧЕСКОЕ ЛИЦО";
 
-export const DEMO_BALANCES = {
+export const MOCK_BALANCES = {
   byn: "500.00",
   usd: "0.00",
   rub: "3 000.00",
   eur: "2 000.00",
 };
 
-export interface DemoAccount {
+export interface MockAccount {
   currency: string;
   iban: string;
   type: string;
@@ -15,7 +15,7 @@ export interface DemoAccount {
   balance: string;
 }
 
-export const DEMO_ACCOUNTS: DemoAccount[] = [
+export const MOCK_ACCOUNTS: MockAccount[] = [
   {
     currency: "BYN",
     iban: "BY51 BPSB 3012 2222 2222 2933 2222",

@@ -1,5 +1,5 @@
-import { SubPageContent } from "@/components/sbbol/SubPageContent";
+import { SbbolRoutePage } from "@/components/sbbol/SbbolRoutePage";
 
 export default function StatementPage() {
-  return <SubPageContent path="/statement" />;
+  return <SbbolRoutePage path="/statement" />;
 }

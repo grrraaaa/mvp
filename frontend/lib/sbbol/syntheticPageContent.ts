@@ -1,4 +1,4 @@
-import { DEMO_ACCOUNTS, DEMO_ORG_NAME } from "./demoData";
+import { MOCK_ACCOUNTS, MOCK_ORG_NAME } from "./mockSbbolData";
 
 export type DemoContentType =
   | "table"
@@ -34,7 +34,7 @@ export interface DemoCard {
   badge?: string;
 }
 
-export interface DemoPageBody {
+export interface SyntheticPageBody {
   type: DemoContentType;
   toolbar?: {
     primaryAction?: string;
@@ -50,7 +50,7 @@ export interface DemoPageBody {
   rates?: { currency: string; buy: string; sell: string; nbrb: string }[];
 }
 
-export const DEMO_PAGE_BODIES: Record<string, DemoPageBody> = {
+export const SYNTHETIC_PAGE_BODIES: Record<string, SyntheticPageBody> = {
   "/money/movements": {
     type: "table",
     toolbar: { search: true, filters: ["Все счета", "Период: май 2026"] },
@@ -174,7 +174,7 @@ export const DEMO_PAGE_BODIES: Record<string, DemoPageBody> = {
     form: {
       submitLabel: "Подписать и отправить",
       fields: [
-        { label: "Счёт списания", type: "select", value: DEMO_ACCOUNTS[0].iban, options: DEMO_ACCOUNTS.map((a) => a.iban) },
+        { label: "Счёт списания", type: "select", value: MOCK_ACCOUNTS[0].iban, options: MOCK_ACCOUNTS.map((a) => a.iban) },
         { label: "Получатель", placeholder: "Наименование или УНП" },
         { label: "УНП получателя", placeholder: "123456789" },
         { label: "Счёт получателя", placeholder: "BY__ BPSB ____ ____ ____ ____" },
@@ -188,7 +188,7 @@ export const DEMO_PAGE_BODIES: Record<string, DemoPageBody> = {
     form: {
       submitLabel: "Создать перевод",
       fields: [
-        { label: "Счёт списания", type: "select", value: DEMO_ACCOUNTS[2].iban, options: DEMO_ACCOUNTS.map((a) => a.iban) },
+        { label: "Счёт списания", type: "select", value: MOCK_ACCOUNTS[2].iban, options: MOCK_ACCOUNTS.map((a) => a.iban) },
         { label: "Валюта перевода", type: "select", value: "EUR", options: ["EUR", "USD", "RUB"] },
         { label: "Сумма", placeholder: "0.00" },
         { label: "Банк получателя", placeholder: "SWIFT / наименование" },
@@ -235,7 +235,7 @@ export const DEMO_PAGE_BODIES: Record<string, DemoPageBody> = {
     form: {
       submitLabel: "Сформировать выписку",
       fields: [
-        { label: "Счёт", type: "select", value: DEMO_ACCOUNTS[0].iban, options: DEMO_ACCOUNTS.map((a) => a.iban) },
+        { label: "Счёт", type: "select", value: MOCK_ACCOUNTS[0].iban, options: MOCK_ACCOUNTS.map((a) => a.iban) },
         { label: "Период с", type: "date", value: "2026-05-01" },
         { label: "Период по", type: "date", value: "2026-05-31" },
         { label: "Формат", type: "select", value: "PDF", options: ["PDF", "1C", "Excel"] },
@@ -244,7 +244,7 @@ export const DEMO_PAGE_BODIES: Record<string, DemoPageBody> = {
   },
   "/statement/account": {
     type: "table",
-    toolbar: { filters: [DEMO_ACCOUNTS[0].iban, "01.05.2026 — 31.05.2026"] },
+    toolbar: { filters: [MOCK_ACCOUNTS[0].iban, "01.05.2026 — 31.05.2026"] },
     table: {
       columns: [
         { key: "date", label: "Дата" },
@@ -284,7 +284,7 @@ export const DEMO_PAGE_BODIES: Record<string, DemoPageBody> = {
     type: "info",
     info: {
       image: "/sber-orig/images/cash-register.png",
-      html: `<p>Зарплатный проект ${DEMO_ORG_NAME} активен.</p><p>Следующая зарплатная ведомость запланирована на 05.06.2026.</p>`,
+      html: `<p>Зарплатный проект ${MOCK_ORG_NAME} активен.</p><p>Следующая зарплатная ведомость запланирована на 05.06.2026.</p>`,
     },
   },
   "/salary/project": {
@@ -492,7 +492,7 @@ export const DEMO_PAGE_BODIES: Record<string, DemoPageBody> = {
   "/settings": {
     type: "profile",
     info: {
-      html: `<p><strong>${DEMO_ORG_NAME}</strong></p><p>УНП: 123456789</p><p>Последний вход: 31.05.2026, 09:42</p>`,
+      html: `<p><strong>${MOCK_ORG_NAME}</strong></p><p>УНП: 123456789</p><p>Последний вход: 31.05.2026, 09:42</p>`,
     },
   },
   "/settings/accounts": {
@@ -504,7 +504,7 @@ export const DEMO_PAGE_BODIES: Record<string, DemoPageBody> = {
         { key: "visible", label: "Отображение" },
         { key: "order", label: "Порядок" },
       ],
-      rows: DEMO_ACCOUNTS.map((a, i) => ({
+      rows: MOCK_ACCOUNTS.map((a, i) => ({
         iban: a.iban,
         type: a.type,
         visible: "Отображается",
@@ -522,6 +522,6 @@ export const DEMO_PAGE_BODIES: Record<string, DemoPageBody> = {
   },
 };
 
-export function getDemoPageBody(path: string): DemoPageBody | null {
-  return DEMO_PAGE_BODIES[path] ?? null;
+export function getSyntheticPageBody(path: string): SyntheticPageBody | null {
+  return SYNTHETIC_PAGE_BODIES[path] ?? null;
 }

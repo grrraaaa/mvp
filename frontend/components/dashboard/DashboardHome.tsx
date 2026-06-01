@@ -9,14 +9,14 @@ import {
   QuickLinkIcon,
 } from "@/components/sbbol/SbbolIcons";
 import {
-  DEMO_ACCOUNTS,
-  DEMO_BALANCES,
-  DEMO_ORG_NAME,
+  MOCK_ACCOUNTS,
+  MOCK_BALANCES,
+  MOCK_ORG_NAME,
   PROMO_BANNERS,
-} from "@/lib/sbbol/demoData";
+} from "@/lib/sbbol/mockSbbolData";
 import { useSbbolUi } from "@/components/layout/SbbolUiContext";
 import { DASHBOARD_QUICK_LINKS } from "@/lib/sbbol/navigation";
-import { showDemoToast } from "@/lib/sbbol/demoToast";
+import { showStubToast } from "@/lib/sbbol/stubToast";
 
 export function DashboardHome() {
   const { openMap, openDocumentModal } = useSbbolUi();
@@ -44,10 +44,10 @@ export function DashboardHome() {
             <h2 className="text-xl lg:text-2xl font-semibold text-[#1f1f22] leading-snug">{banner.title}</h2>
             <p className="mt-2 text-sm text-[#565b62]">{banner.subtitle}</p>
             <div className="mt-5 flex flex-wrap gap-3">
-              <button type="button" className="sbbol-btn-primary h-10 px-5 text-sm" onClick={() => showDemoToast("Подробнее — демо-режим")}>
+              <button type="button" className="sbbol-btn-primary h-10 px-5 text-sm" onClick={() => showStubToast("Подробнее — демо-режим")}>
                 Подробнее
               </button>
-              <button type="button" className="sbbol-btn-secondary h-10 px-5 text-sm" onClick={() => showDemoToast("Запрос создан (демо)")}>
+              <button type="button" className="sbbol-btn-secondary h-10 px-5 text-sm" onClick={() => showStubToast("Запрос создан (демо)")}>
                 Создать запрос
               </button>
             </div>
@@ -67,8 +67,8 @@ export function DashboardHome() {
       )}
 
       <div className="flex flex-col lg:flex-row lg:items-start lg:justify-between gap-4 mb-6">
-        <h1 className="text-2xl lg:text-[28px] font-semibold text-[#1f1f22] tracking-tight">
-          {DEMO_ORG_NAME}
+        <h1 className="sbbol-page-title">
+          {MOCK_ORG_NAME}
         </h1>
         <button
           type="button"
@@ -95,7 +95,7 @@ export function DashboardHome() {
             <div>
               <p className="text-[11px] uppercase tracking-wide text-[#7d838a] mb-1">На счетах в BYN</p>
               <p className="text-3xl font-semibold text-[#1f1f22]">
-                {DEMO_BALANCES.byn}
+                {MOCK_BALANCES.byn}
                 <span className="text-lg ml-1 font-normal text-[#565b62]">BYN</span>
               </p>
             </div>
@@ -103,13 +103,13 @@ export function DashboardHome() {
               <p className="text-[11px] uppercase tracking-wide text-[#7d838a] mb-1">На счетах в других валютах</p>
               <div className="flex flex-wrap gap-x-6 gap-y-1 text-sm text-[#565b62]">
                 <span>
-                  <span className="text-[#1f1f22] font-semibold">{DEMO_BALANCES.usd}</span> USD
+                  <span className="text-[#1f1f22] font-semibold">{MOCK_BALANCES.usd}</span> USD
                 </span>
                 <span>
-                  <span className="text-[#1f1f22] font-semibold">{DEMO_BALANCES.rub}</span> RUB
+                  <span className="text-[#1f1f22] font-semibold">{MOCK_BALANCES.rub}</span> RUB
                 </span>
                 <span>
-                  <span className="text-[#1f1f22] font-semibold">{DEMO_BALANCES.eur}</span> EUR
+                  <span className="text-[#1f1f22] font-semibold">{MOCK_BALANCES.eur}</span> EUR
                 </span>
               </div>
             </div>
@@ -118,7 +118,7 @@ export function DashboardHome() {
       </section>
 
       <div className="grid xl:grid-cols-[1fr_auto] gap-6 items-start">
-        <section className="bg-white rounded-[10px] shadow-[0_2px_8px_rgba(0,0,0,0.15)] overflow-hidden">
+        <section className="sbbol-card overflow-hidden">
           <div className="px-5 pt-5 pb-3 border-b border-[#e4e8eb]">
             <div className="flex flex-wrap items-center justify-between gap-3">
               <h2 className="text-lg font-semibold text-[#1f1f22]">Счета</h2>
@@ -142,7 +142,7 @@ export function DashboardHome() {
           </div>
 
           <ul className="divide-y divide-[#e4e8eb]">
-            {DEMO_ACCOUNTS.map((acc) => (
+            {MOCK_ACCOUNTS.map((acc) => (
               <li key={acc.iban} className="flex items-center gap-4 px-5 py-4 hover:bg-[#f8f9fb] transition-colors">
                 <div className="w-10 h-10 rounded-full bg-[#f2f4f7] border border-[#e4e8eb] flex items-center justify-center text-xs font-semibold text-[#565b62] shrink-0">
                   {acc.currency}
@@ -164,7 +164,7 @@ export function DashboardHome() {
           </ul>
         </section>
 
-        <aside className="bg-white rounded-[10px] shadow-[0_2px_8px_rgba(0,0,0,0.08)] w-full xl:w-[280px] shrink-0 xl:mt-[54px]">
+        <aside className="sbbol-card w-full xl:w-[280px] shrink-0 xl:mt-[54px]">
           <ul>
             {DASHBOARD_QUICK_LINKS.map((link) => (
               <li key={link.href}>
@@ -191,7 +191,7 @@ export function DashboardHome() {
         </aside>
       </div>
 
-      <section className="mt-8 bg-white rounded-[10px] shadow-[0_2px_8px_rgba(0,0,0,0.08)] p-6">
+      <section className="mt-8 sbbol-card p-6">
         <h3 className="text-base font-semibold text-[#1f1f22] mb-4">Динамика оборотов по счетам, BYN</h3>
         <div className="h-48 flex items-end gap-2 px-2">
           {[40, 65, 45, 80, 55, 70, 50, 85, 60, 75, 48, 90].map((h, i) => (

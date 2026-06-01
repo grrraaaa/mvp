@@ -1,13 +1,13 @@
-import { PaymentsPageContent } from "@/components/sbbol/PaymentsPageContent";
-import { getDemoPageHtml } from "@/lib/sbbol/demoPageHtml";
-import { SubPageContent } from "@/components/sbbol/SubPageContent";
+import { SbbolCapturedRoute } from "@/components/sbbol/SbbolCapturedRoute";
+import { SbbolRoutePage } from "@/components/sbbol/SbbolRoutePage";
+import { getCapturedPageHtml } from "@/lib/sbbol/capturedOrigHtml";
 
 export default function PaymentsPage() {
-  const pageHtml = getDemoPageHtml("/payments");
+  const pageHtml = getCapturedPageHtml("/payments");
 
   if (pageHtml) {
-    return <PaymentsPageContent pageHtml={pageHtml} />;
+    return <SbbolCapturedRoute activeNav="payments" route="/payments" html={pageHtml} />;
   }
 
-  return <SubPageContent path="/payments" />;
+  return <SbbolRoutePage path="/payments" />;
 }

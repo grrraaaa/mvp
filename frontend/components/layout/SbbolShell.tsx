@@ -13,8 +13,8 @@ import {
   NavIcon,
 } from "@/components/sbbol/SbbolIcons";
 import { MAIN_NAV, SUB_NAV, type NavId } from "@/lib/sbbol/navigation";
-import { DEMO_ORG_NAME } from "@/lib/sbbol/demoData";
-import { showDemoToast } from "@/lib/sbbol/demoToast";
+import { MOCK_ORG_NAME } from "@/lib/sbbol/mockSbbolData";
+import { showStubToast } from "@/lib/sbbol/stubToast";
 
 interface Props {
   children: ReactNode;
@@ -34,8 +34,8 @@ export function SbbolShell({ children, onOpenMap, activeNav }: Props) {
   const [hoverNav, setHoverNav] = useState<NavId | null>(null);
 
   return (
-    <div className="sbbol-app min-h-screen flex flex-col bg-[#f2f4f7] text-[#1f1f22]">
-      <header className="fixed top-0 left-0 right-0 z-40 bg-white border-b border-[#d0d7dd]">
+    <div className="sbbol-app min-h-screen flex flex-col bg-sbbol-bg text-sbbol-text">
+      <header className="fixed top-0 left-0 right-0 z-40 bg-white/95 backdrop-blur-sm border-b border-sbbol-border shadow-[0_1px_0_rgba(27,39,51,0.04)]">
         <div className="h-[65px] flex items-center px-2 lg:pl-2 lg:pr-[42px] gap-2">
           <button
             type="button"
@@ -53,13 +53,13 @@ export function SbbolShell({ children, onOpenMap, activeNav }: Props) {
           </Link>
 
           <div className="ml-auto flex items-center gap-1 sm:gap-2">
-            <button type="button" className="sbbol-icon-btn hidden sm:flex" aria-label="Поддержка" onClick={() => showDemoToast("Служба поддержки — демо-режим")}>
+            <button type="button" className="sbbol-icon-btn hidden sm:flex" aria-label="Поддержка" onClick={() => showStubToast("Служба поддержки — демо-режим")}>
               <IconPhone />
             </button>
-            <button type="button" className="sbbol-icon-btn hidden sm:flex" aria-label="Уведомления" onClick={() => showDemoToast("Уведомления — демо-режим")}>
+            <button type="button" className="sbbol-icon-btn hidden sm:flex" aria-label="Уведомления" onClick={() => showStubToast("Уведомления — демо-режим")}>
               <IconBell />
             </button>
-            <button type="button" className="sbbol-icon-btn relative" aria-label="Сообщения" onClick={() => showDemoToast("Входящие сообщения — демо-режим")}>
+            <button type="button" className="sbbol-icon-btn relative" aria-label="Сообщения" onClick={() => showStubToast("Входящие сообщения — демо-режим")}>
               <IconMail />
               <span className="absolute -top-0.5 -right-0.5 min-w-[16px] h-4 px-1 rounded-full bg-[#d64545] text-white text-[10px] font-semibold flex items-center justify-center">
                 1
@@ -68,7 +68,7 @@ export function SbbolShell({ children, onOpenMap, activeNav }: Props) {
             <button
               type="button"
               onClick={onOpenMap}
-              className="hidden md:flex items-center gap-1.5 h-9 px-3 rounded-md border border-[#d0d7dd] text-[#107f8c] text-sm font-semibold hover:bg-[#e5fcf7] transition-colors"
+              className="hidden md:flex items-center gap-1.5 h-10 px-3 rounded-lg border border-sbbol-border text-sbbol-primary text-sm font-semibold hover:bg-[#e5fcf7] transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-sbbol-primary/35"
             >
               <IconPlanet />
               <span>Карта услуг</span>
@@ -81,7 +81,7 @@ export function SbbolShell({ children, onOpenMap, activeNav }: Props) {
                 D
               </span>
               <span className="hidden sm:block text-xs font-semibold text-left leading-tight truncate">
-                {DEMO_ORG_NAME}
+                {MOCK_ORG_NAME}
               </span>
               <IconChevronDown />
             </button>
@@ -90,7 +90,7 @@ export function SbbolShell({ children, onOpenMap, activeNav }: Props) {
       </header>
 
       <aside
-        className={`fixed top-[65px] left-0 bottom-0 z-30 w-[100px] sm:w-[104px] bg-white border-r border-[#d0d7dd] flex flex-col shadow-[2px_0_12px_rgba(27,39,51,0.04)] ${
+        className={`fixed top-[65px] left-0 bottom-0 z-30 w-[100px] sm:w-[104px] bg-white border-r border-sbbol-border flex flex-col shadow-[2px_0_12px_rgba(27,39,51,0.04)] ${
           menuExpanded ? "flex" : "hidden lg:flex"
         }`}
       >
@@ -170,7 +170,7 @@ export function SbbolShell({ children, onOpenMap, activeNav }: Props) {
 
       <footer
         suppressHydrationWarning
-        className="flex-shrink-0 pl-0 lg:pl-[104px] py-6 px-4 sm:px-6 lg:px-10 text-xs sm:text-sm text-[#7d838a] flex flex-wrap gap-x-6 gap-y-2"
+        className="flex-shrink-0 pl-0 lg:pl-[104px] py-6 px-4 sm:px-6 lg:px-10 text-xs sm:text-sm text-sbbol-muted flex flex-wrap gap-x-6 gap-y-2"
       >
         <a href="https://www.sber-bank.by" target="_blank" rel="noopener noreferrer" className="hover:text-[#107f8c]">
           www.sber-bank.by

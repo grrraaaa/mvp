@@ -16,7 +16,7 @@ graph TB
     subgraph FE
         SHELL[SbbolShell]
         CHAT[AssistantFloatingChat]
-        MAP[PlanetMapOverlay / Scene3D]
+        MAP[PlanetMapOverlay / SolarSystemScene]
         STUDIO[CharacterRoomScene]
     end
 
@@ -50,7 +50,7 @@ graph TB
 
 ### Карта услуг
 
-`PlanetMapOverlay` → `Scene3D` → `SberSolarSystem` + `PlanetLink`  
+`PlanetMapOverlay` → `SolarSystemScene` → `SberSolarSystem` + `PlanetLink`  
 Данные: `lib/sber/planetMap.ts`
 
 ### Консультант в чате

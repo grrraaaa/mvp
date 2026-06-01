@@ -1,6 +1,10 @@
-import { SubPageContent } from "@/components/sbbol/SubPageContent";
+import { SbbolRoutePage } from "@/components/sbbol/SbbolRoutePage";
 
-export default async function Page({ params }: { params: Promise<{ slug: string }> }) {
+export default async function SettingsSlugPage({
+  params,
+}: {
+  params: Promise<{ slug: string }>;
+}) {
   const { slug } = await params;
-  return <SubPageContent path={`/settings/${slug}`} />;
+  return <SbbolRoutePage path={`/settings/${slug}`} />;
 }

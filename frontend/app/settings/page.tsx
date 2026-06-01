@@ -1,5 +1,5 @@
-import { SubPageContent } from "@/components/sbbol/SubPageContent";
+import { SbbolRoutePage } from "@/components/sbbol/SbbolRoutePage";
 
 export default function SettingsPage() {
-  return <SubPageContent path="/settings" />;
+  return <SbbolRoutePage path="/settings" />;
 }

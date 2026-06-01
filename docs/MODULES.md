@@ -7,7 +7,7 @@
 | Shell | `SbbolShell`, `SbbolAppLayout` | Layout банка, nav, карта |
 | SBBOL pages | `SbbolOrigPageContent`, `PaymentFormPageContent` | HTML-страницы демо |
 | AI Chat | `AssistantFloatingChat`, `AssistantPanel`, `ChatInput` | Чат, микрофон, OCR |
-| 3D Map | `PlanetMapOverlay`, `Scene3D`, `SberSolarSystem` | Карта услуг |
+| 3D Map | `PlanetMapOverlay`, `SolarSystemScene`, `SberSolarSystem` | Карта услуг |
 | 3D Character | `CharacterRoomScene`, `StudioBackdrop`, `GlbCharacter3D` | Консультант |
 | Form AI | `useSbbolFormFill`, `assistantQuickChips` | Заполнение форм |
 

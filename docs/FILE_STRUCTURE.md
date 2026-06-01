@@ -30,16 +30,16 @@ mvp/
 │   │
 │   ├── components/
 │   │   ├── layout/           # SbbolShell, AppProviders
-│   │   ├── sbbol/             # Иконки, orig HTML, модалки
+│   │   ├── sbbol/             # CapturedSbbolPage, SbbolRoutePage, иконки
 │   │   ├── assistant/          # Чат, ChatInput, IconMic
 │   │   │   └── character3d/  # StudioBackdrop, GLB
-│   │   ├── three/            # Scene3D, SberSolarSystem
+│   │   ├── three/            # SolarSystemScene, SberSolarSystem
 │   │   ├── map/              # PlanetMapOverlay
 │   │   └── dashboard/
 │   │
 │   ├── lib/
-│   │   ├── api/              # baseUrl, chat, forms
-│   │   ├── sbbol/             # navigation, form fill, chips
+│   │   ├── api/              # baseUrl, forms
+│   │   ├── sbbol/             # capturedOrigHtml, mockSbbolData, stubToast
 │   │   └── sber/              # planetMap, theme
 │   │
 │   ├── store/
@@ -59,4 +59,4 @@ mvp/
 └── ai/knowledge/app_map.json
 ```
 
-**Не используется в runtime:** `AppMap3D.tsx`, `AssistantDialog.tsx`, `NavigationPanel.tsx` (legacy).
+**Ключевые имена (SBBOL):** `capturedOrigHtml.ts`, `mockSbbolData.ts`, `stubToast.ts`, `syntheticPageContent.ts`, `CapturedSbbolPage.tsx`, `SyntheticPageBody.tsx`, `SbbolCapturedRoute.tsx`.

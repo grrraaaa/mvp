@@ -1,9 +1,9 @@
-import { PaymentFormPageContent } from "@/components/sbbol/PaymentFormPageContent";
-import { getDemoPageHtml } from "@/lib/sbbol/demoPageHtml";
-import { notFound } from "next/navigation";
+import { SbbolCapturedRoute } from "@/components/sbbol/SbbolCapturedRoute";
+import { getCapturedPageHtml } from "@/lib/sbbol/capturedOrigHtml";
 
-export default function PaydocbynPage() {
-  const html = getDemoPageHtml("/payments/paydocbyn");
-  if (!html) notFound();
-  return <PaymentFormPageContent route="/payments/paydocbyn" html={html} />;
+export default function PaydocBynPage() {
+  const html = getCapturedPageHtml("/payments/paydocbyn");
+  if (!html) return null;
+
+  return <SbbolCapturedRoute activeNav="payments" route="/payments/paydocbyn" html={html} />;
 }

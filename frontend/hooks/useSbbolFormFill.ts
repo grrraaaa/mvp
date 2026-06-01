@@ -2,7 +2,7 @@
 
 import { useEffect, type RefObject } from "react";
 import { useAssistantStore, type FormFieldAction } from "@/store/assistantStore";
-import { showDemoToast } from "@/lib/sbbol/demoToast";
+import { showStubToast } from "@/lib/sbbol/stubToast";
 
 type FillableElement =
   | HTMLInputElement
@@ -215,13 +215,13 @@ export function useSbbolFormFill(rootRef: RefObject<HTMLElement | null>) {
     }
 
     if (filled.length) {
-      showDemoToast(`Заполнено: ${filled.join(", ")}`);
+      showStubToast(`Заполнено: ${filled.join(", ")}`);
     }
     if (failed.length) {
-      showDemoToast(`Не удалось изменить поле: ${failed.join(", ")}`);
+      showStubToast(`Не удалось изменить поле: ${failed.join(", ")}`);
     }
     if (missed.length) {
-      showDemoToast(`Не найдены поля: ${missed.join(", ")}`);
+      showStubToast(`Не найдены поля: ${missed.join(", ")}`);
     }
 
     clearFormActions();

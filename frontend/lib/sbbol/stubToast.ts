@@ -2,8 +2,8 @@ const TOAST_DURATION_MS = 2800;
 
 let hideTimer: ReturnType<typeof setTimeout> | null = null;
 
-/** Brief non-blocking feedback for demo-only actions in captured SBBOL HTML. */
-export function showDemoToast(message: string): void {
+/** Brief non-blocking feedback for stub actions in captured SBBOL HTML. */
+export function showStubToast(message: string): void {
   if (typeof document === "undefined") return;
 
   let toast = document.getElementById("sbbol-demo-toast") as HTMLDivElement | null;

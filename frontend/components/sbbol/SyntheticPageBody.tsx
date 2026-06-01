@@ -1,14 +1,14 @@
 "use client";
 
 import Image from "next/image";
-import type { DemoPageBody as DemoBody } from "@/lib/sbbol/demoPageContent";
-import { showDemoToast } from "@/lib/sbbol/demoToast";
+import type { SyntheticPageBody as PageBody } from "@/lib/sbbol/syntheticPageContent";
+import { showStubToast } from "@/lib/sbbol/stubToast";
 
 interface Props {
-  body: DemoBody;
+  body: PageBody;
 }
 
-export function DemoPageBody({ body }: Props) {
+export function SyntheticPageBody({ body }: Props) {
   const toolbar = body.toolbar;
   const form = body.type === "form" ? body.form : undefined;
 
@@ -17,7 +17,7 @@ export function DemoPageBody({ body }: Props) {
       {toolbar && (
         <div className="flex flex-wrap items-center gap-3">
           {toolbar.primaryAction && (
-            <button type="button" className="sbbol-btn-primary h-10 px-5 text-sm" onClick={() => showDemoToast(`${toolbar.primaryAction} (демо)`)}>
+            <button type="button" className="sbbol-btn-primary h-10 px-5 text-sm" onClick={() => showStubToast(`${toolbar.primaryAction} (демо)`)}>
               {toolbar.primaryAction}
             </button>
           )}
@@ -38,7 +38,7 @@ export function DemoPageBody({ body }: Props) {
               key={f}
               type="button"
               className="h-10 px-4 rounded-md border border-[#d0d7dd] bg-white text-sm text-[#565b62] hover:border-[#107f8c] hover:text-[#107f8c] transition-colors"
-              onClick={() => showDemoToast(`Фильтр «${f}» — демо-режим`)}
+              onClick={() => showStubToast(`Фильтр «${f}» — демо-режим`)}
             >
               {f} ▾
             </button>
@@ -140,7 +140,7 @@ export function DemoPageBody({ body }: Props) {
           </div>
           {form.submitLabel && (
             <div className="mt-6 pt-4 border-t border-[#e4e8eb]">
-              <button type="button" className="sbbol-btn-primary h-10 px-6 text-sm" onClick={() => showDemoToast(`${form.submitLabel} (демо)`)}>
+              <button type="button" className="sbbol-btn-primary h-10 px-6 text-sm" onClick={() => showStubToast(`${form.submitLabel} (демо)`)}>
                 {form.submitLabel}
               </button>
             </div>

@@ -4,7 +4,7 @@
 
 | Сцена | Где открывается | Файлы |
 |-------|-----------------|--------|
-| **Карта услуг** | Кнопка «Карта услуг» в шапке | `PlanetMapOverlay` → `Scene3D` → `SberSolarSystem` |
+| **Карта услуг** | Кнопка «Карта услуг» в шапке | `PlanetMapOverlay` → `SolarSystemScene` → `SberSolarSystem` |
 | **Студия консультанта** | Панель AI-чата | `CharacterRoomScene` → `StudioBackdrop` + `CharacterAvatar3D` |
 
 Не путать: карта — космос и орбиты; чат — студия с GLB-персонажем.

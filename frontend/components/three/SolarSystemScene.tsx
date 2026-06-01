@@ -22,7 +22,7 @@ function MapLighting() {
   );
 }
 
-export function Scene3D() {
+export function SolarSystemScene() {
   const { navigationPath } = useAssistantStore();
   const frozen = useSolarSystemStore((s) => s.frozen);
 

@@ -1,5 +1,5 @@
-import { SubPageContent } from "@/components/sbbol/SubPageContent";
+import { SbbolRoutePage } from "@/components/sbbol/SbbolRoutePage";
 
 export default function OtherPage() {
-  return <SubPageContent path="/other" />;
+  return <SbbolRoutePage path="/other" />;
 }

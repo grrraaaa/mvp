@@ -2,7 +2,7 @@
 
 import { useEffect } from "react";
 import { useRouter } from "next/navigation";
-import { showDemoToast } from "@/lib/sbbol/demoToast";
+import { showStubToast } from "@/lib/sbbol/stubToast";
 import { useSbbolUi } from "@/components/layout/SbbolUiContext";
 import {
   DOCUMENT_DEMO_MESSAGES,
@@ -83,7 +83,7 @@ export function useSbbolOrigPageInteractions(
         if (href) {
           router.push(href);
         } else {
-          showDemoToast(DEMO_STUB_MESSAGE);
+          showStubToast(DEMO_STUB_MESSAGE);
         }
         return;
       }
@@ -93,7 +93,7 @@ export function useSbbolOrigPageInteractions(
         const name = docAction.getAttribute("name") ?? "";
         event.preventDefault();
         event.stopPropagation();
-        showDemoToast(DOCUMENT_DEMO_MESSAGES[name] ?? DEMO_STUB_MESSAGE);
+        showStubToast(DOCUMENT_DEMO_MESSAGES[name] ?? DEMO_STUB_MESSAGE);
         return;
       }
 
@@ -105,7 +105,7 @@ export function useSbbolOrigPageInteractions(
       ) {
         event.preventDefault();
         event.stopPropagation();
-        showDemoToast(DICTIONARY_STUB_MESSAGE);
+        showStubToast(DICTIONARY_STUB_MESSAGE);
         return;
       }
 

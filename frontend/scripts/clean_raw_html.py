@@ -7,7 +7,7 @@ from pathlib import Path
 
 RAW_DIR = Path(__file__).resolve().parents[1] / "lib" / "sbbol" / "raw-html"
 
-# Full-page payment form captures: keep <main> — demoPageHtml extracts the form fragment at runtime.
+# Full-page payment form captures: keep <main> — capturedOrigHtml extracts the form fragment at runtime.
 SKIP_MAIN_STRIP = frozenset(
     {"payments-paydocbyn.html", "payments-instant.html", "payments-paydoccur.html"}
 )

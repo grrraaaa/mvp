@@ -3,8 +3,8 @@
 import dynamic from "next/dynamic";
 import { IconClose, IconPlanet } from "@/components/sbbol/SbbolIcons";
 
-const Scene3D = dynamic(
-  () => import("@/components/three/Scene").then((m) => m.Scene3D),
+const SolarSystemScene = dynamic(
+  () => import("@/components/three/SolarSystemScene").then((m) => m.SolarSystemScene),
   { ssr: false, loading: () => null }
 );
 
@@ -42,7 +42,7 @@ export function PlanetMapOverlay({ open, onClose }: Props) {
         </button>
       </header>
       <div className="flex-1 relative min-h-0">
-        <Scene3D />
+        <SolarSystemScene />
       </div>
     </div>
   );

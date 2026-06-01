@@ -26,7 +26,7 @@ const PAYMENT_FORM_NAMES: Record<string, string> = {
   "/payments/paydoccur": "forms.PAYDOCCUR",
 };
 
-export const DEMO_PAGE_HTML_ROUTES = Object.keys(ROUTE_FILES);
+export const CAPTURED_HTML_ROUTES = Object.keys(ROUTE_FILES);
 
 /** Strip scripts/noise and normalize asset paths for static rendering. */
 function sanitizeOrigHtml(html: string): string {
@@ -77,15 +77,15 @@ function loadRouteHtml(route: string): string | null {
   return raw;
 }
 
-export function getDemoPageHtml(route: string): string | null {
+export function getCapturedPageHtml(route: string): string | null {
   return loadRouteHtml(route);
 }
 
-export function hasDemoPageHtml(route: string): boolean {
+export function hasCapturedPageHtml(route: string): boolean {
   return route in ROUTE_FILES;
 }
 
-export function getDemoPageFragment(name: string): string | null {
+export function getCapturedFragment(name: string): string | null {
   const file = FRAGMENT_FILES[name];
   if (!file) return null;
 

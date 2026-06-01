@@ -1,5 +1,5 @@
-import { SubPageContent } from "@/components/sbbol/SubPageContent";
+import { SbbolRoutePage } from "@/components/sbbol/SbbolRoutePage";
 
 export default function ProductsPage() {
-  return <SubPageContent path="/products" />;
+  return <SbbolRoutePage path="/products" />;
 }

@@ -75,30 +75,30 @@ body {
     @apply text-sber-green-light underline underline-offset-2 hover:text-sber-gold transition-colors;
   }
 
-  /* Светлая тема СБОЛ для встроенного AI-чата */
+  /* Светлая тема СБОЛ для встроенного AI-чата (teal = shell) */
   .sbbol-theme .sber-bubble-assistant {
     @apply bg-gray-50 text-gray-800 border-gray-200 rounded-2xl rounded-bl-sm;
   }
   .sbbol-theme .sber-bubble-user {
-    @apply bg-[#21A038] text-white rounded-2xl rounded-br-sm;
+    @apply bg-[#107F8C] text-white rounded-2xl rounded-br-sm;
   }
   .sbbol-theme .sber-input {
-    @apply bg-gray-50 border-gray-200 text-gray-900 placeholder:text-gray-400 focus:border-[#21A038] focus:ring-[#21A038]/30;
+    @apply bg-gray-50 border-gray-200 text-gray-900 placeholder:text-gray-400 focus:border-[#107f8c] focus:ring-[#107f8c]/30;
   }
   .sbbol-theme .sber-btn-ghost {
     @apply bg-gray-100 hover:bg-gray-200 text-gray-700 border-gray-200;
   }
   .sbbol-theme .sber-btn-primary {
-    @apply bg-[#21A038] hover:bg-[#0A9B2E] text-white;
+    @apply bg-[#107F8C] hover:bg-[#005E7F] text-white;
   }
   .sbbol-theme .sber-link {
-    @apply text-[#21A038] hover:text-[#0A9B2E];
+    @apply text-[#107F8C] hover:text-[#005E7F];
   }
   .sbbol-theme .product-card-link {
-    @apply bg-white border-gray-200 hover:border-[#21A038] hover:bg-green-50;
+    @apply bg-white border-gray-200 hover:border-[#107f8c] hover:bg-[#e5fcf7];
   }
   .sbbol-theme ::-webkit-scrollbar-thumb {
-    background: #21a038;
+    background: #107f8c;
   }
 
   .sbbol-btn-primary {
@@ -151,17 +151,28 @@ body {
     @apply w-4 h-4 rounded border border-[#d0d7dd] accent-[#107f8c];
   }
 
-  .sbbol-theme .sber-bubble-user {
-    @apply bg-[#107F8C];
+  .sbbol-page-title {
+    @apply text-2xl lg:text-[28px] font-semibold text-sbbol-text tracking-tight;
   }
-  .sbbol-theme .sber-btn-primary {
-    @apply bg-[#107F8C] hover:bg-[#005E7F];
+
+  .sbbol-page-lead {
+    @apply text-sm text-sbbol-muted max-w-2xl leading-relaxed;
   }
-  .sbbol-theme .sber-link {
-    @apply text-[#107F8C] hover:text-[#005E7F];
+
+  .sbbol-card {
+    @apply bg-white rounded-xl border border-sbbol-border shadow-[0_2px_12px_rgba(27,39,51,0.06)];
   }
-  .sbbol-theme .product-card-link {
-    @apply hover:border-[#107F8C] hover:bg-[#e5fcf7];
+
+  .sbbol-chip-link {
+    @apply text-sm px-3 py-1.5 rounded-lg border border-sbbol-border text-sbbol-primary font-medium hover:bg-[#e5fcf7] hover:border-sbbol-primary-light transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-sbbol-primary/40;
+  }
+
+  .sbbol-nav-item:focus-visible {
+    @apply outline-none ring-2 ring-inset ring-sbbol-primary/35;
+  }
+
+  .sbbol-icon-btn:focus-visible {
+    @apply outline-none ring-2 ring-sbbol-primary/35;
   }
 
   .sbbol-create-doc-btn {

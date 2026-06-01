@@ -2,7 +2,7 @@
 
 import { useRouter } from "next/navigation";
 import { useCallback, useEffect } from "react";
-import { showDemoToast } from "@/lib/sbbol/demoToast";
+import { showStubToast } from "@/lib/sbbol/stubToast";
 import { routeForDocumentType } from "@/lib/sbbol/paymentDocumentRoutes";
 
 interface Props {
@@ -28,7 +28,7 @@ export function DocumentTypeSelectionModal({ html, onClose }: Props) {
 
       const href = routeForDocumentType(docButton.getAttribute("name"));
       if (!href) {
-        showDemoToast("Этот тип документа доступен в полной версии банка (демо)");
+        showStubToast("Этот тип документа доступен в полной версии банка (демо)");
         return;
       }
 

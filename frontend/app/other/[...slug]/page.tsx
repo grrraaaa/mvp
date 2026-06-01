@@ -1,6 +1,10 @@
-import { SubPageContent } from "@/components/sbbol/SubPageContent";
+import { SbbolRoutePage } from "@/components/sbbol/SbbolRoutePage";
 
-export default async function Page({ params }: { params: Promise<{ slug: string[] }> }) {
+export default async function OtherCatchAllPage({
+  params,
+}: {
+  params: Promise<{ slug: string[] }>;
+}) {
   const { slug } = await params;
-  return <SubPageContent path={`/other/${slug.join("/")}`} />;
+  return <SbbolRoutePage path={`/other/${slug.join("/")}`} />;
 }

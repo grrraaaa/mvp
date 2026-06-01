@@ -28,7 +28,7 @@
 
 ### 3D — две сцены
 
-1. **Космос** — `components/three/Scene.tsx`, планеты разделов
+1. **Космос** — `components/three/SolarSystemScene.tsx`, планеты разделов
 2. **Портрет консультанта** — `personage.glb` + `GlbCharacter3D`, режим «говорящая голова», fallback `Humanoid3D`
 
 См. [CHARACTER_3D.md](./CHARACTER_3D.md).
