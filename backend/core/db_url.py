@@ -15,10 +15,8 @@ def resolve_database_url() -> str:
 
     if not url:
         if os.getenv("VERCEL") == "1":
-            raise RuntimeError(
-                "PostgreSQL не настроен: подключите Vercel Postgres (Storage) "
-                "или задайте POSTGRES_URL / DATABASE_URL."
-            )
+            # /tmp writable on serverless; use Postgres when POSTGRES_URL is set
+            return "sqlite+aiosqlite:////tmp/sber-demo.db"
         return "sqlite+aiosqlite:///./data/sber.db"
 
     return normalize_async_url(url)

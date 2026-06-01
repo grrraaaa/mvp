@@ -11,6 +11,12 @@ from models.schemas import BankProduct
 
 class ProductService:
     async def search(self, params: Dict[str, Any]) -> List[BankProduct]:
+        try:
+            return await self._search(params)
+        except Exception:
+            return []
+
+    async def _search(self, params: Dict[str, Any]) -> List[BankProduct]:
         async with AsyncSessionLocal() as db:
             q = select(Product).where(Product.is_active == True)
             ptype = params.get("product_type")
