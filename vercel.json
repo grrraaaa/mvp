@@ -1,5 +1,11 @@
 {
   "$schema": "https://openapi.vercel.sh/vercel.json",
+  "git": {
+    "deploymentEnabled": {
+      "main": true,
+      "master": false
+    }
+  },
   "installCommand": "cd frontend && npm install",
   "buildCommand": "cd frontend && npm run build",
   "outputDirectory": "frontend/.next",
@@ -9,11 +15,7 @@
     "api/index.py": {
       "memory": 1024,
       "maxDuration": 60,
-      "includeFiles": [
-        "backend/**",
-        "ai/**",
-        "frontend/lib/sbbol/formSchemas/**"
-      ]
+      "includeFiles": "{backend/**,ai/**,frontend/lib/sbbol/formSchemas/**}"
     }
   },
   "rewrites": [
