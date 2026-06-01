@@ -1,0 +1,35 @@
+@font-face {
+  font-family: "SB Sans Interface";
+  src: url("/sber-orig/static/fonts/SBSansInterface/SBSansUI-Light.woff2") format("woff2"),
+    url("/sber-orig/static/fonts/SBSansInterface/SBSansUI-Light.woff") format("woff");
+  font-weight: 300;
+  font-style: normal;
+  font-display: swap;
+}
+
+@font-face {
+  font-family: "SB Sans Interface";
+  src: url("/sber-orig/static/fonts/SBSansInterface/SBSansUI-Regular.woff2") format("woff2"),
+    url("/sber-orig/static/fonts/SBSansInterface/SBSansUI-Regular.woff") format("woff");
+  font-weight: 400;
+  font-style: normal;
+  font-display: swap;
+}
+
+@font-face {
+  font-family: "SB Sans Interface";
+  src: url("/sber-orig/static/fonts/SBSansInterface/SBSansUI-Semibold.woff2") format("woff2"),
+    url("/sber-orig/static/fonts/SBSansInterface/SBSansUI-Semibold.woff") format("woff");
+  font-weight: 600;
+  font-style: normal;
+  font-display: swap;
+}
+
+@font-face {
+  font-family: "SB Sans Interface";
+  src: url("/sber-orig/static/fonts/SBSansInterface/SBSansUI-Bold.woff2") format("woff2"),
+    url("/sber-orig/static/fonts/SBSansInterface/SBSansUI-Bold.woff") format("woff");
+  font-weight: 700;
+  font-style: normal;
+  font-display: swap;
+}

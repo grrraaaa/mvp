@@ -1,0 +1,19 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<svg width="24px" height="24px" viewBox="0 0 24 24" version="1.1" xmlns="http://www.w3.org/2000/svg" xmlns:xlink="http://www.w3.org/1999/xlink">
+    <!-- Generator: Sketch 50.2 (55047) - http://www.bohemiancoding.com/sketch -->
+    <title>Icons/ic_24px / ic_search</title>
+    <desc>Created with Sketch.</desc>
+    <defs>
+        <path d="M15.8907479,14.4765344 L18.7071068,17.2928932 C19.0976311,17.6834175 19.0976311,18.3165825 18.7071068,18.7071068 C18.3165825,19.0976311 17.6834175,19.0976311 17.2928932,18.7071068 L14.4765344,15.8907479 C13.4957155,16.589209 12.2958304,17 11,17 C7.6862915,17 5,14.3137085 5,11 C5,7.6862915 7.6862915,5 11,5 C14.3137085,5 17,7.6862915 17,11 C17,12.2958304 16.589209,13.4957155 15.8907479,14.4765344 Z M11,15 C13.209139,15 15,13.209139 15,11 C15,8.790861 13.209139,7 11,7 C8.790861,7 7,8.790861 7,11 C7,13.209139 8.790861,15 11,15 Z" id="path-1"></path>
+    </defs>
+    <g id="Icons/ic_24px-/-ic_search" stroke="none" stroke-width="1" fill="none" fill-rule="evenodd">
+        <rect id="Bound" x="0" y="0" width="24" height="24"></rect>
+        <mask id="mask-2" fill="white">
+            <use xlink:href="#path-1"></use>
+        </mask>
+        <use id="Search" fill="#1B2733" fill-rule="nonzero" xlink:href="#path-1"></use>
+        <g id="colors-/-rainy-/-rainy-base" mask="url(#mask-2)" fill="#6D7896">
+            <rect id="rainy-base" x="0" y="0" width="24" height="24"></rect>
+        </g>
+    </g>
+</svg>

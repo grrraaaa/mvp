@@ -1,0 +1,129 @@
+{
+  "formType": "paydoccur",
+  "formName": "forms.PAYDOCCUR",
+  "title": "Платежное поручение (валюта)",
+  "fields": [
+    {
+      "key": "COMMON_COLUMNS_AMOUNT",
+      "name": "forms.PAYDOCCUR.COMMON_COLUMNS_AMOUNT",
+      "label": "Сумма перевода",
+      "type": "text",
+      "fillPriority": 1,
+      "aliases": [
+        "сумма перевода",
+        "сумма",
+        "сумму",
+        "на сумму"
+      ]
+    },
+    {
+      "key": "PAYMENT_PURPOSE",
+      "name": "forms.PAYDOCCUR.PAYMENT_PURPOSE",
+      "label": "Назначение платежа",
+      "type": "text",
+      "fillPriority": 2,
+      "aliases": [
+        "назначение платежа",
+        "назначение",
+        "назначение оплаты",
+        "за что",
+        "оплата"
+      ]
+    },
+    {
+      "key": "COMMON_COLUMNS_DOC_NUMBER",
+      "name": "forms.PAYDOCCUR.COMMON_COLUMNS_DOC_NUMBER",
+      "label": "№ документа",
+      "type": "text",
+      "fillPriority": 3,
+      "aliases": [
+        "№ документа",
+        "номер документа",
+        "номер"
+      ]
+    },
+    {
+      "key": "COMMON_COLUMNS_DOC_DATE",
+      "name": "forms.PAYDOCCUR.COMMON_COLUMNS_DOC_DATE",
+      "label": "Дата документа",
+      "type": "text",
+      "fillPriority": 4,
+      "aliases": [
+        "дата документа",
+        "дата"
+      ]
+    },
+    {
+      "key": "PAYMENT_URGENCY",
+      "name": "forms.PAYDOCCUR.PAYMENT_URGENCY",
+      "label": "Очередность платежа",
+      "type": "text",
+      "fillPriority": 5,
+      "aliases": [
+        "очередность платежа",
+        "очередность"
+      ]
+    },
+    {
+      "key": "CONTRAGENT_ID",
+      "name": "forms.PAYDOCCUR.CONTRAGENT_ID",
+      "label": "Получатель / контрагент",
+      "type": "text",
+      "fillPriority": 6,
+      "aliases": [
+        "получатель / контрагент",
+        "получатель",
+        "контрагент"
+      ]
+    },
+    {
+      "key": "COMMON_COLUMNS_CUSTOMER_ACCOUNT",
+      "name": "forms.PAYDOCCUR.COMMON_COLUMNS_CUSTOMER_ACCOUNT",
+      "label": "Со счета",
+      "type": "text",
+      "fillPriority": 7,
+      "aliases": [
+        "со счета",
+        "счёт",
+        "со счёта",
+        "счет плательщика"
+      ]
+    },
+    {
+      "key": "PAYMENT_INDICATION",
+      "name": "forms.PAYDOCCUR.PAYMENT_INDICATION",
+      "label": "Сумма перевода",
+      "type": "radio",
+      "aliases": [
+        "сумма перевода"
+      ]
+    },
+    {
+      "key": "PAYMENT_PURPOSE_CATEGORY",
+      "name": "forms.PAYDOCCUR.PAYMENT_PURPOSE_CATEGORY",
+      "label": "Категория назначения платежа",
+      "type": "text",
+      "aliases": [
+        "категория назначения платежа"
+      ]
+    },
+    {
+      "key": "PAYMENT_PURPOSE_CODE",
+      "name": "forms.PAYDOCCUR.PAYMENT_PURPOSE_CODE",
+      "label": "Код назначения платежа",
+      "type": "text",
+      "aliases": [
+        "код назначения платежа"
+      ]
+    },
+    {
+      "key": "CHARGES_TYPE",
+      "name": "forms.PAYDOCCUR.CHARGES_TYPE",
+      "label": "Способ удержания",
+      "type": "text",
+      "aliases": [
+        "способ удержания"
+      ]
+    }
+  ]
+}

@@ -1,0 +1,106 @@
+/** Имена morph targets и анимаций — подбираются по подстроке (lower case). */
+
+export const DEFAULT_GLB_PATH =
+  process.env.NEXT_PUBLIC_CHARACTER_GLB ?? "/models/personage.glb";
+
+/**
+ * personage.glb (Sketchfab scan): 3 меша (Object_5–7), full-body ~1.9 m,
+ * без morph targets и без клипов. Рот — ProceduralMouth + analyzeHead anchor.
+ */
+export const GLB_TARGET_HEIGHT = 1.65;
+
+/** Доп. множитель после авто-подгонки (если модель всё ещё крупная/мелкая) */
+export const GLB_SCALE_MULTIPLIER = Number(
+  process.env.NEXT_PUBLIC_CHARACTER_GLB_SCALE ?? "1"
+);
+
+/** Ручная подстройка Y поверх авто-fit */
+export const GLB_Y_OFFSET = Number(process.env.NEXT_PUBLIC_CHARACTER_GLB_Y ?? "0");
+
+/** @deprecated используйте GLB_SCALE_MULTIPLIER */
+export const GLB_SCALE = GLB_SCALE_MULTIPLIER;
+
+/** Подстроки имён morph target (порядок: более специфичные раньше). */
+export const LIP_MORPH_NAMES = [
+  "jawopen",
+  "jaw_open",
+  "mouthopen",
+  "mouth_open",
+  "mouth.open",
+  "viseme_aa",
+  "viseme_o",
+  "viseme_e",
+  "viseme_oh",
+  "viseme_u",
+  "viseme_pp",
+  "vrc.v_aa",
+  "vrc.v_oh",
+  "vrc.v_ee",
+  "mouthsmile",
+  "mouthfrown",
+  "mouthfunnel",
+  "mouthpucker",
+  "lip",
+  "jaw",
+  "mouth",
+];
+
+export const ANIM_IDLE_HINTS = ["idle", "standing", "breath"];
+export const ANIM_WALK_HINTS = ["walk", "walking"];
+export const ANIM_TALK_HINTS = ["talk", "speaking", "speak"];
+
+export function findClipName(
+  names: string[],
+  hints: string[]
+): string | undefined {
+  const lower = names.map((n) => n.toLowerCase());
+  for (const hint of hints) {
+    const idx = lower.findIndex((n) => n.includes(hint));
+    if (idx >= 0) return names[idx];
+  }
+  return names[0];
+}
+
+export type LipBinding = { meshIndex: number; morphIndex: number; key: string };
+
+/** Все morph targets на всех мешах, чьи имена совпадают с LIP_MORPH_NAMES. */
+export function collectLipBindings(
+  meshes: Array<{
+    morphTargetDictionary?: Record<string, number>;
+  }>
+): LipBinding[] {
+  const bindings: LipBinding[] = [];
+  const seen = new Set<string>();
+
+  meshes.forEach((mesh, meshIndex) => {
+    const dict = mesh.morphTargetDictionary;
+    if (!dict) return;
+
+    for (const key of Object.keys(dict)) {
+      const lower = key.toLowerCase();
+      if (!LIP_MORPH_NAMES.some((hint) => lower.includes(hint))) continue;
+
+      const morphIndex = dict[key];
+      const token = `${meshIndex}:${morphIndex}`;
+      if (seen.has(token)) continue;
+      seen.add(token);
+      bindings.push({ meshIndex, morphIndex, key });
+    }
+  });
+
+  return bindings;
+}
+
+/** Список всех morph target имён (отладка / подбор LIP_MORPH_NAMES). */
+export function listMorphTargetNames(
+  meshes: Array<{ morphTargetDictionary?: Record<string, number> }>
+): string[] {
+  const names = new Set<string>();
+  for (const mesh of meshes) {
+    if (!mesh.morphTargetDictionary) continue;
+    for (const key of Object.keys(mesh.morphTargetDictionary)) {
+      names.add(key);
+    }
+  }
+  return [...names].sort();
+}

@@ -1,0 +1,347 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+@import url("/fonts/sb-sans.css");
+
+:root {
+  --sber-green: #21a038;
+  --sber-green-dark: #0a9b2e;
+  --sber-green-light: #64d072;
+  --sber-green-deep: #053517;
+  --sber-gold: #ffcd00;
+  --sber-bg: #041810;
+  --sber-panel: #0a2418;
+  --sber-panel-elevated: #0f2f1c;
+  --sber-border: rgba(33, 160, 56, 0.28);
+  --foreground: #ffffff;
+
+  /* СберБизнес demo tokens */
+  --sbbol-bg: #f2f4f7;
+  --sbbol-text: #1f1f22;
+  --sbbol-text-secondary: #565b62;
+  --sbbol-text-muted: #7d838a;
+  --sbbol-border: #d0d7dd;
+  --sbbol-primary: #107f8c;
+  --sbbol-primary-dark: #005e7f;
+  --sbbol-primary-light: #90d0cc;
+}
+
+body {
+  color: var(--foreground);
+  background: var(--sber-bg);
+}
+
+.sbbol-app {
+  color: var(--sbbol-text);
+  font-family: "SB Sans Interface", "Segoe UI", system-ui, sans-serif;
+  font-size: 14px;
+  line-height: 1.43;
+}
+
+/* Скроллбар в стиле Сбера */
+::-webkit-scrollbar {
+  width: 5px;
+}
+::-webkit-scrollbar-track {
+  background: transparent;
+}
+::-webkit-scrollbar-thumb {
+  background: var(--sber-green);
+  border-radius: 3px;
+  opacity: 0.6;
+}
+
+@layer components {
+  .sber-panel {
+    @apply bg-sber-panel/95 backdrop-blur-xl border-sber-border;
+  }
+  .sber-btn-primary {
+    @apply bg-sber-green hover:bg-sber-green-light text-white font-medium transition-colors;
+  }
+  .sber-btn-ghost {
+    @apply bg-sber-green/10 hover:bg-sber-green/20 text-sber-muted border border-sber-border;
+  }
+  .sber-input {
+    @apply bg-sber-green/5 border border-sber-border rounded-xl text-white placeholder:text-sber-muted/70 focus:outline-none focus:border-sber-green focus:ring-1 focus:ring-sber-green/40;
+  }
+  .sber-bubble-assistant {
+    @apply bg-sber-panel-elevated text-gray-100 border border-sber-border rounded-2xl rounded-bl-sm;
+  }
+  .sber-bubble-user {
+    @apply bg-sber-green text-white rounded-2xl rounded-br-sm;
+  }
+  .sber-link {
+    @apply text-sber-green-light underline underline-offset-2 hover:text-sber-gold transition-colors;
+  }
+
+  /* Светлая тема СБОЛ для встроенного AI-чата */
+  .sbbol-theme .sber-bubble-assistant {
+    @apply bg-gray-50 text-gray-800 border-gray-200 rounded-2xl rounded-bl-sm;
+  }
+  .sbbol-theme .sber-bubble-user {
+    @apply bg-[#21A038] text-white rounded-2xl rounded-br-sm;
+  }
+  .sbbol-theme .sber-input {
+    @apply bg-gray-50 border-gray-200 text-gray-900 placeholder:text-gray-400 focus:border-[#21A038] focus:ring-[#21A038]/30;
+  }
+  .sbbol-theme .sber-btn-ghost {
+    @apply bg-gray-100 hover:bg-gray-200 text-gray-700 border-gray-200;
+  }
+  .sbbol-theme .sber-btn-primary {
+    @apply bg-[#21A038] hover:bg-[#0A9B2E] text-white;
+  }
+  .sbbol-theme .sber-link {
+    @apply text-[#21A038] hover:text-[#0A9B2E];
+  }
+  .sbbol-theme .product-card-link {
+    @apply bg-white border-gray-200 hover:border-[#21A038] hover:bg-green-50;
+  }
+  .sbbol-theme ::-webkit-scrollbar-thumb {
+    background: #21a038;
+  }
+
+  .sbbol-btn-primary {
+    @apply inline-flex items-center justify-center rounded-md font-semibold text-white transition-colors;
+    background-color: var(--sbbol-primary);
+    border: 1px solid var(--sbbol-primary);
+  }
+  .sbbol-btn-primary:hover {
+    background-color: var(--sbbol-primary-dark);
+    border-color: var(--sbbol-primary-dark);
+  }
+
+  .sbbol-btn-secondary {
+    @apply inline-flex items-center justify-center rounded-md font-semibold transition-colors;
+    background-color: #fff;
+    color: var(--sbbol-text);
+    border: 1px solid var(--sbbol-border);
+  }
+  .sbbol-btn-secondary:hover {
+    background-color: var(--sbbol-bg);
+  }
+
+  .sbbol-icon-btn {
+    @apply w-10 h-10 flex items-center justify-center rounded-md hover:bg-[#f2f4f7] transition-colors;
+  }
+
+  .sbbol-nav-item {
+    @apply flex flex-col items-center justify-center gap-1.5 py-4 px-1 text-center transition-colors min-h-[96px] border-b border-transparent;
+    color: var(--sbbol-text-muted);
+  }
+  .sbbol-nav-item:hover {
+    background-color: rgba(31, 31, 34, 0.04);
+    color: var(--sbbol-text);
+  }
+  .sbbol-nav-item-active {
+    background-color: rgba(31, 31, 34, 0.06);
+    color: var(--sbbol-text);
+    box-shadow: inset 3px 0 0 var(--sbbol-primary);
+  }
+
+  .sbbol-nav-label {
+    @apply text-[10px] leading-tight px-1 max-w-[88px];
+  }
+
+  .sbbol-checkbox {
+    @apply w-4 h-4 rounded border border-[#d0d7dd] accent-[#107f8c];
+  }
+
+  .sbbol-theme .sber-bubble-user {
+    @apply bg-[#107F8C];
+  }
+  .sbbol-theme .sber-btn-primary {
+    @apply bg-[#107F8C] hover:bg-[#005E7F];
+  }
+  .sbbol-theme .sber-link {
+    @apply text-[#107F8C] hover:text-[#005E7F];
+  }
+  .sbbol-theme .product-card-link {
+    @apply hover:border-[#107F8C] hover:bg-[#e5fcf7];
+  }
+
+  .sbbol-create-doc-btn {
+    @apply inline-flex items-center justify-center gap-2 rounded-lg font-semibold text-white transition-all;
+    min-height: 48px;
+    padding: 0 28px;
+    font-size: 15px;
+    letter-spacing: 0.01em;
+    background: linear-gradient(135deg, #11939f 0%, #107f8c 55%, #0a6670 100%);
+    border: 1px solid #0a6670;
+    box-shadow: 0 8px 24px rgba(16, 127, 140, 0.28);
+  }
+  .sbbol-create-doc-btn:hover {
+    transform: translateY(-1px);
+    box-shadow: 0 12px 28px rgba(16, 127, 140, 0.34);
+    background: linear-gradient(135deg, #128fa0 0%, #0e7280 55%, #085760 100%);
+  }
+  .sbbol-create-doc-btn:active {
+    transform: translateY(0);
+  }
+}
+
+/* Captured SBBOL page fragments (main.bundle.css grid + components) */
+.sbbol-orig-root {
+  color: #1f1f22;
+  font-family: "SB Sans Interface", "Segoe UI", system-ui, sans-serif;
+  font-size: 14px;
+  line-height: 1.43;
+}
+
+.sbbol-orig-root .HeaderGradient-container-iZJy {
+  margin-left: -96px;
+  width: calc(100% + 96px);
+}
+
+@media (max-width: 1023px) {
+  .sbbol-orig-root .HeaderGradient-container-iZJy {
+    margin-left: 0;
+    width: 100%;
+  }
+}
+
+/* ── Assistant character animations ─────────────────── */
+.character-avatar {
+  flex-shrink: 0;
+}
+
+.character-avatar.character-style-robot,
+.character-avatar.character-style-cat,
+.character-avatar.character-style-orb {
+  filter: drop-shadow(0 8px 16px rgba(0, 0, 0, 0.35));
+}
+
+.char-fill-primary {
+  fill: var(--char-primary);
+}
+
+.char-fill-accent {
+  fill: var(--char-accent);
+}
+
+.character-mood-idle .character-avatar,
+.character-avatar.character-mood-idle {
+  animation: char-float 3s ease-in-out infinite;
+}
+
+.character-mood-thinking .character-avatar,
+.character-avatar.character-mood-thinking {
+  animation: char-think 0.8s ease-in-out infinite;
+}
+
+.character-mood-speaking .character-avatar,
+.character-avatar.character-mood-speaking {
+  animation: char-speak 0.45s ease-in-out infinite;
+}
+
+.character-mood-happy .character-avatar,
+.character-avatar.character-mood-happy {
+  animation: char-happy 0.6s ease-out 1;
+}
+
+.character-mood-thinking .char-mouth,
+.character-mood-speaking .char-mouth {
+  transform-origin: center;
+}
+
+.character-mood-speaking .char-mouth {
+  animation: char-mouth-speak 0.35s ease-in-out infinite;
+}
+
+.character-mood-thinking .char-eye {
+  animation: char-blink 1.2s step-end infinite;
+}
+
+@keyframes char-float {
+  0%,
+  100% {
+    transform: translateY(0);
+  }
+  50% {
+    transform: translateY(-6px);
+  }
+}
+
+@keyframes char-think {
+  0%,
+  100% {
+    transform: translateY(0) rotate(-2deg);
+  }
+  50% {
+    transform: translateY(-4px) rotate(2deg);
+  }
+}
+
+@keyframes char-speak {
+  0%,
+  100% {
+    transform: scale(1);
+  }
+  50% {
+    transform: scale(1.04);
+  }
+}
+
+@keyframes char-happy {
+  0% {
+    transform: scale(1);
+  }
+  40% {
+    transform: scale(1.08) rotate(3deg);
+  }
+  100% {
+    transform: scale(1);
+  }
+}
+
+@keyframes char-mouth-speak {
+  0%,
+  100% {
+    transform: scaleY(1);
+  }
+  50% {
+    transform: scaleY(1.8);
+  }
+}
+
+@keyframes char-blink {
+  0%,
+  90%,
+  100% {
+    opacity: 1;
+  }
+  95% {
+    opacity: 0.2;
+  }
+}
+
+/* ── Document types modal — backdrop only (layout from main.bundle.css) ── */
+.sbbol-doc-types-modal__backdrop {
+  background: rgba(15, 23, 42, 0.55);
+  backdrop-filter: blur(4px);
+}
+
+/* ── Demo toast for stubbed SBBOL actions ── */
+.sbbol-demo-toast {
+  position: fixed;
+  bottom: 24px;
+  left: 50%;
+  z-index: 10001;
+  max-width: min(420px, calc(100vw - 32px));
+  padding: 12px 20px;
+  border-radius: 8px;
+  background: #1f1f22;
+  color: #fff;
+  font-size: 14px;
+  line-height: 1.4;
+  text-align: center;
+  pointer-events: none;
+  opacity: 0;
+  transform: translateX(-50%) translateY(12px);
+  transition: opacity 0.2s ease, transform 0.2s ease;
+}
+
+.sbbol-demo-toast--visible {
+  opacity: 1;
+  transform: translateX(-50%) translateY(0);
+}

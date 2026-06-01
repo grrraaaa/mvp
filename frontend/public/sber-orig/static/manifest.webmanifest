@@ -1,0 +1,25 @@
+{
+  "id": "SBBOL_PWA",
+  "categories": ["finance"],
+  "name": "СберБизнес",
+  "short_name": "СберБизнес",
+  "start_url": "/login?app_launch_location=homescreen",
+  "theme_color": "#107f8c",
+  "background_color": "#f2f4f7",
+  "orientation": "portrait",
+  "description": "",
+  "display": "standalone",
+  "related_applications": [
+    {
+      "platform": "webapp",
+      "url": "https://sbbol.sber-bank.by/manifest.webmanifest"
+    }
+  ],
+  "icons": [
+    {
+      "src": "/static/images/pwa/icons/appIcon512.png",
+      "sizes": "512x512",
+      "type": "image/png"
+    }
+  ]
+}

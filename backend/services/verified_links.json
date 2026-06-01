@@ -1,0 +1,48 @@
+{
+  "base": "https://www.sber-bank.by",
+  "person": "https://www.sber-bank.by/person",
+  "sections": {
+    "home": "https://www.sber-bank.by",
+    "cards": "https://www.sber-bank.by/cards/filter",
+    "deposits": "https://www.sber-bank.by/deposit/save-online-BYN-unrecall-capital/BYN/attributes",
+    "credits": "https://www.sber-bank.by/credit",
+    "investments": "https://www.sber-bank.by/investicii/monety",
+    "insurance": "https://www.sber-bank.by/insurance/property-insurance-online/conditions",
+    "payments": "https://www.sber-bank.by/denezhnye-perevody",
+    "sbol": "https://www.sber-bank.by/loginsbol"
+  },
+  "products": {
+    "credit_online": "https://www.sber-bank.by/credit-potreb/prosto-v-online/conditions",
+    "credit_auto": "https://www.sber-bank.by/credit-auto/buy-lada/conditions",
+    "credit_refinance": "https://www.sber-bank.by/credit-potreb/refinance-online/conditions",
+    "deposit_save": "https://www.sber-bank.by/deposit/save-online-BYN-unrecall-capital/BYN/attributes",
+    "deposit_kopilka": "https://www.sber-bank.by/page/kopilka",
+    "invest_bonds": "https://www.sber-bank.by/page/obligacii-banka",
+    "invest_coins": "https://www.sber-bank.by/investicii/monety",
+    "card_payment": "https://www.sber-bank.by/cards/filter"
+  },
+  "insurance_products": {
+    "insurance_credit": {
+      "label": "Страхование рисков кредитополучателей",
+      "url": "https://www.sber-bank.by/insurance/credit-insurance-online/conditions",
+      "patterns": ["кредитополуч", "риск.*кредит", "при кредит", "кредитн"]
+    },
+    "insurance_property": {
+      "label": "Добровольное страхование имущества и недвижимости (онлайн)",
+      "url": "https://www.sber-bank.by/insurance/property-insurance-online/conditions",
+      "patterns": ["имущ", "недвижим", "квартир", "дом", "квартиру"]
+    },
+    "insurance_life": {
+      "label": "Добровольное страхование жизни и здоровья",
+      "url": "https://www.sber-bank.by/insurance/accidents-insurance/conditions",
+      "patterns": ["жизн", "здоров", "несчастн", "травм", "accident"]
+    }
+  },
+  "satellites": {
+    "loyalty_program": "https://www.sber-bank.by/loyalty-program",
+    "insurance_life": "https://www.sber-bank.by/insurance/accidents-insurance/conditions",
+    "insurance_credit": "https://www.sber-bank.by/insurance/credit-insurance-online/conditions",
+    "payments_transfers": "https://www.sber-bank.by/denezhnye-perevody/po-belarusi",
+    "payments_erip": "https://www.sber-bank.by/denezhnye-perevody/instant-payment-system"
+  }
+}

@@ -1,0 +1,131 @@
+{
+  "formType": "paydocby",
+  "formName": "forms.PAYDOCBY",
+  "title": "Платежное поручение (BYN)",
+  "fields": [
+    {
+      "key": "CONTRAGENT_ID",
+      "name": "forms.PAYDOCBY.CONTRAGENT_ID",
+      "label": "Получатель / контрагент",
+      "type": "text",
+      "fillPriority": 7,
+      "aliases": [
+        "получатель / контрагент",
+        "получатель",
+        "контрагент"
+      ]
+    },
+    {
+      "key": "COMMON_COLUMNS_CUSTOMER_ACCOUNT",
+      "name": "forms.PAYDOCBY.COMMON_COLUMNS_CUSTOMER_ACCOUNT",
+      "label": "Со счета",
+      "type": "text",
+      "aliases": [
+        "со счета",
+        "счёт",
+        "со счёта",
+        "счет плательщика"
+      ]
+    },
+    {
+      "key": "COMMON_COLUMNS_AMOUNT",
+      "name": "forms.PAYDOCBY.COMMON_COLUMNS_AMOUNT",
+      "label": "Сумма",
+      "type": "text",
+      "fillPriority": 1,
+      "aliases": [
+        "сумма",
+        "сумму",
+        "на сумму"
+      ]
+    },
+    {
+      "key": "PAYMENT_INDICATION",
+      "name": "forms.PAYDOCBY.PAYMENT_INDICATION",
+      "label": "Сумма",
+      "type": "radio",
+      "aliases": [
+        "сумма"
+      ]
+    },
+    {
+      "key": "PAYMENT_PURPOSE",
+      "name": "forms.PAYDOCBY.PAYMENT_PURPOSE",
+      "label": "Назначение платежа",
+      "type": "text",
+      "fillPriority": 2,
+      "aliases": [
+        "назначение платежа",
+        "назначение",
+        "назначение оплаты",
+        "за что",
+        "оплата"
+      ]
+    },
+    {
+      "key": "PAYMENT_PURPOSE_CATEGORY",
+      "name": "forms.PAYDOCBY.PAYMENT_PURPOSE_CATEGORY",
+      "label": "Категория назначения платежа",
+      "type": "text",
+      "aliases": [
+        "категория назначения платежа"
+      ]
+    },
+    {
+      "key": "PAYMENT_PURPOSE_CODE",
+      "name": "forms.PAYDOCBY.PAYMENT_PURPOSE_CODE",
+      "label": "Код назначения платежа",
+      "type": "text",
+      "aliases": [
+        "код назначения платежа"
+      ]
+    },
+    {
+      "key": "COMMON_COLUMNS_DOC_NUMBER",
+      "name": "forms.PAYDOCBY.COMMON_COLUMNS_DOC_NUMBER",
+      "label": "№ документа",
+      "type": "text",
+      "fillPriority": 3,
+      "aliases": [
+        "№ документа",
+        "номер документа",
+        "номер"
+      ]
+    },
+    {
+      "key": "COMMON_COLUMNS_DOC_DATE",
+      "name": "forms.PAYDOCBY.COMMON_COLUMNS_DOC_DATE",
+      "label": "Дата документа",
+      "type": "text",
+      "fillPriority": 4,
+      "aliases": [
+        "дата документа",
+        "дата"
+      ]
+    },
+    {
+      "key": "PAYMENT_URGENCY",
+      "name": "forms.PAYDOCBY.PAYMENT_URGENCY",
+      "label": "Очередность платежа",
+      "type": "text",
+      "fillPriority": 5,
+      "aliases": [
+        "очередность платежа",
+        "очередность"
+      ]
+    },
+    {
+      "key": "CONTRAGENT_ACCOUNT",
+      "name": "forms.PAYDOCBY.CONTRAGENT_ACCOUNT",
+      "label": "Счёт получателя",
+      "type": "text",
+      "fillPriority": 6,
+      "aliases": [
+        "счёт получателя",
+        "счет получателя",
+        "счёт",
+        "iban"
+      ]
+    }
+  ]
+}

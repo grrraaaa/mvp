@@ -1,0 +1,9 @@
+{
+  "name": "sber-sbbol-demo",
+  "private": true,
+  "description": "SBBOL demo — Next.js frontend + FastAPI on Vercel",
+  "scripts": {
+    "build": "npm run build --prefix frontend",
+    "dev": "npm run dev --prefix frontend"
+  }
+}
