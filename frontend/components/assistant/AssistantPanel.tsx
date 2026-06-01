@@ -10,7 +10,7 @@ import { AssistantCharacter } from "./AssistantCharacter";
 import { CharacterSettings } from "./CharacterSettings";
 import { useAssistantStore } from "@/store/assistantStore";
 import { useCharacterStore } from "@/store/characterStore";
-import { getSbbolPageContext, isPaymentFormRoute } from "@/lib/sbbol/formContext";
+import { getSbbolPageContext } from "@/lib/sbbol/formContext";
 import { getAssistantQuickChips } from "@/lib/sbbol/assistantQuickChips";
 import { ocrFillForm, readFileAsDataUrl } from "@/lib/api/forms";
 import { apiUrl } from "@/lib/api/baseUrl";
@@ -135,7 +135,15 @@ export function AssistantPanel({ variant = "default", compactMobile = false }: P
 
   const handlePhotoOcr = useCallback(
     async (file: File) => {
-      if (!pageContext.form_type || isLoading) return;
+      if (isLoading) return;
+      if (!pageContext.form_type) {
+        addMessage({
+          role: "assistant",
+          content:
+            "Загрузка фото работает на страницах платёжных форм.\n\nОткройте, например:\n• /payments/paydocbyn\n• /payments/instant\n• /payments/paydoccur\n\nи снова прикрепите изображение — поля заполнятся через OCR.",
+        });
+        return;
+      }
       if (!file.type.startsWith("image/")) {
         addMessage({ role: "assistant", content: "Выберите файл изображения (JPG, PNG)." });
         return;
@@ -180,7 +188,6 @@ export function AssistantPanel({ variant = "default", compactMobile = false }: P
   );
 
   const embedded = variant === "embedded";
-  const showPhotoOcr = isPaymentFormRoute(pathname);
 
   return (
     <div
@@ -292,8 +299,8 @@ export function AssistantPanel({ variant = "default", compactMobile = false }: P
           onChange={setInput}
           onSend={handleSend}
           onSuggestionSelect={sendMessage}
-          onPhotoSelect={showPhotoOcr ? handlePhotoOcr : undefined}
-          showPhotoButton={showPhotoOcr}
+          onPhotoSelect={handlePhotoOcr}
+          showPhotoButton
           suggestions={quickChips}
           disabled={isLoading}
           compact={compactMobile}

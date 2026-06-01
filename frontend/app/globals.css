@@ -201,13 +201,11 @@ body {
   font-family: "SB Sans Interface", "Segoe UI", system-ui, sans-serif;
   font-size: 14px;
   line-height: 1.43;
+  max-width: 100%;
+  overflow-x: clip;
 }
 
-.sbbol-orig-root .HeaderGradient-container-iZJy {
-  margin-left: -104px;
-  width: calc(100% + 104px);
-}
-
+/* Full-bleed gradient under left nav (desktop only) */
 @media (min-width: 1024px) {
   .sbbol-orig-root .HeaderGradient-container-iZJy {
     margin-left: -104px;
@@ -219,6 +217,45 @@ body {
   .sbbol-orig-root .HeaderGradient-container-iZJy {
     margin-left: 0;
     width: 100%;
+    max-width: 100%;
+    overflow: hidden;
+  }
+
+  .sbbol-orig-root .HeaderGradient-arrow-LLxA,
+  .sbbol-orig-root .statement-backButton-U_0U {
+    left: 8px;
+  }
+
+  .sbbol-orig-root .HeaderGradient-relative-ydPD,
+  .sbbol-orig-root .statement-headerWrap-PJ5P .HeaderGradient-relative-ydPD {
+    padding-left: 44px;
+    padding-right: 16px;
+  }
+
+  .sbbol-orig-root .Container-offset-MpAR {
+    margin-left: 0 !important;
+    margin-right: 0 !important;
+    max-width: 100%;
+    flex: 0 0 100%;
+    width: 100%;
+  }
+
+  .sbbol-orig-root .SectionPage-headerContainer-m4JL h2,
+  .sbbol-orig-root .statement-headerContainer-ZU4_ h2 {
+    margin: 0;
+    padding: 0;
+    word-break: break-word;
+  }
+
+  .sbbol-orig-root .container {
+    padding-left: 16px;
+    padding-right: 16px;
+    max-width: 100%;
+  }
+
+  .sbbol-orig-root .row {
+    margin-left: 0;
+    margin-right: 0;
   }
 }
 

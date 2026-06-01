@@ -78,20 +78,30 @@ export function IconMic({
   const stroke = active ? "#107F8C" : "currentColor";
   return (
     <svg className={className} viewBox="0 0 24 24" fill="none" aria-hidden>
+      <rect x="9" y="3" width="6" height="11" rx="3" stroke={stroke} strokeWidth="2" />
       <path
-        d="M12 14a3 3 0 003-3V6a3 3 0 10-6 0v6a3 3 0 003 3z"
+        d="M5 11a7 7 0 0014 0M12 18v3M8 21h8"
         stroke={stroke}
-        strokeWidth={2}
+        strokeWidth="2"
         strokeLinecap="round"
         strokeLinejoin="round"
       />
+    </svg>
+  );
+}
+
+/** Camera / upload image (OCR, attachments). */
+export function IconImageUpload({ className = "w-6 h-6" }: { className?: string }) {
+  return (
+    <svg className={className} viewBox="0 0 24 24" fill="none" aria-hidden>
       <path
-        d="M19 10v1a7 7 0 01-14 0v-1M12 18v2M8 22h8"
-        stroke={stroke}
-        strokeWidth={2}
-        strokeLinecap="round"
+        d="M4 8a2 2 0 012-2h1.5l1-1.5A2 2 0 0110.4 4h3.2a2 2 0 011.9 1.1L16.5 6.5H18a2 2 0 012 2v10a2 2 0 01-2 2H6a2 2 0 01-2-2V8z"
+        stroke="currentColor"
+        strokeWidth="1.75"
         strokeLinejoin="round"
       />
+      <circle cx="12" cy="12" r="3.25" stroke="currentColor" strokeWidth="1.75" />
+      <path d="M18 8h.01" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" />
     </svg>
   );
 }

@@ -2,7 +2,7 @@
 
 import { KeyboardEvent, useEffect, useRef, useState } from "react";
 import { useWebSpeechInput } from "@/hooks/useWebSpeechInput";
-import { IconMic } from "@/components/sbbol/SbbolIcons";
+import { IconImageUpload, IconMic } from "@/components/sbbol/SbbolIcons";
 
 interface Props {
   value: string;
@@ -22,7 +22,7 @@ export function ChatInput({
   onSend,
   onSuggestionSelect,
   onPhotoSelect,
-  showPhotoButton = false,
+  showPhotoButton = true,
   disabled,
   suggestions = [],
   compact = false,
@@ -126,7 +126,7 @@ export function ChatInput({
         </p>
       )}
 
-      {showPhotoButton && onPhotoSelect && (
+      {onPhotoSelect && (
         <input
           ref={fileInputRef}
           type="file"
@@ -143,24 +143,11 @@ export function ChatInput({
             type="button"
             onClick={handlePhotoClick}
             disabled={disabled}
-            className={`${btnSize} rounded-xl border border-gray-200 bg-white text-gray-600 hover:border-[#107f8c] hover:text-[#107f8c] flex items-center justify-center flex-shrink-0 transition-colors disabled:opacity-40`}
-            aria-label="Заполнить с фото"
-            title="Сфотографировать или загрузить платёжку"
+            className={`${btnSize} rounded-xl border border-sbbol-border bg-white text-sbbol-text-secondary hover:border-sbbol-primary hover:text-sbbol-primary hover:bg-[#e5fcf7] flex items-center justify-center flex-shrink-0 transition-colors disabled:opacity-40 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-sbbol-primary/35`}
+            aria-label="Фото или файл"
+            title="Сфотографировать или загрузить изображение"
           >
-            <svg className={iconSize} fill="none" viewBox="0 0 24 24" stroke="currentColor">
-              <path
-                strokeLinecap="round"
-                strokeLinejoin="round"
-                strokeWidth={2}
-                d="M3 9a2 2 0 012-2h.93a2 2 0 001.664-.89l.812-1.22A2 2 0 0110.07 4h3.86a2 2 0 011.664.89l.812 1.22A2 2 0 0018.07 7H19a2 2 0 012 2v9a2 2 0 01-2 2H5a2 2 0 01-2-2V9z"
-              />
-              <path
-                strokeLinecap="round"
-                strokeLinejoin="round"
-                strokeWidth={2}
-                d="M15 13a3 3 0 11-6 0 3 3 0 016 0z"
-              />
-            </svg>
+            <IconImageUpload className={iconSize} />
           </button>
         )}
 
@@ -187,10 +174,10 @@ export function ChatInput({
             type="button"
             onClick={handleMicClick}
             disabled={disabled}
-            className={`${btnSize} rounded-xl border flex items-center justify-center flex-shrink-0 transition-colors disabled:opacity-40 disabled:cursor-not-allowed ${
+            className={`${btnSize} rounded-xl border flex items-center justify-center flex-shrink-0 transition-colors disabled:opacity-40 disabled:cursor-not-allowed focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-sbbol-primary/35 ${
               isListening
-                ? "border-[#21A038] bg-[#21A038]/15 text-[#21A038] animate-pulse"
-                : "border-gray-200 bg-white text-gray-600 hover:border-[#21A038] hover:text-[#21A038]"
+                ? "border-sbbol-primary bg-[#e5fcf7] text-sbbol-primary animate-pulse"
+                : "border-sbbol-border bg-white text-sbbol-text-secondary hover:border-sbbol-primary hover:text-sbbol-primary hover:bg-[#e5fcf7]"
             }`}
             aria-label={isListening ? "Остановить запись" : "Голосовой ввод"}
             aria-pressed={isListening}

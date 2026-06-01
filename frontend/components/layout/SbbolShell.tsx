@@ -166,7 +166,7 @@ export function SbbolShell({ children, onOpenMap, activeNav }: Props) {
         />
       )}
 
-      <main className="flex-1 pt-[65px] pl-0 lg:pl-[104px] min-h-0 min-w-0">{children}</main>
+      <main className="flex-1 pt-[65px] pl-0 lg:pl-[104px] min-h-0 min-w-0 overflow-x-hidden">{children}</main>
 
       <footer
         suppressHydrationWarning
