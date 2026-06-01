@@ -58,7 +58,7 @@ export function SberSolarSystem({ activePath }: Props) {
           <meshBasicMaterial
             color={p.color}
             transparent
-            opacity={0.12}
+            opacity={0.08}
             side={THREE.DoubleSide}
           />
         </mesh>

@@ -1,91 +1,62 @@
-# Структура файлов (актуальная)
+# Структура файлов
 
 ```
 mvp/
 ├── README.md
+├── package.json              # next — для детекции Vercel
+├── vercel.json               # FE build + Python /api
+├── requirements.txt          # Python deps (Vercel)
+├── api/index.py              # Vercel → FastAPI
 ├── .env.example
 ├── docker-compose.yml
 │
+├── docs/                     # Вся документация
+│   ├── README.md             # Оглавление
+│   ├── LOCAL_DEV.md
+│   ├── VERCEL_DEPLOY.md
+│   ├── ARCHITECTURE.md
+│   ├── UI_AND_3D.md
+│   └── ...
+│
 ├── frontend/
 │   ├── app/
-│   │   ├── layout.tsx              # Метаданные «Сбер · AI-навигатор»
-│   │   ├── page.tsx                # Главная: 3D-карта + панель чата
-│   │   └── globals.css             # Тема Сбера, sber-* классы
+│   │   ├── layout.tsx
+│   │   ├── globals.css       # SBBOL + sber-theme
+│   │   ├── middleware.ts
+│   │   ├── page.tsx          # Dashboard
+│   │   ├── payments/         # Расчёты, формы
+│   │   ├── statement/
+│   │   └── salary/
 │   │
 │   ├── components/
-│   │   ├── assistant/
-│   │   │   ├── AssistantPanel.tsx
-│   │   │   ├── AssistantCharacter.tsx
-│   │   │   ├── MessageBubble.tsx   # Ссылки sberbank.ru
-│   │   │   ├── ChatInput.tsx
-│   │   │   ├── ProductCard.tsx
-│   │   │   ├── ActionButtons.tsx
-│   │   │   ├── CharacterSettings.tsx
-│   │   │   ├── AssistantAvatar.tsx
-│   │   │   └── character3d/
-│   │   │       ├── CharacterRoomScene.tsx   # портрет, Canvas
-│   │   │       ├── GlbCharacter3D.tsx       # personage.glb
-│   │   │       ├── ProceduralMouth.tsx      # липсинг без morph
-│   │   │       ├── HeadStudioBackdrop.tsx
-│   │   │       ├── Humanoid3D.tsx          # fallback
-│   │   │       └── ...
-│   │   ├── lib/assistant/analyzeModel.ts
-│   │   └── store/modelCapabilitiesStore.ts
-│   │   ├── navigation/
-│   │   │   └── NavigationPanel.tsx
-│   │   └── three/
-│   │       ├── Scene.tsx
-│   │       ├── AppMap3D.tsx
-│   │       └── PlanetNode.tsx
-│   │
-│   ├── hooks/
-│   │   └── useCharacterBehavior.ts
+│   │   ├── layout/           # SbbolShell, AppProviders
+│   │   ├── sbbol/             # Иконки, orig HTML, модалки
+│   │   ├── assistant/          # Чат, ChatInput, IconMic
+│   │   │   └── character3d/  # StudioBackdrop, GLB
+│   │   ├── three/            # Scene3D, SberSolarSystem
+│   │   ├── map/              # PlanetMapOverlay
+│   │   └── dashboard/
 │   │
 │   ├── lib/
-│   │   ├── sber/theme.ts           # Цвета бренда
-│   │   ├── assistant/              # characterTypes, presets, lipSync
-│   │   └── api/
+│   │   ├── api/              # baseUrl, chat, forms
+│   │   ├── sbbol/             # navigation, form fill, chips
+│   │   └── sber/              # planetMap, theme
 │   │
-│   └── store/
-│       ├── assistantStore.ts
-│       ├── characterStore.ts
-│       └── characterBehaviorStore.ts
+│   ├── store/
+│   ├── hooks/
+│   └── public/
+│       ├── models/personage.glb
+│       └── sber-orig/static/  # CSS/шрифты демо
 │
 ├── backend/
 │   ├── main.py
-│   ├── requirements.txt
-│   ├── api/
-│   │   ├── chat.py
-│   │   ├── products.py
-│   │   ├── navigation.py
-│   │   └── auth.py
-│   ├── services/
-│   │   ├── ai/assistant.py
-│   │   ├── sber_links.py           # URL sberbank.ru
-│   │   ├── navigation/navigation_service.py
-│   │   └── products/product_service.py
+│   ├── api/                  # chat, forms, auth, products
+│   ├── services/ai/assistant.py
+│   ├── services/navigation/demo_routes.py
 │   ├── db/
-│   │   ├── database.py
-│   │   ├── models.py
-│   │   └── seed.py
-│   └── core/config.py
+│   └── core/                 # config, site_auth, db_url
 │
-├── ai/knowledge/
-│   └── app_map.json                # Демо-карта разделов (/loans, …)
-│
-└── docs/
-    ├── ARCHITECTURE.md
-    ├── TECH_STACK.md
-    ├── FILE_STRUCTURE.md
-    └── MODULES.md                  # (может содержать устаревшие детали)
+└── ai/knowledge/app_map.json
 ```
 
-## Ключевые точки входа
-
-| Задача | Файл |
-|--------|------|
-| Запуск API | `backend/main.py` |
-| Логика ответов + Сбер URL | `backend/services/ai/assistant.py`, `sber_links.py` |
-| Главный UI | `frontend/app/page.tsx` |
-| 3D-консультант | `frontend/components/assistant/character3d/Humanoid3D.tsx` |
-| Тема Сбера | `frontend/app/globals.css`, `lib/sber/theme.ts` |
+**Не используется в runtime:** `AppMap3D.tsx`, `AssistantDialog.tsx`, `NavigationPanel.tsx` (legacy).

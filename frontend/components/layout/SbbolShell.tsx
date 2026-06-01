@@ -90,7 +90,7 @@ export function SbbolShell({ children, onOpenMap, activeNav }: Props) {
       </header>
 
       <aside
-        className={`fixed top-[65px] left-0 bottom-0 z-30 w-[96px] bg-white border-r border-[#d0d7dd] flex flex-col ${
+        className={`fixed top-[65px] left-0 bottom-0 z-30 w-[100px] sm:w-[104px] bg-white border-r border-[#d0d7dd] flex flex-col shadow-[2px_0_12px_rgba(27,39,51,0.04)] ${
           menuExpanded ? "flex" : "hidden lg:flex"
         }`}
       >
@@ -117,7 +117,7 @@ export function SbbolShell({ children, onOpenMap, activeNav }: Props) {
                 </Link>
 
                 {hoverNav === item.id && SUB_NAV[item.id].length > 0 && (
-                  <div className="hidden lg:block absolute left-[96px] top-0 z-50 w-[280px] bg-white border border-[#d0d7dd] rounded-lg shadow-[0_8px_12px_rgba(27,39,51,0.05)] py-3">
+                  <div className="hidden lg:block absolute left-[104px] top-0 z-50 w-[300px] bg-white border border-[#d0d7dd] rounded-xl shadow-[0_12px_24px_rgba(27,39,51,0.08)] py-3">
                     <p className="px-4 pb-2 text-sm font-semibold text-[#1f1f22]">{item.label}</p>
                     <ul>
                       {SUB_NAV[item.id].map((sub) => (
@@ -166,11 +166,11 @@ export function SbbolShell({ children, onOpenMap, activeNav }: Props) {
         />
       )}
 
-      <main className="flex-1 pt-[65px] pl-0 lg:pl-[96px] min-h-0">{children}</main>
+      <main className="flex-1 pt-[65px] pl-0 lg:pl-[104px] min-h-0 min-w-0">{children}</main>
 
       <footer
         suppressHydrationWarning
-        className="flex-shrink-0 pl-0 lg:pl-[96px] py-6 px-6 lg:px-10 text-xs text-[#7d838a] flex flex-wrap gap-x-6 gap-y-2"
+        className="flex-shrink-0 pl-0 lg:pl-[104px] py-6 px-4 sm:px-6 lg:px-10 text-xs sm:text-sm text-[#7d838a] flex flex-wrap gap-x-6 gap-y-2"
       >
         <a href="https://www.sber-bank.by" target="_blank" rel="noopener noreferrer" className="hover:text-[#107f8c]">
           www.sber-bank.by

@@ -1,6 +1,6 @@
 import type { NavId } from "@/lib/sbbol/navigation";
 
-const iconClass = "w-6 h-6";
+const iconClass = "w-7 h-7";
 
 export function NavIcon({ id, active }: { id: NavId; active?: boolean }) {
   const stroke = active ? "#107F8C" : "#7D838A";
@@ -68,7 +68,35 @@ export function NavIcon({ id, active }: { id: NavId; active?: boolean }) {
   }
 }
 
-export function IconPhone({ className = "w-5 h-5" }: { className?: string }) {
+export function IconMic({
+  className = "w-6 h-6",
+  active = false,
+}: {
+  className?: string;
+  active?: boolean;
+}) {
+  const stroke = active ? "#107F8C" : "currentColor";
+  return (
+    <svg className={className} viewBox="0 0 24 24" fill="none" aria-hidden>
+      <path
+        d="M12 14a3 3 0 003-3V6a3 3 0 10-6 0v6a3 3 0 003 3z"
+        stroke={stroke}
+        strokeWidth={2}
+        strokeLinecap="round"
+        strokeLinejoin="round"
+      />
+      <path
+        d="M19 10v1a7 7 0 01-14 0v-1M12 18v2M8 22h8"
+        stroke={stroke}
+        strokeWidth={2}
+        strokeLinecap="round"
+        strokeLinejoin="round"
+      />
+    </svg>
+  );
+}
+
+export function IconPhone({ className = "w-6 h-6" }: { className?: string }) {
   return (
     <svg className={className} viewBox="0 0 24 24" fill="none" aria-hidden>
       <path d="M8.5 4H6.5C5.67 4 5 4.67 5 5.5C5 14.06 9.94 19 18.5 19C19.33 19 20 18.33 20 17.5V15.5C20 14.67 19.33 14 18.5 14H16C15.17 14 14.5 14.67 14.5 15.5C14.5 15.78 14.28 16 14 16C13.72 16 13.5 15.78 13.5 15.5V13.5C13.5 12.67 12.83 12 12 12H10C9.17 12 8.5 11.33 8.5 10.5V8.5C8.5 7.67 7.83 7 7 7H5.5C4.67 7 4 6.33 4 5.5V4" stroke="#7D838A" strokeWidth="1.5" strokeLinecap="round" />
@@ -76,7 +104,7 @@ export function IconPhone({ className = "w-5 h-5" }: { className?: string }) {
   );
 }
 
-export function IconBell({ className = "w-5 h-5" }: { className?: string }) {
+export function IconBell({ className = "w-6 h-6" }: { className?: string }) {
   return (
     <svg className={className} viewBox="0 0 24 24" fill="none" aria-hidden>
       <path d="M12 4C9.24 4 7 6.24 7 9V12L5 15H19L17 12V9C17 6.24 14.76 4 12 4Z" stroke="#7D838A" strokeWidth="1.5" strokeLinejoin="round" />
@@ -85,7 +113,7 @@ export function IconBell({ className = "w-5 h-5" }: { className?: string }) {
   );
 }
 
-export function IconMail({ className = "w-5 h-5" }: { className?: string }) {
+export function IconMail({ className = "w-6 h-6" }: { className?: string }) {
   return (
     <svg className={className} viewBox="0 0 24 24" fill="none" aria-hidden>
       <rect x="4" y="6" width="16" height="12" rx="2" stroke="#7D838A" strokeWidth="1.5" />
@@ -130,7 +158,7 @@ export function IconMoreVertical({ className = "w-4 h-4" }: { className?: string
   );
 }
 
-export function IconChat({ className = "w-[50px] h-[50px]" }: { className?: string }) {
+export function IconChat({ className = "w-[56px] h-[56px] sm:w-[60px] sm:h-[60px]" }: { className?: string }) {
   return (
     <svg className={className} viewBox="0 0 50 50" fill="none" aria-hidden>
       <circle cx="25" cy="25" r="25" fill="#107F8C" />
@@ -147,7 +175,7 @@ export function IconChat({ className = "w-[50px] h-[50px]" }: { className?: stri
   );
 }
 
-export function IconPlanet({ className = "w-5 h-5" }: { className?: string }) {
+export function IconPlanet({ className = "w-6 h-6" }: { className?: string }) {
   return (
     <svg className={className} viewBox="0 0 24 24" fill="none" aria-hidden>
       <circle cx="12" cy="12" r="7" stroke="#107F8C" strokeWidth="1.5" />

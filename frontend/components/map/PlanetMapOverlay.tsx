@@ -1,6 +1,7 @@
 "use client";
 
 import dynamic from "next/dynamic";
+import { IconClose, IconPlanet } from "@/components/sbbol/SbbolIcons";
 
 const Scene3D = dynamic(
   () => import("@/components/three/Scene").then((m) => m.Scene3D),
@@ -16,25 +17,28 @@ export function PlanetMapOverlay({ open, onClose }: Props) {
   if (!open) return null;
 
   return (
-    <div className="fixed inset-0 z-[100] flex flex-col bg-[#041810]">
-      <header className="flex items-center justify-between px-5 py-3 bg-[#053517]/90 border-b border-sber-green/30 backdrop-blur-md shrink-0">
-        <div className="flex items-center gap-3">
-          <span className="text-2xl" aria-hidden>
-            🪐
+    <div className="fixed inset-0 z-[100] flex flex-col bg-[#060f1a]">
+      <header className="flex items-center justify-between gap-3 px-4 sm:px-6 py-3 sm:py-4 bg-gradient-to-r from-[#0a1f18]/95 to-[#0d2835]/95 border-b border-white/10 backdrop-blur-md shrink-0">
+        <div className="flex items-center gap-3 min-w-0">
+          <span className="flex h-11 w-11 shrink-0 items-center justify-center rounded-xl bg-[#107f8c]/20 border border-[#107f8c]/40">
+            <IconPlanet className="w-7 h-7" />
           </span>
-          <div>
-            <h2 className="text-white font-semibold text-lg">Карта услуг Сбер Банка</h2>
-            <p className="text-sber-muted text-xs">
-              Планеты — разделы sber-bank.by · наведите и кликните
+          <div className="min-w-0">
+            <h2 className="text-white font-semibold text-base sm:text-lg truncate">
+              Карта услуг Сбер Банка
+            </h2>
+            <p className="text-[#9cb8a8] text-xs sm:text-sm truncate">
+              Наведите на планету · клик — раздел sber-bank.by
             </p>
           </div>
         </div>
         <button
           type="button"
           onClick={onClose}
-          className="px-4 py-2 rounded-lg bg-white/10 hover:bg-white/20 text-white text-sm font-medium border border-white/20 transition-colors"
+          className="flex h-11 w-11 shrink-0 items-center justify-center rounded-xl bg-white/10 hover:bg-white/20 border border-white/15 transition-colors"
+          aria-label="Закрыть карту"
         >
-          Закрыть
+          <IconClose className="w-6 h-6" stroke="#ffffff" />
         </button>
       </header>
       <div className="flex-1 relative min-h-0">

@@ -1,62 +1,66 @@
-# Архитектура — Сбер AI-навигатор (как реализовано)
+# Архитектура — SBBOL Demo
 
 ## 1. Обзор
 
-**Frontend (Next.js 15)** + **Backend (FastAPI)**. Две 3D-сцены: космическая карта разделов и **портрет консультанта** в панели чата. Ответы ассистента содержат ссылки на **sberbank.ru**.
+**Next.js 15** (демо СберБизнес) + **FastAPI** на одном домене (Vercel) или раздельно локально.
+
+- **UI:** shell `SbbolShell`, страницы платежей/выписки, плавающий AI-чат
+- **3D:** карта услуг (планеты) + студия GLB-консультанта в чате
+- **AI:** OpenRouter/OpenAI + rule-based; навигация по демо-маршрутам (`demo_routes.py`)
+- **Ссылки:** официальный сайт [sber-bank.by](https://www.sber-bank.by)
 
 ```mermaid
 graph TB
     U([Пользователь]) --> FE[Next.js]
 
     subgraph FE
-        CH[AssistantPanel]
-        POR[CharacterRoomScene — портрет GLB]
-        MAP[Scene3D — планеты]
-        ZS[Zustand stores]
+        SHELL[SbbolShell]
+        CHAT[AssistantFloatingChat]
+        MAP[PlanetMapOverlay / Scene3D]
+        STUDIO[CharacterRoomScene]
     end
 
-    FE -->|POST /api/chat/guest| API[FastAPI]
+    FE -->|/api/chat/guest| API[FastAPI / api/index.py]
 
     subgraph API
         AIS[AssistantService]
-        LINKS[sber_links.py]
+        FORMS[forms OCR]
         PRD[ProductService]
-        NAV[NavigationService]
     end
 
-    AIS --> LLM[OpenRouter / rule-based]
-    PRD --> DB[(SQLite)]
-    NAV --> JSON[app_map.json]
+    AIS --> LLM[OpenRouter]
+    PRD --> DB[(Postgres / SQLite)]
 ```
 
 ---
 
-## 2. 3D-консультант (фактическая реализация)
+## 2. Деплой Vercel
 
-### Модель `personage.glb`
+| Часть | Путь |
+|-------|------|
+| Frontend build | `frontend/` |
+| Python API | `api/index.py` → `backend/main.py` |
+| Rewrites | `/api/*` → serverless Python |
 
-- Загрузка: `GlbCharacter3D` + `useGLTF`
-- Авто-масштаб: `fitGlbModel.ts` (~1.65 m)
-- **Нет** skeleton / animations / morph → режим **говорящая голова**
-
-### Режим портрета (`NEXT_PUBLIC_CHARACTER_HEAD_PORTRAIT=true`)
-
-| Компонент | Назначение |
-|-----------|------------|
-| `HeadStudioBackdrop` | Тёмный фон, свет на лицо |
-| `analyzeModel.ts` | Верхний меш = голова, точка рта |
-| `ProceduralMouth` | Липсинг без morph targets |
-| `lipSync.ts` | Таймлайн по тексту ответа |
-| `useCharacterBehavior` | Без ходьбы для static mesh |
-| `SpeechBubble3D` | Реплика над головой |
-
-### Fallback
-
-Если GLB не загрузился → `Humanoid3D` (процедурный человек).
+См. [VERCEL_DEPLOY.md](./VERCEL_DEPLOY.md).
 
 ---
 
-## 3. Поток чата
+## 3. 3D
+
+### Карта услуг
+
+`PlanetMapOverlay` → `Scene3D` → `SberSolarSystem` + `PlanetLink`  
+Данные: `lib/sber/planetMap.ts`
+
+### Консультант в чате
+
+`AssistantCharacter` → `CharacterRoomScene` → `StudioBackdrop` + `GlbCharacter3D`  
+См. [UI_AND_3D.md](./UI_AND_3D.md), [CHARACTER_3D.md](./CHARACTER_3D.md)
+
+---
+
+## 4. Поток чата
 
 ```mermaid
 sequenceDiagram
@@ -64,59 +68,48 @@ sequenceDiagram
     participant FE as Frontend
     participant BE as FastAPI
 
-    U->>FE: сообщение
-    FE->>FE: think (3D)
+    U->>FE: текст / голос / фото
     FE->>BE: POST /api/chat/guest
-    BE-->>FE: message + sberbank.ru + products
-    FE->>FE: talk + lipSync + облачко
-    FE-->>U: кликабельные ссылки
+    Note over BE: demo_nav / form_fill / LLM
+    BE-->>FE: message + navigation_path
+    FE-->>U: ответ + переход / fill формы
 ```
 
 ---
 
-## 4. Frontend — структура
+## 5. Frontend (ключевые пути)
 
 | Путь | Описание |
 |------|----------|
-| `components/assistant/` | Чат, панель, настройки персонажа |
-| `components/assistant/character3d/` | Canvas комнаты, GLB, рот, фон |
-| `components/three/` | Карта-планеты |
-| `store/assistantStore.ts` | Сообщения, navigation_path |
-| `store/characterStore.ts` | Имя, цвета (persist) |
-| `store/characterBehaviorStore.ts` | idle / think / talk / walk |
-| `store/modelCapabilitiesStore.ts` | static, morph, portrait |
+| `components/layout/SbbolShell.tsx` | Шапка, sidebar 104px, footer |
+| `components/assistant/AssistantFloatingChat.tsx` | FAB + панель чата |
+| `components/sbbol/SbbolOrigPageContent.tsx` | Встроенный HTML SBBOL |
+| `hooks/useSbbolFormFill.ts` | Заполнение DOM форм |
+| `middleware.ts` | Basic Auth (опционально) |
+| `lib/api/baseUrl.ts` | Same-origin на Vercel |
 
 ---
 
-## 5. Backend
+## 6. Backend
 
-| Модуль | Файл |
-|--------|------|
-| Чат | `api/chat.py` — `/api/chat/guest` |
-| AI | `services/ai/assistant.py` |
-| Ссылки Сбера | `services/sber_links.py` |
-| Продукты | `db/seed.py` — URL на sberbank.ru |
-| Навигация (демо) | `ai/knowledge/app_map.json` |
+| Маршрут | Назначение |
+|---------|------------|
+| `POST /api/chat/guest` | Чат без JWT |
+| `POST /api/forms/ocr-fill` | OCR платёжки |
+| `GET /api/health` | Статус + `ai_mode` + `db` |
 
-`navigation_path` — внутренние пути (`/loans`). Кнопки и продукты — **внешние** URL Сбера.
+`AssistantService`: демо-навигация → формы → LLM → rules.
 
 ---
 
-## 6. API
+## 7. База данных
 
-| Метод | Путь | Описание |
-|-------|------|----------|
-| GET | `/health` | Статус, `ai_mode` |
-| POST | `/api/chat/guest` | Чат без JWT |
-| GET | `/api/products` | Каталог |
-| GET | `/api/navigation/map` | JSON карты |
+- **Локально:** SQLite `backend/data/` или Docker Postgres
+- **Vercel:** `POSTGRES_URL` или fallback SQLite `/tmp`
 
 ---
 
-## 7. Ограничения MVP
+## 8. Безопасность
 
-- `personage.glb` без morph — липсинг упрощённый
-- История чата в БД не реализована
-- Не официальный продукт СберБанка
-
-Подробнее о моделях: [CHARACTER_3D.md](./CHARACTER_3D.md)
+- `SITE_ACCESS_*` — Basic Auth на Next.js и FastAPI
+- Приватный GitHub, секреты только в Vercel env

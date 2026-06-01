@@ -66,7 +66,7 @@ export function AssistantFloatingChat({ open, onOpenChange }: Props) {
         <button
           type="button"
           onClick={() => onOpenChange(true)}
-          className="fixed z-50 flex flex-col items-center gap-1 group right-3 bottom-3 sm:right-6 sm:bottom-6"
+          className="fixed z-50 flex flex-col items-center gap-1.5 group right-4 bottom-4 sm:right-6 sm:bottom-6"
           aria-label="AI-консультант"
         >
           <span className="hidden sm:block opacity-0 group-hover:opacity-100 transition-opacity text-xs text-[#565b62] bg-white px-2 py-1 rounded shadow-sm whitespace-nowrap">
@@ -92,8 +92,8 @@ export function AssistantFloatingChat({ open, onOpenChange }: Props) {
           data-chat-panel
           className={
             isMobile
-              ? "fixed inset-x-0 bottom-0 z-50 flex flex-col bg-white border-t border-[#d0d7dd] overflow-hidden sbbol-theme rounded-t-2xl shadow-[0_-10px_40px_rgba(0,0,0,0.18)] max-h-[min(78vh,640px)]"
-              : "fixed z-50 flex flex-col bg-white rounded-lg shadow-[0_8px_24px_rgba(0,0,0,0.18)] border border-[#d0d7dd] overflow-hidden sbbol-theme"
+              ? "fixed inset-x-0 bottom-0 z-50 flex flex-col bg-white border-t border-[#d0d7dd] overflow-hidden sbbol-theme rounded-t-2xl shadow-[0_-12px_48px_rgba(0,0,0,0.2)] max-h-[min(85vh,680px)]"
+              : "fixed z-50 flex flex-col bg-white rounded-xl shadow-[0_12px_40px_rgba(0,0,0,0.16)] border border-[#d0d7dd] overflow-hidden sbbol-theme"
           }
           style={isMobile ? undefined : desktopStyle}
         >

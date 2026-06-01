@@ -2,6 +2,7 @@
 
 import { KeyboardEvent, useEffect, useRef, useState } from "react";
 import { useWebSpeechInput } from "@/hooks/useWebSpeechInput";
+import { IconMic } from "@/components/sbbol/SbbolIcons";
 
 interface Props {
   value: string;
@@ -73,8 +74,8 @@ export function ChatInput({
     e.target.value = "";
   };
 
-  const btnSize = compact ? "w-9 h-9" : "w-11 h-11";
-  const iconSize = compact ? "w-4 h-4" : "w-5 h-5";
+  const btnSize = compact ? "w-10 h-10 sm:w-11 sm:h-11" : "w-11 h-11 sm:w-12 sm:h-12";
+  const iconSize = compact ? "w-5 h-5" : "w-6 h-6";
 
   return (
     <div className={compact ? "p-2 space-y-1.5" : "p-4 space-y-3"}>
@@ -195,14 +196,7 @@ export function ChatInput({
             aria-pressed={isListening}
             title={isListening ? "Остановить запись" : "Голосовой ввод"}
           >
-            <svg className={iconSize} fill="none" viewBox="0 0 24 24" stroke="currentColor">
-              <path
-                strokeLinecap="round"
-                strokeLinejoin="round"
-                strokeWidth={2}
-                d="M12 14a3 3 0 003-3V5a3 3 0 10-6 0v6a3 3 0 003 3zm0 0v3m-4 0h8m-4-8a7 7 0 017 7v1H5v-1a7 7 0 017-7z"
-              />
-            </svg>
+            <IconMic className={iconSize} active={isListening} />
           </button>
         ) : (
           <div className={`${btnSize} flex-shrink-0`} aria-hidden />

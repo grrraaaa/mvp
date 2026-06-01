@@ -83,6 +83,10 @@ Invoke-RestMethod -Uri http://127.0.0.1:8000/api/chat/guest -Method POST -Conten
 
 Ошибка «Не удалось связаться с сервером» — бэкенд не запущен или неверный `NEXT_PUBLIC_API_URL`.
 
+## UI и 3D
+
+См. [UI_AND_3D.md](./UI_AND_3D.md) — размеры иконок, студия консультанта, карта планет.
+
 ## Отличие от Vercel
 
 | | Локально | Vercel |

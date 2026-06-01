@@ -25,7 +25,7 @@ export function DashboardHome() {
   const banner = PROMO_BANNERS[bannerIndex];
 
   return (
-    <div className="sbbol-dashboard px-4 sm:px-6 lg:px-10 py-6 max-w-[1400px]">
+    <div className="sbbol-dashboard sbbol-page-wrap max-w-[1440px]">
       {bannerVisible && (
         <section className="relative mb-6 rounded-2xl overflow-hidden bg-gradient-to-r from-[#eef0f4] via-[#e8ecf2] to-[#dfe6ee] min-h-[180px] lg:min-h-[200px]">
           <div className="absolute inset-0 opacity-40 pointer-events-none">

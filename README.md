@@ -76,12 +76,17 @@ mvp/
 
 ## Документация
 
+Полное оглавление: **[docs/README.md](docs/README.md)**
+
 | Файл | Содержание |
 |------|------------|
-| [LOCAL_DEV.md](docs/LOCAL_DEV.md) | Локальный запуск, проверка чата |
+| [LOCAL_DEV.md](docs/LOCAL_DEV.md) | Локальный запуск, проверка ИИ |
 | [VERCEL_DEPLOY.md](docs/VERCEL_DEPLOY.md) | Vercel, env, Postgres |
+| [UI_AND_3D.md](docs/UI_AND_3D.md) | Адаптив, иконки, 3D-сцены |
 | [ARCHITECTURE.md](docs/ARCHITECTURE.md) | Архитектура |
+| [FILE_STRUCTURE.md](docs/FILE_STRUCTURE.md) | Дерево файлов |
 | [TECH_STACK.md](docs/TECH_STACK.md) | Стек |
+| [CHARACTER_3D.md](docs/CHARACTER_3D.md) | GLB-консультант |
 
 ---
 
