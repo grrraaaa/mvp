@@ -1,5 +1,4 @@
 import { apiClient } from "./client";
-<<<<<<< HEAD
 import type { ActionButton, BankProduct, NavigationStep } from "@/store/assistantStore";
 
 export interface AssistantResponse {
@@ -9,9 +8,6 @@ export interface AssistantResponse {
   products?: BankProduct[] | null;
   action_buttons?: ActionButton[] | null;
 }
-=======
-import type { AssistantResponse } from "@/store/assistantStore";
->>>>>>> 82fe250a275310d0168fa4893fe116fe006bdc42
 
 let currentSessionId: string | null = null;
 

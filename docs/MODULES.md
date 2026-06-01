@@ -1,11 +1,7 @@
-<<<<<<< HEAD
 # Модули системы — Сбер AI-навигатор
 
 > **Актуальная документация:** [ARCHITECTURE.md](./ARCHITECTURE.md), [TECH_STACK.md](./TECH_STACK.md), [FILE_STRUCTURE.md](./FILE_STRUCTURE.md).  
 > Ниже — расширенное описание модулей; часть деталей (аватар-куб, старый стек) устарела.
-=======
-# 🧩 Модули системы — SberAI Assistant
->>>>>>> 82fe250a275310d0168fa4893fe116fe006bdc42
 
 ## Обзор модулей
 

@@ -2,7 +2,6 @@
 @tailwind components;
 @tailwind utilities;
 
-<<<<<<< HEAD
 @import url("/fonts/sb-sans.css");
 
 :root {
@@ -43,27 +42,11 @@ body {
 /* Скроллбар в стиле Сбера */
 ::-webkit-scrollbar {
   width: 5px;
-=======
-:root {
-  --foreground-rgb: 255, 255, 255;
-  --background: #030712;
-}
-
-body {
-  color: rgb(var(--foreground-rgb));
-  background: var(--background);
-}
-
-/* Кастомный скроллбар */
-::-webkit-scrollbar {
-  width: 4px;
->>>>>>> 82fe250a275310d0168fa4893fe116fe006bdc42
 }
 ::-webkit-scrollbar-track {
   background: transparent;
 }
 ::-webkit-scrollbar-thumb {
-<<<<<<< HEAD
   background: var(--sber-green);
   border-radius: 3px;
   opacity: 0.6;
@@ -361,8 +344,4 @@ body {
 .sbbol-demo-toast--visible {
   opacity: 1;
   transform: translateX(-50%) translateY(0);
-=======
-  background: rgba(255, 255, 255, 0.15);
-  border-radius: 2px;
->>>>>>> 82fe250a275310d0168fa4893fe116fe006bdc42
 }

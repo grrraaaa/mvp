@@ -1,33 +1,21 @@
-<<<<<<< HEAD
 from __future__ import annotations
 from pydantic import BaseModel
 from typing import Optional, List
-=======
-from pydantic import BaseModel
-from typing import Optional
->>>>>>> 82fe250a275310d0168fa4893fe116fe006bdc42
 
 
 # ─── Auth ─────────────────────────────────────────────
 
-<<<<<<< HEAD
 class RegisterRequest(BaseModel):
     email: str
     password: str
     name: Optional[str] = None
 
-=======
->>>>>>> 82fe250a275310d0168fa4893fe116fe006bdc42
 class LoginRequest(BaseModel):
     email: str
     password: str
 
 class TokenResponse(BaseModel):
     access_token: str
-<<<<<<< HEAD
-=======
-    refresh_token: str
->>>>>>> 82fe250a275310d0168fa4893fe116fe006bdc42
     token_type: str = "bearer"
 
 
@@ -36,11 +24,8 @@ class TokenResponse(BaseModel):
 class ChatRequest(BaseModel):
     message: str
     session_id: Optional[str] = None
-<<<<<<< HEAD
     page_route: Optional[str] = None
     form_type: Optional[str] = None  # paydocby | instant | paydoccur
-=======
->>>>>>> 82fe250a275310d0168fa4893fe116fe006bdc42
 
 class NavigationStep(BaseModel):
     label: str
@@ -57,7 +42,6 @@ class BankProduct(BaseModel):
 
 class ActionButton(BaseModel):
     label: str
-<<<<<<< HEAD
     url: Optional[str] = None
     message: Optional[str] = None  # если задано — отправить текст в чат
     variant: str = "primary"  # "primary" | "secondary"
@@ -76,17 +60,6 @@ class AssistantResponse(BaseModel):
     form_actions: Optional[List[FormFieldAction]] = None
     pending_form_fields: Optional[List[str]] = None
     form_fill_status: Optional[str] = None  # collecting | partial | complete
-=======
-    url: str
-    variant: str = "primary"  # "primary" | "secondary"
-
-class AssistantResponse(BaseModel):
-    message: str
-    session_id: str
-    navigation_path: Optional[list[NavigationStep]] = None
-    products: Optional[list[BankProduct]] = None
-    action_buttons: Optional[list[ActionButton]] = None
->>>>>>> 82fe250a275310d0168fa4893fe116fe006bdc42
 
 
 # ─── Products ─────────────────────────────────────────

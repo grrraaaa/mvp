@@ -1,4 +1,3 @@
-<<<<<<< HEAD
 from __future__ import annotations
 
 import os
@@ -22,19 +21,6 @@ if DATABASE_URL.startswith("postgresql"):
 engine = create_async_engine(DATABASE_URL, **_engine_kwargs)
 
 AsyncSessionLocal = async_sessionmaker(engine, class_=AsyncSession, expire_on_commit=False)
-=======
-from sqlalchemy.ext.asyncio import create_async_engine, AsyncSession
-from sqlalchemy.orm import DeclarativeBase, sessionmaker
-from core.config import settings
-
-
-engine = create_async_engine(
-    settings.DATABASE_URL.replace("sqlite:///", "sqlite+aiosqlite:///"),
-    echo=False,
-)
-
-AsyncSessionLocal = sessionmaker(engine, class_=AsyncSession, expire_on_commit=False)
->>>>>>> 82fe250a275310d0168fa4893fe116fe006bdc42
 
 
 class Base(DeclarativeBase):
@@ -42,7 +28,6 @@ class Base(DeclarativeBase):
 
 
 async def init_db():
-<<<<<<< HEAD
     from db import models  # noqa: F401 — register models
 
     async with engine.begin() as conn:
@@ -52,11 +37,6 @@ async def init_db():
 
     await seed_products()
 
-=======
-    async with engine.begin() as conn:
-        await conn.run_sync(Base.metadata.create_all)
-
->>>>>>> 82fe250a275310d0168fa4893fe116fe006bdc42
 
 async def get_db():
     async with AsyncSessionLocal() as session:
