@@ -2,8 +2,11 @@
   "name": "sber-sbbol-demo",
   "private": true,
   "description": "SBBOL demo — Next.js frontend + FastAPI on Vercel",
+  "dependencies": {
+    "next": "^15.5.18"
+  },
   "scripts": {
     "build": "npm run build --prefix frontend",
-    "dev": "npm run dev --prefix frontend"
+    "vercel-build": "npm run build --prefix frontend"
   }
 }
