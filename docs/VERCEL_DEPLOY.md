@@ -1,120 +1,126 @@
-# Деплой на Vercel (фронт + бэк + PostgreSQL, только для вас)
+# Деплой на Vercel (фронт + бэк на одном домене)
 
-Один проект Vercel:
-- **Next.js** — сайт SBBOL
-- **FastAPI** — `/api/*` (Python Serverless)
-- **PostgreSQL** — Vercel Postgres (Storage), постоянные данные
+Репозиторий: `https://github.com/grrraaaa/mvp` — **корень репо = папка `mvp`**, не родитель `sber`.
 
-Доступ закрыт **HTTP Basic Auth** на сайте и на API (один логин/пароль).
+Один проект Vercel (`grrraaaas-projects/mvp`):
+- **Next.js 15** — `frontend/`
+- **FastAPI** — `api/index.py` → маршруты `/api/*`
+- **БД:** Vercel Postgres (рекомендуется) или временная SQLite в `/tmp`, если Postgres ещё не подключён
+
+Продакшен: **https://mvp-beta-umber.vercel.app**
 
 ---
 
-## 1. GitHub
+## 1. Git
 
 ```powershell
-cd c:\Users\New\Desktop\sber
-git add mvp
-git commit -m "feat: Vercel + PostgreSQL + private access"
+cd C:\Users\New\Desktop\sber\mvp
+git status
 git push origin main
 ```
 
-Репозиторий — **Private**.
+Ветка: **`main`** (не `master`).
 
 ---
 
-## 2. Vercel — создать проект
-
-1. [vercel.com](https://vercel.com) → **Add New Project** → ваш репозиторий  
-2. **Root Directory:** `mvp`  
-3. Deploy (первый раз может упасть без БД — нормально)
-
----
-
-## 3. PostgreSQL (обязательно на Vercel)
-
-1. В проекте Vercel → **Storage** → **Create Database** → **Postgres**  
-2. Подключите к проекту (**Connect Project**)  
-3. Vercel сам добавит переменные:
-   - `POSTGRES_URL`
-   - `POSTGRES_URL_NON_POOLING` (при необходимости миграций)
-
-Бэкенд автоматически преобразует `postgres://` → `postgresql+asyncpg://`.
-
-Локально с Docker:
+## 2. Деплой из CLI
 
 ```powershell
-cd mvp
-docker compose up -d postgres
-# DATABASE_URL=postgresql+asyncpg://sber:sber@localhost:5432/sber
+cd C:\Users\New\Desktop\sber\mvp
+vercel --prod
 ```
 
----
+Важно:
+- Команда только из **`mvp`** (там `vercel.json`, `package.json` с `next`, `frontend/`).
+- В корне `mvp/package.json` должен быть `next` — иначе ошибка *No Next.js version detected*.
+- `installCommand`: `npm install && cd frontend && npm install`
 
-## 4. Закрыть сайт (только вы) — обязательно
-
-| Переменная | Пример | Где |
-|------------|--------|-----|
-| `SITE_ACCESS_USER` | `you` | Vercel → Environment Variables |
-| `SITE_ACCESS_PASSWORD` | длинный случайный пароль | то же |
-
-Без `SITE_ACCESS_PASSWORD` сайт и API **публичные**.
-
-- Браузер спросит логин/пароль при открытии сайта  
-- Те же данные нужны для `/api/*` (браузер передаёт заголовок после входа)
-
-Дополнительно:
-- Приватный репозиторий GitHub  
-- Не публикуйте ссылку `*.vercel.app`  
-- (Опционально) Vercel **Deployment Protection** на платном плане  
+В Dashboard:
+- **Root Directory:** пусто или `.` (не `mvp`, если репо уже = `mvp`)
+- **Production Branch:** `main`
+- **Framework:** Next.js
 
 ---
 
-## 5. Остальные переменные
+## 3. PostgreSQL (рекомендуется)
 
-| Переменная | Значение на Vercel |
-|------------|-------------------|
-| `NEXT_PUBLIC_API_URL` | **пусто** (тот же домен) |
-| `OPENAI_API_KEY` | ваш ключ |
+1. Vercel → проект **mvp** → **Storage** → **Postgres** → **Connect**
+2. Появится `POSTGRES_URL` — бэкенд сам переведёт в `postgresql+asyncpg://`
+
+Без Postgres API всё равно стартует (SQLite в `/tmp` на serverless), но данные не сохраняются между холодными запусками.
+
+Проверка: `/api/health` → `"db": "postgres"` или `"sqlite"`.
+
+---
+
+## 4. Переменные окружения (Production)
+
+| Переменная | Значение |
+|------------|----------|
+| `NEXT_PUBLIC_API_URL` | **пусто** (same-origin `/api`) |
+| `OPENAI_API_KEY` | ключ OpenRouter / OpenAI |
 | `OPENAI_BASE_URL` | `https://openrouter.ai/api/v1` |
-| `IMAGETOTEXT_API_KEY` / `SECRET` | OCR |
+| `OPENAI_MODEL` | `openai/gpt-4o-mini` |
+| `SITE_ACCESS_USER` / `SITE_ACCESS_PASSWORD` | Basic Auth (рекомендуется) |
 | `SECRET_KEY` | случайная строка |
-| `ALLOWED_ORIGINS` | `https://ваш-проект.vercel.app` |
+| `ALLOWED_ORIGINS` | `https://mvp-beta-umber.vercel.app` |
+| `IMAGETOTEXT_API_KEY` / `SECRET` | OCR на формах платежей |
+| `POSTGRES_URL` | из Storage (не вручную) |
 
-`POSTGRES_URL` — из Storage, не трогать вручную.
-
----
-
-## 6. Проверка
-
-1. `https://ваш-проект.vercel.app` → запрос логина/пароля  
-2. `https://ваш-проект.vercel.app/api/health` → после авторизации: `"db": "postgres"`  
-3. Чат, формы, OCR на `/payments/paydocbyn`
+После изменений — **Redeploy**.
 
 ---
 
-## 7. Локальная разработка
+## 5. Проверка после деплоя
+
+1. Сайт открывается (при необходимости — Basic Auth).
+2. `GET /api/health` → `{"status":"ok",...}`.
+3. Чат: «выписка по счёту» → навигация на `/statement`, без *HTTP 500*.
+4. Формы: `/payments/paydocbyn`, фото → OCR (если ключи заданы).
+
+---
+
+## 6. Локальная разработка
+
+См. [LOCAL_DEV.md](./LOCAL_DEV.md) — запуск backend + frontend и проверка ИИ.
+
+Кратко:
 
 ```powershell
-# Postgres
-cd mvp
-docker compose up -d postgres
+cd C:\Users\New\Desktop\sber\mvp
+copy .env.example .env   # ключ OPENAI_API_KEY обязателен для LLM
 
-# .env в mvp/
-DATABASE_URL=postgresql+asyncpg://sber:sber@127.0.0.1:5432/sber
-NEXT_PUBLIC_API_URL=http://127.0.0.1:8000
-
+# Терминал 1 — API
 cd backend
 pip install -r requirements.txt
-python -m uvicorn main:app --reload --port 8000
+python -m uvicorn main:app --reload --host 127.0.0.1 --port 8000
 
+# Терминал 2 — сайт
 cd frontend
+npm install
 npm run dev
 ```
 
-Без Postgres локально — можно не задавать `DATABASE_URL` (будет SQLite в `./data/sber.db`).
+- Сайт: http://localhost:3000  
+- API docs: http://127.0.0.1:8000/docs  
+- `frontend/.env.local`: `NEXT_PUBLIC_API_URL=http://127.0.0.1:8000`
+
+---
+
+## 7. Типичные ошибки сборки
+
+| Ошибка | Решение |
+|--------|---------|
+| `npm install` / JSON parse | В репо не должно быть `<<<<<<<` в `package.json` — см. `git grep '<<<<<<<'` |
+| No Next.js version detected | Деплой из `mvp/`, в корне есть `dependencies.next` |
+| Чат: HTTP 500 | Подключить Postgres или обновить бэкенд (fallback SQLite на Vercel) |
+| Чат: HTTP 401 | Задать тот же Basic Auth, что у сайта, или открыть сайт после входа в браузере |
 
 ---
 
 ## Откат
 
-Тег/коммит до миграции: см. историю `git log` в репозитории.
+```powershell
+git log --oneline -10
+git checkout <commit> -- .
+```

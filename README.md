@@ -1,60 +1,62 @@
-# Сбер · AI-навигатор (MVP)
+# SBBOL Demo · AI-консультант (MVP)
 
-Демонстрационный AI-консультант по услугам **ПАО Сбербанк** с 3D-картой разделов, человекоподобным ассистентом в панели чата и **ссылками на официальный сайт** [sberbank.ru](https://www.sberbank.ru/ru/person).
+Демо интернет-банка [sbbol.bps-sberbank.by](https://sbbol.bps-sberbank.by) с AI-чатом, 3D-картой разделов, заполнением платёжных форм (текст / голос / фото OCR) и ссылками на [sber-bank.by](https://www.sber-bank.by).
 
-> Это учебный/демо-проект, не является официальным продуктом СберБанка.
+> Учебный проект, не является официальным продуктом банка.
+
+**Прод (Vercel):** https://mvp-beta-umber.vercel.app
 
 ---
 
-## Что реализовано
+## Возможности
 
 | Модуль | Описание |
 |--------|----------|
-| **Чат** | Вопросы на русском → ответы с URL `sberbank.ru` |
-| **Rule-based + LLM** | OpenRouter/OpenAI или fallback без ключа |
-| **Продукты** | Каталог в SQLite, ссылки на разделы Сбера |
-| **3D-карта** | Планеты-разделы (кредиты, вклады, платежи, инвестиции) |
-| **3D-консультант** | `personage.glb`, режим «говорящая голова», процедурный липсинг — [docs/CHARACTER_3D.md](docs/CHARACTER_3D.md) |
-| **Настройка персонажа** | Пол, цвет кожи, костюм, пресеты |
-| **Дизайн** | Фирменная зелёная тема Сбера (`#21A038`) |
+| **Страницы SBBOL** | `/payments`, `/statement`, `/salary`, формы PAYDOCBY и др. |
+| **Чат** | OpenRouter/OpenAI + rule-based fallback |
+| **Навигация** | «выписка по счёту» → `/statement` и др. |
+| **Формы** | AI-заполнение полей на страницах платежей |
+| **OCR** | ImageToText.com — фото → поля формы |
+| **3D** | Карта разделов + консультант (GLB) |
 
 ---
 
-## Быстрый старт
-
-### Требования
-
-- Node.js 20+
-- Python 3.11+
-- (опционально) ключ [OpenRouter](https://openrouter.ai) или OpenAI
-
-### Запуск
+## Быстрый старт (локально)
 
 ```powershell
-# Backend
-cd mvp\backend
-pip install -r requirements.txt
-python -m uvicorn main:app --reload --port 8000
+cd mvp
+copy .env.example .env
+# Заполните OPENAI_API_KEY в .env
 
-# Frontend (другой терминал)
-cd mvp\frontend
+# API
+cd backend
+pip install -r requirements.txt
+python -m uvicorn main:app --reload --host 127.0.0.1 --port 8000
+
+# Сайт (другой терминал)
+cd frontend
 npm install
 npm run dev
 ```
 
-Откройте http://localhost:3000 · API: http://localhost:8000/docs
+- Сайт: http://localhost:3000  
+- API: http://127.0.0.1:8000/docs  
+- `frontend/.env.local`: `NEXT_PUBLIC_API_URL=http://127.0.0.1:8000`
 
-### Переменные окружения
+Подробно: **[docs/LOCAL_DEV.md](docs/LOCAL_DEV.md)** (запуск и проверка ИИ).
 
-Скопируйте `mvp/.env.example` → `mvp/.env`:
+---
 
-```env
-OPENAI_API_KEY=sk-or-v1-...
-OPENAI_BASE_URL=https://openrouter.ai/api/v1
-OPENAI_MODEL=openai/gpt-4o-mini
-NEXT_PUBLIC_API_URL=http://localhost:8000
-NEXT_PUBLIC_CHARACTER_PRESET=banker-m
+## Деплой Vercel
+
+Фронт и бэк — **один проект**, деплой из корня репозитория `mvp`:
+
+```powershell
+cd mvp
+vercel --prod
 ```
+
+Инструкция: **[docs/VERCEL_DEPLOY.md](docs/VERCEL_DEPLOY.md)**
 
 ---
 
@@ -62,25 +64,24 @@ NEXT_PUBLIC_CHARACTER_PRESET=banker-m
 
 ```
 mvp/
-├── frontend/          # Next.js 15, R3F, Zustand
-├── backend/         # FastAPI, SQLite, AI
-├── ai/knowledge/    # app_map.json — карта разделов
-└── docs/            # ARCHITECTURE.md, TECH_STACK.md
+├── frontend/       # Next.js 15
+├── backend/        # FastAPI
+├── api/index.py    # Vercel Python entry
+├── vercel.json
+├── package.json    # next (для детекции Vercel)
+└── docs/
 ```
 
 ---
 
 ## Документация
 
-- [Архитектура (фактическая)](docs/ARCHITECTURE.md)
-- [Стек технологий](docs/TECH_STACK.md)
-- [Структура файлов](docs/FILE_STRUCTURE.md)
-
----
-
-## Официальные ссылки Сбера
-
-Все ответы ассистента и кнопки ведут на разделы [sberbank.ru](https://www.sberbank.ru/ru/person). Маппинг URL — в `backend/services/sber_links.py`.
+| Файл | Содержание |
+|------|------------|
+| [LOCAL_DEV.md](docs/LOCAL_DEV.md) | Локальный запуск, проверка чата |
+| [VERCEL_DEPLOY.md](docs/VERCEL_DEPLOY.md) | Vercel, env, Postgres |
+| [ARCHITECTURE.md](docs/ARCHITECTURE.md) | Архитектура |
+| [TECH_STACK.md](docs/TECH_STACK.md) | Стек |
 
 ---
 
