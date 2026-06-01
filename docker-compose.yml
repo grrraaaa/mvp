@@ -1,3 +1,4 @@
+<<<<<<< HEAD
 services:
   postgres:
     image: postgres:16-alpine
@@ -15,6 +16,11 @@ services:
       timeout: 5s
       retries: 5
 
+=======
+version: "3.9"
+
+services:
+>>>>>>> 82fe250a275310d0168fa4893fe116fe006bdc42
   frontend:
     build:
       context: ./frontend
@@ -40,18 +46,28 @@ services:
       - ./ai:/ai
     environment:
       - OPENAI_API_KEY=${OPENAI_API_KEY}
+<<<<<<< HEAD
       - OPENAI_BASE_URL=${OPENAI_BASE_URL:-}
       - OPENAI_MODEL=${OPENAI_MODEL:-openai/gpt-4o-mini}
       - OPENROUTER_SITE_URL=${OPENROUTER_SITE_URL:-http://localhost:3000}
       - OPENROUTER_APP_NAME=${OPENROUTER_APP_NAME:-SberAI Assistant}
       - DATABASE_URL=postgresql+asyncpg://sber:sber@postgres:5432/sber
+=======
+      - DATABASE_URL=${DATABASE_URL:-sqlite:///./data/sber.db}
+>>>>>>> 82fe250a275310d0168fa4893fe116fe006bdc42
       - SECRET_KEY=${SECRET_KEY}
       - ALLOWED_ORIGINS=http://localhost:3000
     env_file:
       - .env
+<<<<<<< HEAD
     depends_on:
       postgres:
         condition: service_healthy
 
 volumes:
   postgres_data:
+=======
+
+volumes:
+  db_data:
+>>>>>>> 82fe250a275310d0168fa4893fe116fe006bdc42

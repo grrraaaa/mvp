@@ -4,11 +4,15 @@ module.exports = {
     "./app/**/*.{ts,tsx}",
     "./components/**/*.{ts,tsx}",
     "./lib/**/*.{ts,tsx}",
+<<<<<<< HEAD
     "./hooks/**/*.{ts,tsx}",
+=======
+>>>>>>> 82fe250a275310d0168fa4893fe116fe006bdc42
   ],
   theme: {
     extend: {
       colors: {
+<<<<<<< HEAD
         sbbol: {
           bg: "#F2F4F7",
           primary: "#107F8C",
@@ -35,6 +39,12 @@ module.exports = {
       },
       backgroundImage: {
         "sber-gradient": "linear-gradient(135deg, #053517 0%, #041810 50%, #0a2418 100%)",
+=======
+        brand: {
+          blue: "#1a73e8",
+          green: "#34a853",
+        },
+>>>>>>> 82fe250a275310d0168fa4893fe116fe006bdc42
       },
     },
   },
