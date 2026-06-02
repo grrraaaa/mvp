@@ -92,14 +92,17 @@ export function PlanetLink({
   const bobPhaseRef = useRef(0);
   const elapsedRef = useRef(0);
 
-  const [hovered, setHovered] = useState(false);
+  /** id наведённого объекта: только он показывает подсказку */
+  const [hoveredId, setHoveredId] = useState<string | null>(null);
   const frozen = useSolarSystemStore((s) => s.frozen);
   const pauseOffset = useSolarSystemStore((s) => s.pauseOffset);
   const enterHover = useSolarSystemStore((s) => s.enterHover);
   const leaveHover = useSolarSystemStore((s) => s.leaveHover);
 
+  const planetHoverId = `planet:${label}`;
+  const planetHovered = hoveredId === planetHoverId;
   const active = isUrlHighlighted(url, highlightUrls);
-  const glow = active ? 0.75 : hovered ? 0.5 : 0.22;
+  const glow = active ? 0.75 : planetHovered ? 0.5 : 0.22;
 
   useFrame((state, delta) => {
     elapsedRef.current = state.clock.elapsedTime;
@@ -124,28 +127,32 @@ export function PlanetLink({
     }
   });
 
-  const onEnter = (e: { stopPropagation: () => void }) => {
+  const clearHover = () => {
+    setHoveredId(null);
+    onHoverChange?.(null);
+    document.body.style.cursor = "";
+  };
+
+  const onPlanetEnter = (e: { stopPropagation: () => void }) => {
     e.stopPropagation();
     enterHover(elapsedRef.current);
-    setHovered(true);
+    setHoveredId(planetHoverId);
     onHoverChange?.(hint);
     document.body.style.cursor = "pointer";
   };
 
-  const onLeave = (e: { stopPropagation: () => void }) => {
+  const onPlanetLeave = (e: { stopPropagation: () => void }) => {
     e.stopPropagation();
     leaveHover(elapsedRef.current);
-    setHovered(false);
-    onHoverChange?.(null);
-    document.body.style.cursor = "";
+    clearHover();
   };
 
   return (
     <group ref={orbitRef}>
       <group ref={bodyRef}>
         <mesh
-          onPointerOver={onEnter}
-          onPointerOut={onLeave}
+          onPointerOver={onPlanetEnter}
+          onPointerOut={onPlanetLeave}
           onClick={(e) => {
             e.stopPropagation();
             navigate(url);
@@ -163,7 +170,7 @@ export function PlanetLink({
           glow={glow}
         />
 
-        {hovered && (
+        {planetHovered && (
           <Html position={[0, 1.65, 0]} {...TOOLTIP_HTML_PROPS}>
             <div className={TOOLTIP_PLANET_PANEL}>
               <p className={TOOLTIP_TITLE}>{label}</p>
@@ -175,6 +182,8 @@ export function PlanetLink({
       </group>
 
       {satellites.map((sat, i) => {
+        const satHoverId = `sat:${label}:${sat.label}`;
+        const satHovered = hoveredId === satHoverId;
         const satAngle = (i / Math.max(satellites.length, 1)) * Math.PI * 2;
         const satActive = isUrlHighlighted(sat.url, highlightUrls);
         return (
@@ -186,14 +195,14 @@ export function PlanetLink({
               onPointerOver={(e) => {
                 e.stopPropagation();
                 enterHover(elapsedRef.current);
+                setHoveredId(satHoverId);
                 onHoverChange?.(sat.hint);
                 document.body.style.cursor = "pointer";
               }}
               onPointerOut={(e) => {
                 e.stopPropagation();
                 leaveHover(elapsedRef.current);
-                onHoverChange?.(null);
-                document.body.style.cursor = "";
+                clearHover();
               }}
               onClick={(e) => {
                 e.stopPropagation();
@@ -207,9 +216,9 @@ export function PlanetLink({
               themeId={resolvedTheme}
               label={sat.label}
               emissive={emissive}
-              glow={satActive ? 0.55 : 0.25}
+              glow={satActive ? 0.55 : satHovered ? 0.45 : 0.25}
             />
-            {hovered && (
+            {satHovered && (
               <Html position={[0, 0.85, 0]} {...TOOLTIP_HTML_PROPS}>
                 <div className={TOOLTIP_SATELLITE_PANEL}>
                   <p className={TOOLTIP_TITLE}>{sat.label}</p>

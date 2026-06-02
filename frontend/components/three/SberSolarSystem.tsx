@@ -15,7 +15,6 @@ import { sberTheme } from "@/lib/sber/theme";
 import {
   TOOLTIP_BODY,
   TOOLTIP_HTML_PROPS,
-  TOOLTIP_ORBIT_HINT,
   TOOLTIP_PANEL,
   TOOLTIP_TITLE,
 } from "@/lib/sber/tooltip3d";
@@ -33,7 +32,6 @@ export function SberSolarSystem({ activePath, onNavigate }: Props) {
   const sunRef = useRef<THREE.Mesh>(null);
   const elapsedRef = useRef(0);
   const [sunHover, setSunHover] = useState(false);
-  const [orbitHint, setOrbitHint] = useState<string | null>(null);
 
   const frozen = useSolarSystemStore((s) => s.frozen);
   const enterHover = useSolarSystemStore((s) => s.enterHover);
@@ -128,16 +126,10 @@ export function SberSolarSystem({ activePath, onNavigate }: Props) {
           startAngle={planet.startAngle}
           satellites={planet.satellites}
           highlightUrls={highlightUrls}
-          onHoverChange={(h) => setOrbitHint(h)}
           onNavigate={onNavigate}
         />
       ))}
 
-      {orbitHint && !sunHover && (
-        <Html position={[0, -2.2, 0]} {...TOOLTIP_HTML_PROPS}>
-          <p className={TOOLTIP_ORBIT_HINT}>Клик — открыть раздел СберБизнес</p>
-        </Html>
-      )}
     </group>
   );
 }

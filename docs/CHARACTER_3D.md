@@ -29,13 +29,13 @@ NEXT_PUBLIC_CHARACTER_HEAD_PORTRAIT=true
 
 | Константа / env | Значение | Описание |
 |-----------------|----------|----------|
-| `PORTRAIT_CAMERA_Z` | **6.9** | Дистанция камеры (desktop / полная панель) |
-| `PORTRAIT_CAMERA_Z_COMPACT` | **7.5** | Встроенный чат (compact) |
+| `PORTRAIT_CAMERA_Z` | **7.8** | Дистанция камеры (desktop / полная панель) |
+| `PORTRAIT_CAMERA_Z_COMPACT` | **8.5** | Встроенный чат (compact) |
 | `PORTRAIT_CAMERA_FOV` | **36** | Угол обзора |
-| `PORTRAIT_CAMERA_Y_OFFSET` | **-0.22** | Высота камеры (отриц. = ниже) |
-| `PORTRAIT_TARGET_Y_OFFSET` | **-0.16** | Точка взгляда (отриц. = ниже) |
-| OrbitControls `minDistance` | **4.6** | Минимальный зум |
-| OrbitControls `maxDistance` | **8.8** | Максимальный зум |
+| `PORTRAIT_CAMERA_Y_OFFSET` | **-0.30** | Высота камеры (отриц. = ниже) |
+| `PORTRAIT_TARGET_Y_OFFSET` | **-0.22** | Точка взгляда (отриц. = ниже) |
+| OrbitControls `minDistance` | **5.2** | Минимальный зум |
+| OrbitControls `maxDistance` | **9.5** | Максимальный зум |
 
 Переопределение без правки кода:
 

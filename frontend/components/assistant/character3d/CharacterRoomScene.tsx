@@ -70,8 +70,8 @@ function SceneContent({
       <OrbitControls
         enablePan={false}
         enableZoom={faceFraming}
-        minDistance={faceFraming ? 4.6 : 3}
-        maxDistance={faceFraming ? 8.8 : 7}
+        minDistance={faceFraming ? 5.2 : 3}
+        maxDistance={faceFraming ? 9.5 : 7}
         minPolarAngle={faceFraming ? Math.PI / 2.45 : Math.PI / 3.8}
         maxPolarAngle={faceFraming ? Math.PI / 2.12 : Math.PI / 2.15}
         minAzimuthAngle={-0.15}

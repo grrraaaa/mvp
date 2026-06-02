@@ -27,12 +27,12 @@ export const PORTRAIT_HEAD_WORLD_Y = 1.52;
 
 /** Смещение камеры по Y от центра головы (отрицательное = камера ниже) */
 export const PORTRAIT_CAMERA_Y_OFFSET = Number(
-  process.env.NEXT_PUBLIC_PORTRAIT_CAMERA_Y_OFFSET ?? "-0.22",
+  process.env.NEXT_PUBLIC_PORTRAIT_CAMERA_Y_OFFSET ?? "-0.30",
 );
 
 /** Точка взгляда OrbitControls по Y от центра головы */
 export const PORTRAIT_TARGET_Y_OFFSET = Number(
-  process.env.NEXT_PUBLIC_PORTRAIT_TARGET_Y_OFFSET ?? "-0.16",
+  process.env.NEXT_PUBLIC_PORTRAIT_TARGET_Y_OFFSET ?? "-0.22",
 );
 
 /**
@@ -40,10 +40,10 @@ export const PORTRAIT_TARGET_Y_OFFSET = Number(
  * Переопределение: NEXT_PUBLIC_PORTRAIT_CAMERA_Z / NEXT_PUBLIC_PORTRAIT_CAMERA_Z_COMPACT
  */
 export const PORTRAIT_CAMERA_Z = Number(
-  process.env.NEXT_PUBLIC_PORTRAIT_CAMERA_Z ?? "6.9",
+  process.env.NEXT_PUBLIC_PORTRAIT_CAMERA_Z ?? "7.8",
 );
 export const PORTRAIT_CAMERA_Z_COMPACT = Number(
-  process.env.NEXT_PUBLIC_PORTRAIT_CAMERA_Z_COMPACT ?? "7.5",
+  process.env.NEXT_PUBLIC_PORTRAIT_CAMERA_Z_COMPACT ?? "8.5",
 );
 export const PORTRAIT_CAMERA_FOV = Number(
   process.env.NEXT_PUBLIC_PORTRAIT_CAMERA_FOV ?? "36",
