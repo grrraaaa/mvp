@@ -17,6 +17,42 @@ export const GLB_SCALE_MULTIPLIER = Number(
 /** Ручная подстройка Y поверх авто-fit */
 export const GLB_Y_OFFSET = Number(process.env.NEXT_PUBLIC_CHARACTER_GLB_Y ?? "0");
 
+/** Доп. масштаб в режиме крупного плана лица */
+export const PORTRAIT_FACE_SCALE = Number(
+  process.env.NEXT_PUBLIC_CHARACTER_PORTRAIT_SCALE ?? "3"
+);
+
+/** Мировая высота центра головы в портретном режиме */
+export const PORTRAIT_HEAD_WORLD_Y = 1.52;
+
+/** Смещение камеры по Y от центра головы (отрицательное = камера ниже) */
+export const PORTRAIT_CAMERA_Y_OFFSET = Number(
+  process.env.NEXT_PUBLIC_PORTRAIT_CAMERA_Y_OFFSET ?? "-0.22",
+);
+
+/** Точка взгляда OrbitControls по Y от центра головы */
+export const PORTRAIT_TARGET_Y_OFFSET = Number(
+  process.env.NEXT_PUBLIC_PORTRAIT_TARGET_Y_OFFSET ?? "-0.16",
+);
+
+/**
+ * Дистанция камеры (Z) — чем больше, тем дальше персонаж (видно больше фигуры).
+ * Переопределение: NEXT_PUBLIC_PORTRAIT_CAMERA_Z / NEXT_PUBLIC_PORTRAIT_CAMERA_Z_COMPACT
+ */
+export const PORTRAIT_CAMERA_Z = Number(
+  process.env.NEXT_PUBLIC_PORTRAIT_CAMERA_Z ?? "6.9",
+);
+export const PORTRAIT_CAMERA_Z_COMPACT = Number(
+  process.env.NEXT_PUBLIC_PORTRAIT_CAMERA_Z_COMPACT ?? "7.5",
+);
+export const PORTRAIT_CAMERA_FOV = Number(
+  process.env.NEXT_PUBLIC_PORTRAIT_CAMERA_FOV ?? "36",
+);
+
+/** Фон канваса в портретном режиме */
+export const PORTRAIT_BG_DARK = "#030a08";
+export const PORTRAIT_BG_EMBEDDED = "#0a1512";
+
 /** @deprecated используйте GLB_SCALE_MULTIPLIER */
 export const GLB_SCALE = GLB_SCALE_MULTIPLIER;
 

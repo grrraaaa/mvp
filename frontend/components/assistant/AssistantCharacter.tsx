@@ -13,7 +13,7 @@ function CharacterStageFallback() {
   const { config } = useCharacterStore();
   return (
     <div
-      className="w-full h-[250px] border-b border-white/10 flex items-center justify-center"
+      className="w-full h-[380px] sm:h-[520px] border-b border-white/10 flex items-center justify-center"
       style={{
         background: `radial-gradient(ellipse at 50% 100%, ${config.primaryColor}44, #0b1220)`,
       }}

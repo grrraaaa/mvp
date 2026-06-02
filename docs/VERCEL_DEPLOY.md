@@ -65,6 +65,10 @@ vercel --prod
 | `SECRET_KEY` | случайная строка |
 | `ALLOWED_ORIGINS` | `https://mvp-beta-umber.vercel.app` |
 | `IMAGETOTEXT_API_KEY` / `SECRET` | OCR на формах платежей |
+| `SPEECHIFY_API_KEY` | Озвучка ответов + выбор голоса |
+| `SPEECHIFY_TTS_MODEL` | `simba-multilingual` |
+| `SPEECHIFY_TTS_LANGUAGE` | `ru-RU` |
+| `SPEECHIFY_TTS_VOICE` | `george` (или другой id) |
 | `POSTGRES_URL` | из Storage (не вручную) |
 
 После изменений — **Redeploy**.
@@ -77,6 +81,7 @@ vercel --prod
 2. `GET /api/health` → `{"status":"ok",...}`.
 3. Чат: «выписка по счёту» → навигация на `/statement`, без *HTTP 500*.
 4. Формы: `/payments/paydocbyn`, фото → OCR (если ключи заданы).
+5. TTS: `GET /api/tts/status` → `enabled: true`; в чате — выбор голоса и озвучка ответа.
 
 ---
 

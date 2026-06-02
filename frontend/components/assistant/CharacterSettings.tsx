@@ -3,6 +3,8 @@
 import { CHARACTER_PRESETS } from "@/lib/assistant/characterPresets";
 import type { CharacterStyleId } from "@/lib/assistant/characterTypes";
 import { useCharacterStore } from "@/store/characterStore";
+import { AssistantVoicePicker } from "./AssistantVoicePicker";
+import { useTtsStore } from "@/store/ttsStore";
 
 export function CharacterSettings() {
   const {
@@ -14,6 +16,7 @@ export function CharacterSettings() {
     applyPreset,
     resetCharacter,
   } = useCharacterStore();
+  const voiceSelection = useTtsStore((s) => s.voiceSelection);
 
   if (!settingsOpen) return null;
 
@@ -41,6 +44,16 @@ export function CharacterSettings() {
           public/models/. Без анимаций в файле — лёгкое покачивание и речь через облачко;
           липсинг включится, если в модели появятся morph targets.
         </p>
+
+        {voiceSelection ? (
+          <section>
+            <p className="text-xs text-gray-500 uppercase tracking-wide mb-2">Голос озвучки</p>
+            <AssistantVoicePicker theme="dark" className="flex-wrap gap-2" />
+            <p className="text-[11px] text-gray-500 mt-2 leading-relaxed">
+              Русские голоса — нативный ru-RU. Многоязычные подходят для смешанного текста.
+            </p>
+          </section>
+        ) : null}
 
         <section>
           <p className="text-xs text-gray-500 uppercase tracking-wide mb-2">Пресеты</p>

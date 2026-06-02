@@ -13,14 +13,10 @@ export function ModelLoadingPlaceholder({ light: _light }: { light?: boolean } =
   });
 
   return (
-    <group position={[0, 0.85, 0]}>
+    <group position={[0, 1.45, 0]}>
       <mesh ref={ref}>
-        <torusGeometry args={[0.35, 0.06, 16, 48]} />
+        <torusGeometry args={[0.22, 0.04, 16, 48]} />
         <meshStandardMaterial color="#21A038" wireframe transparent opacity={0.85} />
-      </mesh>
-      <mesh position={[0, -0.55, 0]}>
-        <cylinderGeometry args={[0.08, 0.12, 0.12, 16]} />
-        <meshStandardMaterial color="#64D072" emissive="#21A038" emissiveIntensity={0.3} />
       </mesh>
     </group>
   );

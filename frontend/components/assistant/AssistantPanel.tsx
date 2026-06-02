@@ -14,6 +14,7 @@ import { getSbbolPageContext } from "@/lib/sbbol/formContext";
 import { getAssistantQuickChips } from "@/lib/sbbol/assistantQuickChips";
 import { ocrFillForm, readFileAsDataUrl } from "@/lib/api/forms";
 import { apiUrl } from "@/lib/api/baseUrl";
+import { useAssistantSpeech } from "@/hooks/useAssistantSpeech";
 
 interface Props {
   variant?: "default" | "embedded";
@@ -26,10 +27,12 @@ export function AssistantPanel({ variant = "default", compactMobile = false }: P
   const bottomRef = useRef<HTMLDivElement>(null);
   const pathname = usePathname();
   const router = useRouter();
+  const embedded = variant === "embedded";
+  const inputCompact = embedded || compactMobile;
   const pageContext = useMemo(() => getSbbolPageContext(pathname), [pathname]);
   const quickChips = useMemo(
-    () => getAssistantQuickChips(pathname, { mobile: compactMobile }),
-    [pathname, compactMobile],
+    () => getAssistantQuickChips(pathname, { mobile: inputCompact }),
+    [pathname, inputCompact],
   );
   const {
     messages,
@@ -42,6 +45,8 @@ export function AssistantPanel({ variant = "default", compactMobile = false }: P
     setSessionId,
   } = useAssistantStore();
   const { config, setSettingsOpen } = useCharacterStore();
+  const { speak, stop: stopSpeech } = useAssistantSpeech();
+  const lastSpokenCountRef = useRef(0);
 
   const lastAssistantText = useMemo(() => {
     for (let i = messages.length - 1; i >= 0; i--) {
@@ -53,6 +58,22 @@ export function AssistantPanel({ variant = "default", compactMobile = false }: P
   useEffect(() => {
     bottomRef.current?.scrollIntoView({ behavior: "smooth" });
   }, [messages, isLoading]);
+
+  useEffect(() => {
+    if (isLoading) return;
+    if (messages.length <= lastSpokenCountRef.current) return;
+
+    const last = messages[messages.length - 1];
+    if (last?.role !== "assistant" || !last.content.trim()) {
+      lastSpokenCountRef.current = messages.length;
+      return;
+    }
+
+    lastSpokenCountRef.current = messages.length;
+    void speak(last.content);
+  }, [messages, isLoading, speak]);
+
+  useEffect(() => () => stopSpeech(), [stopSpeech]);
 
   const sendMessage = useCallback(
     async (text: string) => {
@@ -101,7 +122,7 @@ export function AssistantPanel({ variant = "default", compactMobile = false }: P
         const msg = err instanceof Error ? err.message : String(err);
         addMessage({
           role: "assistant",
-          content: `Не удалось связаться с сервером.\nОфициальный сайт:\nhttps://www.sber-bank.by\n\n${msg}`,
+          content: `Не удалось связаться с сервером.\nРазделы СберБизнес доступны в меню слева.\n\n${msg}`,
         });
       } finally {
         setLoading(false);
@@ -187,8 +208,6 @@ export function AssistantPanel({ variant = "default", compactMobile = false }: P
     ],
   );
 
-  const embedded = variant === "embedded";
-
   return (
     <div
       className={`relative flex flex-col h-full min-h-0 ${
@@ -197,7 +216,9 @@ export function AssistantPanel({ variant = "default", compactMobile = false }: P
     >
       <CharacterSettings />
 
-      <div className={`flex-shrink-0 relative border-b ${embedded ? "border-gray-100" : "border-sber-border"}`}>
+      <div
+        className={`flex-shrink-0 relative border-b ${embedded ? "border-gray-100" : "border-sber-border"}`}
+      >
         <div className="absolute top-0 left-0 right-0 h-1 bg-gradient-to-r from-sber-green via-sber-gold to-sber-green" />
         {!compactMobile && (
           <button
@@ -214,16 +235,16 @@ export function AssistantPanel({ variant = "default", compactMobile = false }: P
           isLoading={isLoading}
           lastAssistantText={lastAssistantText}
           compact={embedded}
-          compactMobile={compactMobile}
+          compactMobile={inputCompact}
         />
       </div>
 
       <div className={`flex-1 overflow-y-auto ${compactMobile ? "p-2" : "p-4"}`}>
         {messages.length === 0 && (
           <div
-            className={`text-center px-2 ${compactMobile ? "mt-1" : embedded ? "mt-4 px-4 text-gray-500" : "text-sber-muted mt-6 px-4"}`}
+            className={`text-center px-2 ${inputCompact ? "mt-1 mb-2" : embedded ? "mt-4 px-4 text-gray-500" : "text-sber-muted mt-6 px-4"}`}
           >
-            {!compactMobile && (
+            {!inputCompact && (
               <div
                 className={`inline-flex items-center gap-2 mb-3 px-3 py-1 rounded-full text-xs font-medium ${
                   embedded
@@ -231,17 +252,17 @@ export function AssistantPanel({ variant = "default", compactMobile = false }: P
                     : "bg-sber-green/15 border border-sber-border text-sber-green-light"
                 }`}
               >
-                Сбер Банк · консультант
+                СберБизнес · консультант
               </div>
             )}
             <p
-              className={`font-medium mb-0.5 ${compactMobile ? "text-xs text-gray-800" : embedded ? "text-gray-900" : "text-white"}`}
+              className={`font-medium mb-0.5 ${inputCompact ? "text-xs text-gray-800" : embedded ? "text-gray-900" : "text-white"}`}
             >
-              {compactMobile ? `Привет! Я ${config.name}.` : `Здравствуйте! Я ${config.name}.`}
+              {inputCompact ? `Привет! Я ${config.name}.` : `Здравствуйте! Я ${config.name}.`}
             </p>
-            {!compactMobile && <p className="text-sm">{config.subtitle}</p>}
-            {!embedded && !compactMobile && (
-              <p className="mt-4 text-sm break-all sber-link">https://www.sber-bank.by</p>
+            {!inputCompact && <p className="text-sm">{config.subtitle}</p>}
+            {!embedded && !inputCompact && (
+              <p className="mt-4 text-sm break-all sber-link">/payments · /statement · /salary</p>
             )}
           </div>
         )}
@@ -302,8 +323,10 @@ export function AssistantPanel({ variant = "default", compactMobile = false }: P
           onPhotoSelect={handlePhotoOcr}
           showPhotoButton
           suggestions={quickChips}
+          hideSuggestions={messages.length > 0}
           disabled={isLoading}
-          compact={compactMobile}
+          compact={inputCompact}
+          onVoiceComplete={sendMessage}
         />
       </div>
     </div>

@@ -3,13 +3,22 @@
 import { Suspense } from "react";
 import { Canvas } from "@react-three/fiber";
 import { OrbitControls } from "@react-three/drei";
-import { HeadStudioBackdrop } from "./HeadStudioBackdrop";
-import { Room } from "./Room";
 import { CharacterAvatar3D } from "./CharacterAvatar3D";
 import { ModelLoadingPlaceholder } from "./ModelLoadingPlaceholder";
+import { PortraitCamera } from "./PortraitCamera";
 import { useCharacterStore } from "@/store/characterStore";
 import { useCharacterBehavior } from "@/hooks/useCharacterBehavior";
 import { useModelCapabilitiesStore } from "@/store/modelCapabilitiesStore";
+import {
+  PORTRAIT_BG_DARK,
+  PORTRAIT_BG_EMBEDDED,
+  PORTRAIT_CAMERA_FOV,
+  PORTRAIT_CAMERA_Y_OFFSET,
+  PORTRAIT_CAMERA_Z,
+  PORTRAIT_CAMERA_Z_COMPACT,
+  PORTRAIT_HEAD_WORLD_Y,
+  PORTRAIT_TARGET_Y_OFFSET,
+} from "@/lib/assistant/glbCharacter";
 import { sberTheme } from "@/lib/sber/theme";
 
 interface Props {
@@ -28,40 +37,45 @@ function SceneContent({
   const { config } = useCharacterStore();
   const headPortrait = useModelCapabilitiesStore((s) => s.headPortraitMode);
   const light = Boolean(compact);
+  const faceFraming = headPortrait;
 
   useCharacterBehavior({ isLoading, lastAssistantText });
 
-  const target: [number, number, number] = headPortrait ? [0, 0.88, 0] : [0, 1.05, 0];
-  const bg = light ? sberTheme.studioLightBg : sberTheme.bg;
+  const headY = PORTRAIT_HEAD_WORLD_Y;
+  const lookY = headY + PORTRAIT_TARGET_Y_OFFSET;
+  const camY = headY + PORTRAIT_CAMERA_Y_OFFSET;
+  const target: [number, number, number] = faceFraming
+    ? [0, lookY, 0]
+    : [0, 1.05, 0];
+  const bg = faceFraming
+    ? light
+      ? PORTRAIT_BG_EMBEDDED
+      : PORTRAIT_BG_DARK
+    : light
+      ? sberTheme.studioLightBg
+      : sberTheme.bg;
 
   return (
     <>
       <color attach="background" args={[bg]} />
-      <ambientLight intensity={light ? 0.9 : 0.65} />
-      <directionalLight position={[0.8, 2.2, 1.2]} intensity={light ? 1.1 : 1.35} castShadow />
-      <directionalLight position={[-1.2, 1.8, 0.5]} intensity={0.45} color={sberTheme.greenLight} />
-      <directionalLight position={[0, 1.2, 2]} intensity={light ? 0.55 : 0.45} color="#ffffff" />
-      <spotLight
-        position={[0, 2.2, 1]}
-        angle={0.5}
-        penumbra={0.9}
-        intensity={light ? 0.5 : 0.7}
-        color="#ffffff"
-        castShadow
-      />
+      <ambientLight intensity={faceFraming ? (light ? 0.55 : 0.48) : light ? 0.95 : 0.72} />
+      <directionalLight position={[0.4, 2.4, 1.4]} intensity={light ? 1.15 : 1.4} />
+      <directionalLight position={[-1.4, 1.9, 0.6]} intensity={0.5} color={sberTheme.greenLight} />
+      <directionalLight position={[0, 1.6, 2.2]} intensity={light ? 0.5 : 0.4} color="#ffffff" />
+      <pointLight position={[0.3, headY + 0.35, 1.2]} intensity={0.55} distance={4} />
 
-      {headPortrait ? <HeadStudioBackdrop light={light} /> : <Room light={light} />}
+      <PortraitCamera active={faceFraming} compact={compact} />
       <CharacterAvatar3D config={config} />
 
       <OrbitControls
         enablePan={false}
-        enableZoom
-        minDistance={headPortrait ? 2.5 : 3}
-        maxDistance={headPortrait ? 6.5 : 7}
-        minPolarAngle={headPortrait ? Math.PI / 2.8 : Math.PI / 3.8}
-        maxPolarAngle={headPortrait ? Math.PI / 2.05 : Math.PI / 2.15}
-        minAzimuthAngle={-0.2}
-        maxAzimuthAngle={0.2}
+        enableZoom={faceFraming}
+        minDistance={faceFraming ? 4.6 : 3}
+        maxDistance={faceFraming ? 8.8 : 7}
+        minPolarAngle={faceFraming ? Math.PI / 2.45 : Math.PI / 3.8}
+        maxPolarAngle={faceFraming ? Math.PI / 2.12 : Math.PI / 2.15}
+        minAzimuthAngle={-0.15}
+        maxAzimuthAngle={0.15}
         target={target}
       />
     </>
@@ -72,22 +86,39 @@ export function CharacterRoomScene(props: Props) {
   const { config } = useCharacterStore();
   const { compact, compactMobile } = props;
 
+  const headPortrait = useModelCapabilitiesStore((s) => s.headPortraitMode);
+  const faceFraming = headPortrait;
+  const headY = PORTRAIT_HEAD_WORLD_Y;
+  const camY = headY + PORTRAIT_CAMERA_Y_OFFSET;
+
   const height = compactMobile
-    ? "h-[72px]"
+    ? "h-[min(36dvh,280px)]"
     : compact
-      ? "h-[148px] sm:h-[172px]"
-      : "h-[200px] sm:h-[300px]";
+      ? "h-[240px] sm:h-[280px]"
+      : "h-[380px] sm:h-[520px] min-h-[320px]";
 
   const borderClass = compact ? "border-gray-100" : "border-sber-border";
-  const wrapperBg = compact
-    ? "bg-gradient-to-b from-[#eef7f5] via-[#f4faf9] to-[#f2f4f7]"
-    : "bg-[#081810]";
+  const wrapperBg = faceFraming
+    ? compact
+      ? "bg-[#0a1512]"
+      : "bg-[#030a08]"
+    : compact
+      ? "bg-gradient-to-b from-[#eef7f5] via-[#f4faf9] to-[#f2f4f7]"
+      : "bg-[#081810]";
 
   return (
-    <div className={`relative w-full ${height} border-b ${borderClass} overflow-hidden ${wrapperBg}`}>
+    <div className={`relative w-full ${height} border-b ${borderClass} overflow-hidden ${wrapperBg} shrink-0`}>
       <Canvas
-        shadows={!compactMobile}
-        camera={{ position: [0, 1.05, 4.1], fov: compactMobile ? 42 : 36, near: 0.1, far: 50 }}
+        className="!h-full !w-full"
+        shadows={false}
+        camera={{
+          position: faceFraming
+            ? [0, camY, compact ? PORTRAIT_CAMERA_Z_COMPACT : PORTRAIT_CAMERA_Z]
+            : [0, 1.05, 4.1],
+          fov: faceFraming ? PORTRAIT_CAMERA_FOV : compactMobile ? 42 : 36,
+          near: 0.08,
+          far: 50,
+        }}
         gl={{ antialias: !compactMobile, alpha: false, powerPreference: "high-performance" }}
       >
         <Suspense fallback={<ModelLoadingPlaceholder light={compact} />}>
@@ -98,12 +129,16 @@ export function CharacterRoomScene(props: Props) {
       {!compactMobile && (
         <div className="absolute bottom-2 left-0 right-0 text-center pointer-events-none px-3">
           <p
-            className={`text-sm font-semibold drop-shadow-md ${compact ? "text-[#1f1f22]" : "text-white"}`}
+            className={`text-sm font-semibold drop-shadow-md ${
+              faceFraming || !compact ? "text-white" : "text-[#1f1f22]"
+            }`}
           >
             {config.name}
           </p>
           <p
-            className={`text-[10px] drop-shadow-md ${compact ? "text-[#7d838a]" : "text-sber-muted"}`}
+            className={`text-[10px] drop-shadow-md ${
+              faceFraming || !compact ? "text-sber-muted" : "text-[#7d838a]"
+            }`}
           >
             {config.subtitle}
           </p>

@@ -14,6 +14,10 @@ interface Props {
   disabled?: boolean;
   compact?: boolean;
   suggestions?: string[];
+  /** Hide quick prompts (e.g. when chat already has messages) */
+  hideSuggestions?: boolean;
+  /** After voice recognition ends — send without Enter */
+  onVoiceComplete?: (text: string) => void;
 }
 
 export function ChatInput({
@@ -26,9 +30,11 @@ export function ChatInput({
   disabled,
   suggestions = [],
   compact = false,
+  hideSuggestions = false,
+  onVoiceComplete,
 }: Props) {
   const [mounted, setMounted] = useState(false);
-  const [showSuggestions, setShowSuggestions] = useState(true);
+  const [showSuggestions, setShowSuggestions] = useState(false);
   const fileInputRef = useRef<HTMLInputElement>(null);
 
   useEffect(() => {
@@ -43,7 +49,10 @@ export function ChatInput({
     toggleListening,
     stopListening,
     clearStatus,
-  } = useWebSpeechInput(onChange);
+  } = useWebSpeechInput(onChange, {
+    onComplete: onVoiceComplete,
+    disabled,
+  });
 
   const handleKey = (e: KeyboardEvent<HTMLTextAreaElement>) => {
     if (e.key === "Enter" && !e.shiftKey) {
@@ -79,29 +88,27 @@ export function ChatInput({
 
   return (
     <div className={compact ? "p-2 space-y-1.5" : "p-4 space-y-3"}>
-      {!value && suggestions.length > 0 && (
-        <div className={compact ? "space-y-1" : undefined}>
-          {compact && (
-            <button
-              type="button"
-              onClick={() => setShowSuggestions((v) => !v)}
-              className="text-[10px] text-[#7d838a] px-0.5"
-            >
-              {showSuggestions ? "Скрыть подсказки" : "Показать подсказки"}
-            </button>
-          )}
-          {(showSuggestions || !compact) && (
-            <div
-              className={`flex gap-1.5 ${compact ? "overflow-x-auto pb-0.5 flex-nowrap scrollbar-thin" : "flex-wrap gap-2"}`}
-            >
+      {!hideSuggestions && !value && suggestions.length > 0 && (
+        <div className="space-y-1">
+          <button
+            type="button"
+            onClick={() => setShowSuggestions((v) => !v)}
+            className="text-[10px] text-[#7d838a] font-medium px-0.5 hover:text-[#107f8c]"
+          >
+            {showSuggestions ? "Скрыть" : `Подсказки · ${suggestions.length}`}
+          </button>
+          {showSuggestions && (
+            <div className="flex gap-1 overflow-x-auto pb-0.5 flex-nowrap max-h-6 scrollbar-thin">
               {suggestions.map((s, i) => (
                 <button
                   key={`suggestion-${i}`}
                   type="button"
-                  onClick={() => (onSuggestionSelect ? onSuggestionSelect(s) : onChange(s))}
-                  className={`rounded-full sber-btn-ghost transition-colors whitespace-nowrap flex-shrink-0 ${
-                    compact ? "text-[10px] px-2 py-0.5" : "text-xs px-3 py-1.5"
-                  }`}
+                  onClick={() => {
+                    onSuggestionSelect ? onSuggestionSelect(s) : onChange(s);
+                    setShowSuggestions(false);
+                  }}
+                  className="rounded-md border border-[#e4e8eb] bg-white text-[#565b62] hover:border-[#107f8c] hover:text-[#107f8c] transition-colors whitespace-nowrap flex-shrink-0 text-[9px] leading-tight px-1.5 py-0.5 max-w-[140px] truncate"
+                  title={s}
                 >
                   {s}
                 </button>
@@ -143,7 +150,7 @@ export function ChatInput({
             type="button"
             onClick={handlePhotoClick}
             disabled={disabled}
-            className={`${btnSize} rounded-xl border border-sbbol-border bg-white text-sbbol-text-secondary hover:border-sbbol-primary hover:text-sbbol-primary hover:bg-[#e5fcf7] flex items-center justify-center flex-shrink-0 transition-colors disabled:opacity-40 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-sbbol-primary/35`}
+            className={`${btnSize} rounded-xl border border-sbbol-border bg-white text-sbbol-secondary hover:border-sbbol-primary hover:text-sbbol-primary hover:bg-[#e5fcf7] flex items-center justify-center flex-shrink-0 transition-colors disabled:opacity-40 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-sbbol-primary/35`}
             aria-label="Фото или файл"
             title="Сфотографировать или загрузить изображение"
           >
@@ -155,7 +162,7 @@ export function ChatInput({
           value={value}
           onChange={(e) => onChange(e.target.value)}
           onKeyDown={handleKey}
-          placeholder={compact ? "Спросите…" : "Спросите об услугах Сбера..."}
+          placeholder={compact ? "Спросите…" : "Спросите о СберБизнес: расчёты, выписка, зарплата…"}
           disabled={disabled}
           rows={1}
           className={`flex-1 sber-input resize-none disabled:opacity-50 ${
@@ -177,7 +184,7 @@ export function ChatInput({
             className={`${btnSize} rounded-xl border flex items-center justify-center flex-shrink-0 transition-colors disabled:opacity-40 disabled:cursor-not-allowed focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-sbbol-primary/35 ${
               isListening
                 ? "border-sbbol-primary bg-[#e5fcf7] text-sbbol-primary animate-pulse"
-                : "border-sbbol-border bg-white text-sbbol-text-secondary hover:border-sbbol-primary hover:text-sbbol-primary hover:bg-[#e5fcf7]"
+                : "border-sbbol-border bg-white text-sbbol-secondary hover:border-sbbol-primary hover:text-sbbol-primary hover:bg-[#e5fcf7]"
             }`}
             aria-label={isListening ? "Остановить запись" : "Голосовой ввод"}
             aria-pressed={isListening}

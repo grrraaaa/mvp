@@ -22,7 +22,7 @@ function MapLighting() {
   );
 }
 
-export function SolarSystemScene() {
+export function SolarSystemScene({ onNavigate }: { onNavigate?: () => void } = {}) {
   const { navigationPath } = useAssistantStore();
   const frozen = useSolarSystemStore((s) => s.frozen);
 
@@ -48,7 +48,7 @@ export function SolarSystemScene() {
           speed={0.15}
         />
 
-        <SberSolarSystem activePath={navigationPath} />
+        <SberSolarSystem activePath={navigationPath} onNavigate={onNavigate} />
 
         <OrbitControls
           enablePan={false}

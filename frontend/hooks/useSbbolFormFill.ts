@@ -141,9 +141,36 @@ function findFieldElement(root: HTMLElement, fieldName: string): FillableElement
   return queryFieldIn(root, fieldName);
 }
 
+function isUrgencyField(el: FillableElement): boolean {
+  const name =
+    el instanceof HTMLInputElement ||
+    el instanceof HTMLTextAreaElement ||
+    el instanceof HTMLSelectElement
+      ? el.name
+      : el.getAttribute("name") ?? "";
+  return name.includes("PAYMENT_URGENCY");
+}
+
+function applyUrgencyInput(input: HTMLInputElement, value: string): boolean {
+  const prepared = value.replace(/\D/g, "").slice(0, 2);
+  if (!prepared) return false;
+
+  unlockField(input);
+  input.focus();
+  setNativeValue(input, prepared);
+  syncSbbolDisplay(input, prepared);
+  input.dispatchEvent(new Event("blur", { bubbles: true }));
+
+  return valuesMatch(input, prepared, input.value);
+}
+
 function applyFieldValue(el: FillableElement, value: string): boolean {
   const prepared = prepareValue(el, value);
   unlockField(el);
+
+  if (el instanceof HTMLInputElement && isUrgencyField(el)) {
+    return applyUrgencyInput(el, value);
+  }
 
   if (
     el instanceof HTMLInputElement ||
@@ -163,6 +190,9 @@ function applyFieldValue(el: FillableElement, value: string): boolean {
   }
 
   const innerInput = el.querySelector("input, textarea, select");
+  if (innerInput instanceof HTMLInputElement && isUrgencyField(innerInput)) {
+    return applyUrgencyInput(innerInput, value);
+  }
   if (
     innerInput instanceof HTMLInputElement ||
     innerInput instanceof HTMLTextAreaElement ||

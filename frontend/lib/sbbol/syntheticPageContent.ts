@@ -321,6 +321,30 @@ export const SYNTHETIC_PAGE_BODIES: Record<string, SyntheticPageBody> = {
       ],
     },
   },
+  "/salary/obligations": {
+    type: "table",
+    toolbar: { primaryAction: "Сформировать платёж", filters: ["Май 2026"] },
+    table: {
+      columns: [
+        { key: "type", label: "Тип обязательства" },
+        { key: "period", label: "Период" },
+        { key: "amount", label: "Сумма", align: "right" },
+        { key: "status", label: "Статус" },
+      ],
+      rows: [
+        { type: "Подоходный налог", period: "05.2026", amount: "2 214.00 BYN", status: "К оплате" },
+        { type: "ФСЗН", period: "05.2026", amount: "5 535.00 BYN", status: "К оплате" },
+        { type: "Белгосстрах", period: "05.2026", amount: "368.00 BYN", status: "Оплачено" },
+      ],
+    },
+  },
+  "/salary/pension": {
+    type: "info",
+    info: {
+      image: "/sber-orig/images/newspaper1024.jpg",
+      html: "<p>Отчисления в фонд социальной защиты населения по зарплатному проекту.</p><p>За май 2026 начислено: <strong>5 535.00 BYN</strong>. Срок уплаты — до 15 числа месяца, следующего за отчётным.</p><p>Отчёт можно сформировать и отправить из раздела «Зарплата».</p>",
+    },
+  },
   "/products": {
     type: "cards",
     cards: [

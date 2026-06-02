@@ -16,7 +16,7 @@ export interface AssistantCharacterConfig {
 
 export const DEFAULT_CHARACTER: AssistantCharacterConfig = {
   name: "Алексей",
-  subtitle: "Ваш персональный банковский консультант",
+  subtitle: "консультант интернет-банка СберБизнес",
   styleId: "human-m",
   emoji: "👔",
   skinTone: "#e8beac",

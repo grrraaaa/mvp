@@ -62,6 +62,16 @@ export const PAGE_META: Record<string, PageMeta> = {
     description: "Список сотрудников и реквизиты для выплат.",
     navId: "salary",
   },
+  "/salary/obligations": {
+    title: "Обязательства",
+    description: "Налоги, взносы и обязательные платежи по зарплатному проекту.",
+    navId: "salary",
+  },
+  "/salary/pension": {
+    title: "Пенсионные отчисления",
+    description: "Отчисления в фонд социальной защиты и отчётность.",
+    navId: "salary",
+  },
   "/products/credits": {
     title: "Кредиты",
     description: "Кредитные продукты для бизнеса.",

@@ -144,8 +144,11 @@ export function DashboardHome() {
           <ul className="divide-y divide-[#e4e8eb]">
             {MOCK_ACCOUNTS.map((acc) => (
               <li key={acc.iban} className="flex items-center gap-4 px-5 py-4 hover:bg-[#f8f9fb] transition-colors">
-                <div className="w-10 h-10 rounded-full bg-[#f2f4f7] border border-[#e4e8eb] flex items-center justify-center text-xs font-semibold text-[#565b62] shrink-0">
-                  {acc.currency}
+                <div
+                  className="w-10 h-10 rounded-full bg-[#f2f4f7] border border-[#e4e8eb] flex items-center justify-center text-xs font-semibold text-[#565b62] shrink-0"
+                  suppressHydrationWarning
+                >
+                  <span suppressHydrationWarning>{acc.currency}</span>
                 </div>
                 <div className="flex-1 min-w-0">
                   <p className="text-sm font-medium text-[#1f1f22] tracking-wide">{acc.iban}</p>

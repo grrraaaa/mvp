@@ -1,12 +1,12 @@
 import type { Metadata } from "next";
 import "./globals.css";
-import { AppProviders } from "@/components/layout/AppProviders";
+import { ClientRoot } from "@/components/layout/ClientRoot";
 import { getCapturedFragment } from "@/lib/sbbol/capturedOrigHtml";
 import { CAPTURED_ORIG_STYLES } from "@/lib/sbbol/capturedOrigStyles";
 
 export const metadata: Metadata = {
   title: "СберБизнес — интернет-банк",
-  description: "Демо СберБизнес с AI-консультантом и 3D-картой услуг sber-bank.by",
+  description: "Демо СберБизнес с AI-консультантом и картой разделов интернет-банка",
   icons: { icon: "/favicon-sbbol.ico" },
 };
 
@@ -21,7 +21,7 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
         ))}
       </head>
       <body suppressHydrationWarning>
-        <AppProviders documentModalHtml={documentModalHtml}>{children}</AppProviders>
+        <ClientRoot documentModalHtml={documentModalHtml}>{children}</ClientRoot>
       </body>
     </html>
   );

@@ -193,6 +193,22 @@ body {
   .sbbol-create-doc-btn:active {
     transform: translateY(0);
   }
+
+  .sbbol-planet-chip {
+    @apply inline-flex items-center gap-2 h-9 px-3 rounded-full border border-sbbol-border bg-white text-sm font-medium text-sbbol-secondary hover:bg-[#e5fcf7] hover:border-sbbol-primary-light hover:text-sbbol-primary transition-colors whitespace-nowrap;
+  }
+
+  .sbbol-planet-chip-active {
+    @apply bg-[#e5fcf7] border-sbbol-primary text-sbbol-primary shadow-[inset_0_0_0_1px_rgba(16,127,140,0.15)];
+  }
+
+  .sbbol-planet-chip-orbit {
+    @apply w-3 h-3 rounded-full shrink-0 shadow-[0_0_8px_rgba(16,127,140,0.35)];
+  }
+
+  .sbbol-planet-chip-label {
+    @apply text-xs sm:text-sm leading-none;
+  }
 }
 
 /* Captured SBBOL page fragments (main.bundle.css grid + components) */
@@ -205,11 +221,23 @@ body {
   overflow-x: clip;
 }
 
-/* Full-bleed gradient under left nav (desktop only) */
+/* Desktop: контент уже сдвинут через main.pl-[104px] — без отрицательного margin */
 @media (min-width: 1024px) {
   .sbbol-orig-root .HeaderGradient-container-iZJy {
-    margin-left: -104px;
-    width: calc(100% + 104px);
+    margin-left: 0;
+    width: 100%;
+    max-width: 100%;
+  }
+
+  .sbbol-orig-root .Container-offset-MpAR {
+    margin-left: 0 !important;
+    max-width: 100%;
+  }
+
+  .sbbol-orig-root .container {
+    max-width: 100%;
+    padding-left: 24px;
+    padding-right: 24px;
   }
 }
 

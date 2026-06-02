@@ -25,10 +25,10 @@ export function PlanetMapOverlay({ open, onClose }: Props) {
           </span>
           <div className="min-w-0">
             <h2 className="text-white font-semibold text-base sm:text-lg truncate">
-              Карта услуг Сбер Банка
+              Карта разделов СберБизнес
             </h2>
             <p className="text-[#9cb8a8] text-xs sm:text-sm truncate">
-              Наведите на планету · клик — раздел sber-bank.by
+              Наведите на планету · клик — переход в раздел
             </p>
           </div>
         </div>
@@ -42,7 +42,7 @@ export function PlanetMapOverlay({ open, onClose }: Props) {
         </button>
       </header>
       <div className="flex-1 relative min-h-0">
-        <SolarSystemScene />
+        <SolarSystemScene onNavigate={onClose} />
       </div>
     </div>
   );

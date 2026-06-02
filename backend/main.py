@@ -9,7 +9,7 @@ from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 from contextlib import asynccontextmanager
 
-from api import auth, chat, products, navigation, forms
+from api import auth, chat, products, navigation, forms, tts
 from db.database import init_db
 from core.config import settings
 from core.site_auth import SiteBasicAuthMiddleware
@@ -46,6 +46,7 @@ app.include_router(chat.router, prefix="/api/chat", tags=["chat"])
 app.include_router(products.router, prefix="/api/products", tags=["products"])
 app.include_router(navigation.router, prefix="/api/navigation", tags=["navigation"])
 app.include_router(forms.router, prefix="/api/forms", tags=["forms"])
+app.include_router(tts.router, prefix="/api/tts", tags=["tts"])
 
 
 @app.get("/health")
@@ -56,4 +57,9 @@ async def health():
         "version": "0.1.0",
         "db": "postgres" if "postgresql" in os.getenv("POSTGRES_URL", os.getenv("DATABASE_URL", "")) else "sqlite",
         "ai_mode": settings.ai_provider,
+        "tts": bool(
+            settings.SPEECHIFY_API_KEY
+            or settings.SONIOX_API_KEY
+            or settings.DEEPGRAM_API_KEY
+        ),
     }

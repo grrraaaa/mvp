@@ -1,5 +1,6 @@
 "use client";
 
+import { useRouter } from "next/navigation";
 import { useRef, useState } from "react";
 import { useFrame } from "@react-three/fiber";
 import { Html } from "@react-three/drei";
@@ -31,10 +32,38 @@ interface Props {
   satellites?: SatelliteDef[];
   highlightUrls: Set<string>;
   onHoverChange?: (hint: string | null) => void;
+  onNavigate?: (url: string) => void;
 }
 
-function openUrl(url: string) {
-  window.open(url, "_blank", "noopener,noreferrer");
+const THEME_MAP: Record<string, PlanetThemeId> = {
+  payments: "payments",
+  statement: "insurance",
+  salary: "deposits",
+  products: "credits",
+  services: "investments",
+  other: "payments",
+  settings: "cards",
+  cards: "cards",
+  deposits: "deposits",
+  credits: "credits",
+  investments: "investments",
+  insurance: "insurance",
+};
+
+function resolveTheme(id: string): PlanetThemeId {
+  return THEME_MAP[id] ?? "payments";
+}
+
+function usePlanetNavigate(onNavigate?: (url: string) => void) {
+  const router = useRouter();
+  return (url: string) => {
+    if (url.startsWith("/")) {
+      router.push(url);
+      onNavigate?.(url);
+    } else if (url.startsWith("http")) {
+      window.open(url, "_blank", "noopener,noreferrer");
+    }
+  };
 }
 
 const HIT_SIZE = 1.85;
@@ -53,7 +82,10 @@ export function PlanetLink({
   satellites = [],
   highlightUrls,
   onHoverChange,
+  onNavigate,
 }: Props) {
+  const navigate = usePlanetNavigate(onNavigate);
+  const resolvedTheme = resolveTheme(themeId);
   const orbitRef = useRef<THREE.Group>(null);
   const bodyRef = useRef<THREE.Group>(null);
   const orbitAngleRef = useRef(startAngle);
@@ -110,149 +142,84 @@ export function PlanetLink({
 
   return (
     <group ref={orbitRef}>
-      <group
-        ref={bodyRef}
-        onPointerOver={onEnter}
-        onPointerOut={onLeave}
-        onClick={(e) => {
-          e.stopPropagation();
-          openUrl(url);
-        }}
-      >
+      <group ref={bodyRef}>
+        <mesh
+          onPointerOver={onEnter}
+          onPointerOut={onLeave}
+          onClick={(e) => {
+            e.stopPropagation();
+            navigate(url);
+          }}
+        >
+          <boxGeometry args={[HIT_SIZE, HIT_SIZE, HIT_SIZE]} />
+          <meshBasicMaterial transparent opacity={0} depthWrite={false} />
+        </mesh>
+
         <PlanetShape
-          themeId={themeId}
+          themeId={resolvedTheme}
           label={label}
           color={color}
           emissive={emissive}
           glow={glow}
         />
 
-        {/* Зона наведения */}
-        <mesh visible={false}>
-          <boxGeometry args={[HIT_SIZE, HIT_SIZE, HIT_SIZE]} />
-          <meshBasicMaterial transparent opacity={0} depthWrite={false} />
-        </mesh>
-
-        {satellites.map((sat, i) => (
-          <SatelliteLink
-            key={`${sat.label}-${i}`}
-            sat={sat}
-            themeId={themeId}
-            emissive={emissive}
-            index={i}
-            total={satellites.length}
-            parentActive={active}
-            highlightUrls={highlightUrls}
-            onSatelliteEnter={() => setHovered(false)}
-          />
-        ))}
+        {hovered && (
+          <Html position={[0, 1.65, 0]} {...TOOLTIP_HTML_PROPS}>
+            <div className={TOOLTIP_PLANET_PANEL}>
+              <p className={TOOLTIP_TITLE}>{label}</p>
+              <p className={TOOLTIP_BODY}>{hint}</p>
+              <p className={TOOLTIP_PLANET_FOOTER}>СберБизнес →</p>
+            </div>
+          </Html>
+        )}
       </group>
 
-      {hovered && (
-        <Html position={[0, 1.05, 0]} {...TOOLTIP_HTML_PROPS}>
-          <div className={TOOLTIP_PLANET_PANEL}>
-            <p className={TOOLTIP_TITLE}>{label}</p>
-            <p className={TOOLTIP_BODY}>{hint}</p>
-            <p className={TOOLTIP_PLANET_FOOTER}>sber-bank.by ↗</p>
-          </div>
-        </Html>
-      )}
-    </group>
-  );
-}
-
-function SatelliteLink({
-  sat,
-  themeId,
-  emissive,
-  index,
-  total,
-  parentActive,
-  highlightUrls,
-  onSatelliteEnter,
-}: {
-  sat: SatelliteDef;
-  themeId: PlanetThemeId;
-  emissive: string;
-  index: number;
-  total: number;
-  parentActive: boolean;
-  highlightUrls: Set<string>;
-  onSatelliteEnter: () => void;
-}) {
-  const ref = useRef<THREE.Group>(null);
-  const satAngleRef = useRef((index / Math.max(total, 1)) * Math.PI * 2);
-  const bobRef = useRef(0);
-  const elapsedRef = useRef(0);
-
-  const [hovered, setHovered] = useState(false);
-  const frozen = useSolarSystemStore((s) => s.frozen);
-  const pauseOffset = useSolarSystemStore((s) => s.pauseOffset);
-  const enterHover = useSolarSystemStore((s) => s.enterHover);
-  const leaveHover = useSolarSystemStore((s) => s.leaveHover);
-
-  const active = parentActive || isUrlHighlighted(sat.url, highlightUrls);
-  const glow = active ? 0.65 : hovered ? 0.45 : 0.18;
-  const satOrbit = 2.35;
-
-  useFrame((state) => {
-    elapsedRef.current = state.clock.elapsedTime;
-    const orbitTime = state.clock.elapsedTime - pauseOffset;
-
-    if (!frozen) {
-      satAngleRef.current =
-        (index / Math.max(total, 1)) * Math.PI * 2 + orbitTime * 0.35;
-      bobRef.current = orbitTime * 2 + index;
-    }
-
-    if (!ref.current) return;
-    const a = satAngleRef.current;
-    ref.current.position.set(
-      Math.cos(a) * satOrbit,
-      Math.sin(bobRef.current) * 0.15,
-      Math.sin(a) * satOrbit
-    );
-  });
-
-  return (
-    <group
-      ref={ref}
-      onPointerOver={(e) => {
-        e.stopPropagation();
-        enterHover(elapsedRef.current);
-        onSatelliteEnter();
-        setHovered(true);
-        document.body.style.cursor = "pointer";
-      }}
-      onPointerOut={(e) => {
-        e.stopPropagation();
-        leaveHover(elapsedRef.current);
-        setHovered(false);
-        document.body.style.cursor = "";
-      }}
-      onClick={(e) => {
-        e.stopPropagation();
-        openUrl(sat.url);
-      }}
-    >
-      <SatelliteShape
-        themeId={themeId}
-        label={sat.label}
-        emissive={emissive}
-        glow={glow}
-      />
-      <mesh visible={false}>
-        <boxGeometry args={[SAT_HIT_SIZE, SAT_HIT_SIZE, SAT_HIT_SIZE]} />
-        <meshBasicMaterial transparent opacity={0} depthWrite={false} />
-      </mesh>
-
-      {hovered && (
-        <Html {...TOOLTIP_HTML_PROPS}>
-          <div className={TOOLTIP_SATELLITE_PANEL}>
-            <p className={TOOLTIP_BODY}>{sat.hint}</p>
-          </div>
-        </Html>
-      )}
+      {satellites.map((sat, i) => {
+        const satAngle = (i / Math.max(satellites.length, 1)) * Math.PI * 2;
+        const satActive = isUrlHighlighted(sat.url, highlightUrls);
+        return (
+          <group
+            key={sat.label}
+            position={[Math.cos(satAngle) * 2.2, 0.15 + i * 0.1, Math.sin(satAngle) * 2.2]}
+          >
+            <mesh
+              onPointerOver={(e) => {
+                e.stopPropagation();
+                enterHover(elapsedRef.current);
+                onHoverChange?.(sat.hint);
+                document.body.style.cursor = "pointer";
+              }}
+              onPointerOut={(e) => {
+                e.stopPropagation();
+                leaveHover(elapsedRef.current);
+                onHoverChange?.(null);
+                document.body.style.cursor = "";
+              }}
+              onClick={(e) => {
+                e.stopPropagation();
+                navigate(sat.url);
+              }}
+            >
+              <boxGeometry args={[SAT_HIT_SIZE, SAT_HIT_SIZE, SAT_HIT_SIZE]} />
+              <meshBasicMaterial transparent opacity={0} depthWrite={false} />
+            </mesh>
+            <SatelliteShape
+              themeId={resolvedTheme}
+              label={sat.label}
+              emissive={emissive}
+              glow={satActive ? 0.55 : 0.25}
+            />
+            {hovered && (
+              <Html position={[0, 0.85, 0]} {...TOOLTIP_HTML_PROPS}>
+                <div className={TOOLTIP_SATELLITE_PANEL}>
+                  <p className={TOOLTIP_TITLE}>{sat.label}</p>
+                  <p className={TOOLTIP_BODY}>{sat.hint}</p>
+                </div>
+              </Html>
+            )}
+          </group>
+        );
+      })}
     </group>
   );
 }

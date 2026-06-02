@@ -1,16 +1,16 @@
 "use client";
 
 import { useMemo, useRef, useState } from "react";
+import { useRouter } from "next/navigation";
 import { useFrame } from "@react-three/fiber";
 import { Html } from "@react-three/drei";
 import * as THREE from "three";
 import {
   ORBIT_PLANETS,
-  SBER_SUN,
+  SBBOL_SUN,
   collectHighlightUrls,
   isUrlHighlighted,
 } from "@/lib/sber/planetMap";
-import type { PlanetThemeId } from "@/lib/sber/planetTexture";
 import { sberTheme } from "@/lib/sber/theme";
 import {
   TOOLTIP_BODY,
@@ -25,9 +25,11 @@ import type { NavigationStep } from "@/store/assistantStore";
 
 interface Props {
   activePath?: NavigationStep[] | null;
+  onNavigate?: () => void;
 }
 
-export function SberSolarSystem({ activePath }: Props) {
+export function SberSolarSystem({ activePath, onNavigate }: Props) {
+  const router = useRouter();
   const sunRef = useRef<THREE.Mesh>(null);
   const elapsedRef = useRef(0);
   const [sunHover, setSunHover] = useState(false);
@@ -42,7 +44,16 @@ export function SberSolarSystem({ activePath }: Props) {
     [activePath]
   );
 
-  const sunActive = isUrlHighlighted(SBER_SUN.url, highlightUrls);
+  const sunActive = isUrlHighlighted(SBBOL_SUN.url, highlightUrls);
+
+  const goTo = (url: string) => {
+    if (url.startsWith("/")) {
+      router.push(url);
+      onNavigate?.();
+    } else {
+      window.open(url, "_blank", "noopener,noreferrer");
+    }
+  };
 
   useFrame((state, delta) => {
     elapsedRef.current = state.clock.elapsedTime;
@@ -79,9 +90,7 @@ export function SberSolarSystem({ activePath }: Props) {
           setSunHover(false);
           document.body.style.cursor = "";
         }}
-        onClick={() =>
-          window.open(SBER_SUN.url, "_blank", "noopener,noreferrer")
-        }
+        onClick={() => goTo(SBBOL_SUN.url)}
       >
         <sphereGeometry args={[1.25, 64, 64]} />
         <meshStandardMaterial
@@ -99,8 +108,8 @@ export function SberSolarSystem({ activePath }: Props) {
       {sunHover && (
         <Html position={[0, 2.45, 0]} {...TOOLTIP_HTML_PROPS}>
           <div className={TOOLTIP_PANEL}>
-            <p className={TOOLTIP_TITLE}>{SBER_SUN.label}</p>
-            <p className={TOOLTIP_BODY}>{SBER_SUN.hint}</p>
+            <p className={TOOLTIP_TITLE}>{SBBOL_SUN.label}</p>
+            <p className={TOOLTIP_BODY}>{SBBOL_SUN.hint}</p>
           </div>
         </Html>
       )}
@@ -108,7 +117,7 @@ export function SberSolarSystem({ activePath }: Props) {
       {ORBIT_PLANETS.map((planet) => (
         <PlanetLink
           key={planet.id}
-          themeId={planet.id as PlanetThemeId}
+          themeId={planet.id as import("@/lib/sber/planetTexture").PlanetThemeId}
           label={planet.label}
           url={planet.url}
           hint={planet.hint}
@@ -120,14 +129,13 @@ export function SberSolarSystem({ activePath }: Props) {
           satellites={planet.satellites}
           highlightUrls={highlightUrls}
           onHoverChange={(h) => setOrbitHint(h)}
+          onNavigate={onNavigate}
         />
       ))}
 
       {orbitHint && !sunHover && (
         <Html position={[0, -2.2, 0]} {...TOOLTIP_HTML_PROPS}>
-          <p className={TOOLTIP_ORBIT_HINT}>
-            Клик — открыть раздел на sber-bank.by
-          </p>
+          <p className={TOOLTIP_ORBIT_HINT}>Клик — открыть раздел СберБизнес</p>
         </Html>
       )}
     </group>

@@ -7,6 +7,7 @@ import * as THREE from "three";
 import { SkeletonUtils } from "three-stdlib";
 import type { AssistantCharacterConfig } from "@/lib/assistant/characterTypes";
 import { analyzeHead } from "@/lib/assistant/analyzeModel";
+import { stripEnvironmentFromGlb } from "@/lib/assistant/filterGlbScene";
 import { fitObjectToFloor } from "@/lib/assistant/fitGlbModel";
 import { lipOpennessAt } from "@/lib/assistant/lipSync";
 import {
@@ -17,13 +18,19 @@ import {
   DEFAULT_GLB_PATH,
   findClipName,
   GLB_Y_OFFSET,
+  PORTRAIT_FACE_SCALE,
+  PORTRAIT_HEAD_WORLD_Y,
   listMorphTargetNames,
   type LipBinding,
 } from "@/lib/assistant/glbCharacter";
 import { useCharacterBehaviorStore } from "@/store/characterBehaviorStore";
 import { useModelCapabilitiesStore } from "@/store/modelCapabilitiesStore";
 import { SpeechBubble3D } from "./SpeechBubble3D";
-import { ProceduralMouth } from "./ProceduralMouth";
+import {
+  applyMouthVertexDeform,
+  buildMouthVertexRig,
+  resetMouthVertexDeform,
+} from "@/lib/assistant/mouthVertexDeform";
 import { useCharacterLocomotion } from "@/hooks/useCharacterLocomotion";
 
 interface Props {
@@ -77,11 +84,12 @@ export function GlbCharacter3D({
 }: Props) {
   const rootRef = useRef<THREE.Group>(null);
   const modelRef = useRef<THREE.Group>(null);
-  const mouthGroupRef = useRef<THREE.Group>(null);
   const morphMeshesRef = useRef<MorphMesh[]>([]);
   const lipBindingsRef = useRef<LipBinding[]>([]);
+  const mouthRigRef = useRef<ReturnType<typeof buildMouthVertexRig> | null>(null);
   const lipOpenRef = useRef(0);
   const [hasMorphLip, setHasMorphLip] = useState(false);
+  const [hasVertexLip, setHasVertexLip] = useState(false);
   const headCenterRef = useRef(new THREE.Vector3(0, 1.5, 0));
   const bubbleYRef = useRef(1.75);
   const portraitYawRef = useRef(0);
@@ -92,12 +100,17 @@ export function GlbCharacter3D({
   const { scene, animations } = useGLTF(modelPath);
   const clone = useMemo(() => {
     const c = SkeletonUtils.clone(scene) as THREE.Group;
+    stripEnvironmentFromGlb(c);
     prepareModelMaterials(c);
     return c;
   }, [scene]);
 
   const fit = useMemo(() => fitObjectToFloor(clone), [clone]);
   const headAnalysis = useMemo(() => analyzeHead(clone), [clone]);
+  const mouthRig = useMemo(
+    () => buildMouthVertexRig(clone, headAnalysis),
+    [clone, headAnalysis]
+  );
   const headPortraitMode = useModelCapabilitiesStore((s) => s.headPortraitMode);
   const setCapabilities = useModelCapabilitiesStore((s) => s.setCapabilities);
 
@@ -115,15 +128,16 @@ export function GlbCharacter3D({
         mouthScale,
       };
     }
-    const scale = fit.scale;
-    const baseY = fit.position.y + GLB_Y_OFFSET;
+    const scale = fit.scale * PORTRAIT_FACE_SCALE;
+    const baseY =
+      PORTRAIT_HEAD_WORLD_Y - head.headCenterLocal.y * scale + GLB_Y_OFFSET;
     const headWorldY = head.headCenterLocal.y * scale + baseY;
     return {
       position: new THREE.Vector3(fit.position.x, baseY, fit.position.z),
       scale,
       headCenter: head.headCenterLocal,
       mouth: head.mouthAnchorLocal,
-      bubbleY: headWorldY + 0.45,
+      bubbleY: headWorldY + 0.22,
       mouthScale,
     };
   }, [clone, fit, headAnalysis, headPortraitMode]);
@@ -141,7 +155,10 @@ export function GlbCharacter3D({
     morphMeshesRef.current = collectMorphMeshes(clone);
     lipBindingsRef.current = collectLipBindings(morphMeshesRef.current);
     const morphLip = lipBindingsRef.current.length > 0;
+    const vertexLip = mouthRig.active;
+    mouthRigRef.current = mouthRig;
     setHasMorphLip(morphLip);
+    setHasVertexLip(vertexLip);
     headCenterRef.current.copy(portraitTransform.headCenter);
     bubbleYRef.current = portraitTransform.bubbleY;
 
@@ -156,17 +173,18 @@ export function GlbCharacter3D({
         console.info("[GlbCharacter3D] morph targets:", names);
       } else {
         console.info(
-          "[GlbCharacter3D] morph targets: none — using ProceduralMouth"
+          "[GlbCharacter3D] morph targets: none —",
+          vertexLip ? "vertex mouth deform" : "no mouth rig"
         );
       }
     }
 
     setCapabilities({
       isStaticMesh: !hasAnimations,
-      hasMorphLip: morphLip,
+      hasMorphLip: morphLip || vertexLip,
       hasAnimations,
     });
-  }, [clone, hasAnimations, portraitTransform, setCapabilities]);
+  }, [clone, hasAnimations, mouthRig, portraitTransform, setCapabilities]);
 
   const clipNames = animations.map((c) => c.name);
   const idleName = findClipName(clipNames, ANIM_IDLE_HINTS);
@@ -215,7 +233,7 @@ export function GlbCharacter3D({
       }
     }
 
-    if (hasMorphLip) {
+    if (lipBindingsRef.current.length > 0) {
       for (const { meshIndex, morphIndex } of lipBindingsRef.current) {
         const mesh = morphMeshesRef.current[meshIndex];
         const influences = mesh?.morphTargetInfluences;
@@ -223,14 +241,16 @@ export function GlbCharacter3D({
           influences[morphIndex] = openness;
         }
       }
-    }
-
-    if (mouthGroupRef.current) {
-      mouthGroupRef.current.position.copy(portraitTransform.mouth);
+    } else if (mouthRigRef.current?.active) {
+      if (action === "talk" && openness > 0.01) {
+        applyMouthVertexDeform(mouthRigRef.current, openness);
+      } else {
+        resetMouthVertexDeform(mouthRigRef.current);
+      }
     }
   });
 
-  const useProceduralMouth = !hasMorphLip;
+  const useProceduralMouth = !hasMorphLip && !hasVertexLip;
   const showSpeechText = hasMorphLip;
 
   return (
@@ -247,16 +267,6 @@ export function GlbCharacter3D({
         scale={portraitTransform.scale}
       >
         <primitive object={clone} />
-        {useProceduralMouth && (
-          <group ref={mouthGroupRef} visible={action === "talk"}>
-            <ProceduralMouth
-              opennessRef={lipOpenRef}
-              skinTone={config.skinTone}
-              scale={portraitTransform.mouthScale}
-              active={action === "talk"}
-            />
-          </group>
-        )}
       </group>
     </group>
   );

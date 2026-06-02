@@ -55,6 +55,8 @@ export const SUB_NAV: Record<NavId, SubNavItem[]> = {
     { label: "Зарплата", href: "/salary" },
     { label: "Зарплатный проект", href: "/salary/project" },
     { label: "Сотрудники", href: "/salary/employees" },
+    { label: "Обязательства", href: "/salary/obligations" },
+    { label: "Пенсионные отчисления", href: "/salary/pension" },
   ],
   productsAndServices: [
     { label: "Кредиты", href: "/products/credits" },

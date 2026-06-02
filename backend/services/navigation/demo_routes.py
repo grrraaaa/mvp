@@ -21,6 +21,18 @@ DEMO_ROUTE_LABELS: dict[str, str] = {
     "/salary": "Зарплата",
     "/salary/project": "Зарплатный проект",
     "/salary/employees": "Сотрудники",
+    "/salary/obligations": "Обязательства",
+    "/salary/pension": "Пенсионные отчисления",
+    "/products": "Продукты и услуги",
+    "/products/credits": "Кредиты",
+    "/products/cards": "Корпоративные карты",
+    "/products/deposits": "Депозиты",
+    "/products/ved": "ВЭД",
+    "/services": "Сервисы",
+    "/services/analytics": "Бизнес-аналитика",
+    "/services/exchange-rates": "Курсы валют",
+    "/other/documents/signing": "На подписании",
+    "/settings": "Настройки",
 }
 
 # Ordered: more specific routes first
@@ -152,6 +164,66 @@ _ROUTE_RULES: list[tuple[str, list[str]]] = [
         ],
     ),
     (
+        "/salary/obligations",
+        [r"/salary/obligations", r"обязательств", r"obligations"],
+    ),
+    (
+        "/salary/pension",
+        [r"/salary/pension", r"пенси", r"pension"],
+    ),
+    (
+        "/products/credits",
+        [r"/products/credits", r"кредит", r"овердрафт"],
+    ),
+    (
+        "/products/deposits",
+        [r"/products/deposits", r"депозит", r"вклад"],
+    ),
+    (
+        "/products/cards",
+        [r"/products/cards", r"корпоративн\w*\s+карт"],
+    ),
+    (
+        "/products/ved",
+        [r"/products/ved", r"вэд", r"валютн\w*\s+контрол"],
+    ),
+    (
+        "/products",
+        [r"/products\b", r"продукт", r"услуг\w*\s+для\s+бизнес"],
+    ),
+    (
+        "/services/exchange-rates",
+        [r"/services/exchange-rates", r"курс\w*\s+валют"],
+    ),
+    (
+        "/services/analytics",
+        [r"/services/analytics", r"аналитик"],
+    ),
+    (
+        "/services/counterparty",
+        [r"/services/counterparty", r"проверк\w*\s+контрагент"],
+    ),
+    (
+        "/services",
+        [r"/services\b", r"сервис"],
+    ),
+    (
+        "/other/documents/signing",
+        [r"на\s+подпис", r"подписан", r"/other/documents/signing"],
+    ),
+    (
+        "/other",
+        [r"/other\b", r"прочее"],
+    ),
+    (
+        "/settings/security",
+        [r"/settings/security", r"безопасност", r"эцп"],
+    ),
+    (
+        "/settings",
+        [r"/settings\b", r"настройк", r"профил"],
+    ),
+    (
         "/",
         [
             r"^главн",
@@ -164,8 +236,8 @@ _ROUTE_RULES: list[tuple[str, list[str]]] = [
 ]
 
 _NAV_VERBS = re.compile(
-    r"перейд|переход|открой|открыть|покаж|показать|навигац|"
-    r"перенес|веди|зайди|go\s+to|open\s+",
+    r"перейд|перейти|переход|открой|открыть|открыв|покаж|показать|навигац|"
+    r"перенес|веди|зайди|зайти|go\s+to|open\s+",
     re.I,
 )
 
@@ -174,6 +246,11 @@ _CREATE_DOC = re.compile(
     r"оформить\s+документ|выбрать\s+тип\s+документ",
     re.I,
 )
+
+
+def is_navigation_message(message: str) -> bool:
+    """True if the message should open a demo section (same for «перейди» and «открой»)."""
+    return match_demo_route(message) is not None
 
 
 def match_demo_route(message: str) -> Optional[str]:
@@ -193,6 +270,10 @@ def match_demo_route(message: str) -> Optional[str]:
         ("/payments/instant", [r"мгновенн", r"срочн"]),
         ("/payments/paydoccur", [r"инвалют", r"валютн\w*\s+перевод"]),
         ("/payments", [r"платеж", r"перевод", r"оплат", r"расчет", r"расчёт"]),
+        ("/products/credits", [r"кредит", r"овердрафт"]),
+        ("/products", [r"продукт"]),
+        ("/services", [r"сервис", r"аналитик"]),
+        ("/settings", [r"настройк"]),
         ("/statement", [r"выписк"]),
         ("/statement/certificates", [r"справк"]),
         ("/salary/project", [r"зарплатн\w*\s+проект"]),
@@ -252,6 +333,25 @@ def build_demo_nav_path(route: str) -> List[NavigationStep]:
                 )
             )
         return steps
+
+    for prefix, label in (
+        ("/products", "Продукты"),
+        ("/services", "Сервисы"),
+        ("/other", "Прочее"),
+        ("/settings", "Настройки"),
+        ("/money", "Деньги и события"),
+    ):
+        if route.startswith(prefix):
+            steps.append(NavigationStep(label=label, url=prefix if prefix != "/money" else "/", icon="planet"))
+            if route != prefix and not (prefix == "/money" and route == "/"):
+                steps.append(
+                    NavigationStep(
+                        label=DEMO_ROUTE_LABELS.get(route, route),
+                        url=route,
+                        icon="planet",
+                    )
+                )
+            return steps
 
     label = DEMO_ROUTE_LABELS.get(route, route)
     steps.append(NavigationStep(label=label, url=route, icon="planet"))

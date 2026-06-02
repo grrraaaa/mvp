@@ -110,7 +110,7 @@ def _ocr_extra_fields(text: str, form_type: str) -> List[FormFieldAction]:
         if "CONTRAGENT_ID" not in seen:
             pass  # optional: could extend schema
 
-    urgency = re.search(r"очередност\w*\s*[:№]?\s*(\d)", text, re.I)
+    urgency = re.search(r"очер[её]дност\w*\s*[:№]?\s*(\d)", text, re.I)
     if urgency:
         add("PAYMENT_URGENCY", urgency.group(1))
 

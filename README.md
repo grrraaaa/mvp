@@ -17,7 +17,8 @@
 | **Навигация** | «выписка по счёту» → `/statement` и др. |
 | **Формы** | AI-заполнение полей на страницах платежей |
 | **OCR** | ImageToText.com — фото → поля формы |
-| **3D** | Карта разделов + консультант (GLB) |
+| **3D** | Карта разделов + консультант Алексей (GLB, далёкая камера) |
+| **TTS** | Speechify, выбор голоса (русские + multilingual) |
 
 ---
 
@@ -76,7 +77,13 @@ mvp/
 
 ## Документация
 
-Полное оглавление: **[docs/README.md](docs/README.md)**
+Полное оглавление (12 документов): **[docs/README.md](docs/README.md)**
+
+- Запуск: [docs/LOCAL_DEV.md](docs/LOCAL_DEV.md)
+- API: [docs/API.md](docs/API.md)
+- Озвучка: [docs/TTS.md](docs/TTS.md)
+- 3D / камера: [docs/CHARACTER_3D.md](docs/CHARACTER_3D.md)
+- AI-консультант: [docs/ASSISTANT.md](docs/ASSISTANT.md)
 
 | Файл | Содержание |
 |------|------------|

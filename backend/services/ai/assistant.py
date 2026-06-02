@@ -1,4 +1,4 @@
-"""AI Assistant — OpenRouter / OpenAI + rule-based fallback, ссылки на sber-bank.by."""
+"""AI Assistant — OpenRouter / OpenAI + rule-based fallback, навигация по SBBOL."""
 from __future__ import annotations
 import json
 import logging
@@ -16,6 +16,7 @@ from services.navigation.demo_routes import (
     DEMO_ROUTE_LABELS,
     build_demo_nav_path,
     is_create_document_request,
+    is_navigation_message,
     match_demo_route,
 )
 from services.products.product_service import ProductService
@@ -37,56 +38,72 @@ from services.sber_links import (
     response_message,
     sanitize_message_urls,
     sanitize_url,
+    section_label,
     section_url,
 )
 
 INTENTS = [
     {
+        "intent": "payments",
+        "patterns": [
+            r"платёж", r"платеж", r"перевод", r"расчёт", r"расчет", r"поручени",
+            r"контрагент", r"документ", r"оплат",
+        ],
+        "section": "payments",
+        "product_type": None,
+    },
+    {
+        "intent": "statement",
+        "patterns": [r"выписк", r"оборот", r"справк", r"остаток\s+на\s+сч"],
+        "section": "statement",
+        "product_type": None,
+    },
+    {
+        "intent": "salary",
+        "patterns": [r"зарплат", r"сотрудник", r"ведомост", r"зарплатн\w*\s+проект"],
+        "section": "salary",
+        "product_type": None,
+    },
+    {
         "intent": "credit",
-        "patterns": [r"кредит", r"займ", r"ссуд", r"рассрочк", r"занять", r"денег"],
-        "section": "credits",
-        "product_type": "credit",
-    },
-    {
-        "intent": "mortgage",
-        "patterns": [r"ипотек", r"квартир", r"жиль", r"недвижимост"],
-        "section": "credits",
-        "product_type": "credit",
-    },
-    {
-        "intent": "refinance",
-        "patterns": [r"рефинанс", r"снизить ставк", r"объединить кредит"],
+        "patterns": [r"кредит", r"овердрафт", r"ссуд", r"кредитн\w*\s+лин"],
         "section": "credits",
         "product_type": "credit",
     },
     {
         "intent": "deposit",
-        "patterns": [r"вклад", r"депозит", r"накопи", r"сбережен", r"положить деньги", r"копилк"],
+        "patterns": [r"депозит", r"вклад", r"разместить\s+средств"],
         "section": "deposits",
         "product_type": "deposit",
     },
     {
-        "intent": "investment",
-        "patterns": [r"инвестиц", r"акци", r"облигац", r"монет", r"бирж", r"фонд"],
-        "section": "investments",
-        "product_type": "investment",
-    },
-    {
-        "intent": "insurance",
-        "patterns": [r"страхов", r"полис", r"застрах"],
-        "section": "insurance",
-        "product_type": None,
-    },
-    {
         "intent": "cards",
-        "patterns": [r"карт", r"белкарт", r"стикер", r"спасибо", r"сберпрайм"],
+        "patterns": [r"корпоративн\w*\s+карт", r"business\s+card", r"visa\s+business"],
         "section": "cards",
         "product_type": None,
     },
     {
-        "intent": "payment",
-        "patterns": [r"платёж", r"платеж", r"оплат", r"перевод", r"ерип", r"жкх", r"коммунал"],
-        "section": "payments",
+        "intent": "ved",
+        "patterns": [r"вэд", r"валютн\w*\s+контрол", r"таможн", r"экспорт", r"импорт"],
+        "section": "ved",
+        "product_type": None,
+    },
+    {
+        "intent": "counterparty",
+        "patterns": [r"проверк\w*\s+контрагент", r"благонадёжност", r"due\s+diligence"],
+        "section": "counterparty_check",
+        "product_type": None,
+    },
+    {
+        "intent": "services",
+        "patterns": [r"аналитик", r"курс\w*\s+валют", r"обучени", r"сервис"],
+        "section": "services",
+        "product_type": None,
+    },
+    {
+        "intent": "products",
+        "patterns": [r"продукт", r"услуг\w*\s+для\s+бизнес", r"юрлиц", r"организац"],
+        "section": "products",
         "product_type": None,
     },
 ]
@@ -104,6 +121,9 @@ SUM_LABELED_PATTERN = re.compile(
 DATE_PATTERN = re.compile(r"(\d{1,2})[./](\d{1,2})[./](\d{2,4})")
 
 _FORM_FILL_SESSIONS: Dict[str, Dict[str, Any]] = {}
+
+# «очередность» и «очерёдность»
+URGENCY_WORD_RE = r"очер[её]дност"
 
 
 @dataclass
@@ -149,7 +169,7 @@ def _looks_like_form_fill(message: str) -> bool:
     triggers = [
         r"заполни", r"заполн", r"введи", r"укажи", r"поставь", r"сумм",
         r"назначени", r"получател", r"номер документ", r"дата документ",
-        r"очередност", r"бик", r"сч[её]т", r"платежк", r"поручени",
+        URGENCY_WORD_RE, r"бик", r"сч[её]т", r"платежк", r"поручени",
         r"оплат[аы]\s", r"документ", r"получател",
     ]
     return any(re.search(p, msg) for p in triggers)
@@ -165,6 +185,80 @@ def _wants_form_fill_help(message: str) -> bool:
             msg,
         )
     )
+
+
+_FIELD_HINT_PATTERNS = (
+    r"сумм",
+    r"назначени",
+    r"получател",
+    r"контрагент",
+    r"номер",
+    r"дата",
+    r"очеред",
+    r"сч[её]т",
+    r"iban",
+)
+
+
+def _count_field_hints(message: str) -> int:
+    msg = message.lower()
+    return sum(1 for pat in _FIELD_HINT_PATTERNS if re.search(pat, msg))
+
+
+def _is_multi_field_message(message: str) -> bool:
+    parts = [p.strip() for p in re.split(r"[,;\n]+", message) if p.strip()]
+    return len(parts) > 1 or _count_field_hints(message) >= 2
+
+
+def _message_mentions_amount(message: str) -> bool:
+    msg = message.lower()
+    if re.search(URGENCY_WORD_RE, msg, re.I) and not re.search(r"сумм", msg):
+        return bool(
+            SUM_LABELED_PATTERN.search(message)
+            or AMOUNT_ONLY_PATTERN.match(message.strip())
+        )
+    return bool(
+        SUM_LABELED_PATTERN.search(message)
+        or AMOUNT_ONLY_PATTERN.match(message.strip())
+        or (
+            re.search(r"сумм|amount|руб|byn|на\s+сумму", msg)
+            and AMOUNT_PATTERN.search(message)
+        )
+    )
+
+
+def _parse_urgency_value(text: str) -> Optional[str]:
+    raw = text.strip()
+    if not raw:
+        return None
+    m = re.search(
+        rf"{URGENCY_WORD_RE}\w*(?:\s+платеж\w*)?\s*[:—-]?\s*(\d{{1,2}})",
+        raw,
+        re.I,
+    )
+    if m:
+        return m.group(1)
+    only_digit = re.match(r"^\s*(\d{1,2})\s*$", raw)
+    if only_digit:
+        return only_digit.group(1)
+    word_digits = (
+        ("шест", "6"),
+        ("пят", "5"),
+        ("четверт", "4"),
+        ("трет", "3"),
+        ("втор", "2"),
+        ("перв", "1"),
+    )
+    lower = raw.lower()
+    if re.search(URGENCY_WORD_RE, lower, re.I):
+        for stem, digit in word_digits:
+            if stem in lower:
+                return digit
+    return None
+
+
+def _field_value_boundary() -> str:
+    return r"(?=\s*,\s*|\s+(?:назначени|получател|контрагент|номер|дата|очеред|сумм)|$)"
 
 
 def _could_be_field_value(message: str) -> bool:
@@ -272,9 +366,11 @@ def _parse_pending_value(
             return FormFieldAction(field=meta["name"], value=m.group(1), label=meta.get("label"))
 
     if pending_key == "PAYMENT_URGENCY":
-        m = re.match(r"^\s*(\d)\s*$", text)
-        if m:
-            return FormFieldAction(field=meta["name"], value=m.group(1), label=meta.get("label"))
+        urgency_val = _parse_urgency_value(text)
+        if urgency_val:
+            return FormFieldAction(
+                field=meta["name"], value=urgency_val, label=meta.get("label")
+            )
 
     if pending_key == "PAYMENT_PURPOSE":
         value = re.sub(
@@ -319,14 +415,7 @@ def _rule_based_form_fill(
         or AMOUNT_ONLY_PATTERN.match(message.strip())
         or AMOUNT_PATTERN.search(message)
     )
-    if amount_match and (
-        SUM_LABELED_PATTERN.search(message)
-        or AMOUNT_ONLY_PATTERN.match(message.strip())
-        or any(w in msg for w in ["сумм", "amount", "руб", "byn", "на сумму"])
-        or _looks_like_form_fill(message)
-        or "," in message
-        or ";" in message
-    ):
+    if amount_match and _message_mentions_amount(message):
         field = next((f for f in fields if f["key"] == "COMMON_COLUMNS_AMOUNT"), None)
         if field:
             actions.append(
@@ -402,14 +491,14 @@ def _rule_based_form_fill(
                 FormFieldAction(field=field["name"], value=value, label=field.get("label"))
             )
 
-    urgency = re.search(r"очередност\w*\s*[:—-]?\s*(\d+)", msg)
-    if urgency:
+    urgency_val = _parse_urgency_value(message)
+    if urgency_val:
         field = next((f for f in fields if f["key"] == "PAYMENT_URGENCY"), None)
         if field:
             actions.append(
                 FormFieldAction(
                     field=field["name"],
-                    value=urgency.group(1),
+                    value=urgency_val,
                     label=field.get("label"),
                 )
             )
@@ -430,12 +519,17 @@ def _rule_based_form_fill(
                 )
             )
 
+    boundary = _field_value_boundary()
     for fld in fields:
         for alias in fld.get("aliases", []) + [fld.get("label", "")]:
             if not alias or fld.get("key") in ("PAYMENT_INDICATION",):
                 continue
             alias_l = alias.lower()
-            m = re.search(rf"{re.escape(alias_l)}\s*[:—-]?\s*(.+)$", msg)
+            m = re.search(
+                rf"{re.escape(alias_l)}\s*[:—-]?\s*(.+?){boundary}",
+                message,
+                re.I,
+            )
             if m:
                 actions.append(
                     FormFieldAction(
@@ -464,8 +558,49 @@ def _parse_bare_segment(part: str, schema: dict) -> Optional[List[FormFieldActio
     fields = schema.get("fields", [])
     actions: List[FormFieldAction] = []
 
-    amount_only = re.match(r"^\s*(\d+(?:[.,]\d+)?)\s*$", text)
-    if amount_only:
+    recipient = re.match(
+        r"^(?:получател\w*|контрагент\w*)\s*[:—-]?\s*(.+)$",
+        text,
+        re.I,
+    )
+    if recipient:
+        value = recipient.group(1).strip().rstrip(".,;")
+        field = next((f for f in fields if f["key"] == "CONTRAGENT_ID"), None)
+        if field and len(value) >= 2:
+            return [
+                FormFieldAction(field=field["name"], value=value, label=field.get("label"))
+            ]
+
+    amount_labeled = re.match(
+        r"^сумм\w*\s*[:—-]?\s*(\d+(?:[.,]\d+)?)\s*(?:руб|byn|р\.?)?\s*$",
+        text,
+        re.I,
+    )
+    if amount_labeled:
+        field = next((f for f in fields if f["key"] == "COMMON_COLUMNS_AMOUNT"), None)
+        if field:
+            return [
+                FormFieldAction(
+                    field=field["name"],
+                    value=amount_labeled.group(1).replace(",", "."),
+                    label=field.get("label"),
+                )
+            ]
+
+    urgency_part = _parse_urgency_value(text)
+    if urgency_part:
+        field = next((f for f in fields if f["key"] == "PAYMENT_URGENCY"), None)
+        if field:
+            return [
+                FormFieldAction(
+                    field=field["name"],
+                    value=urgency_part,
+                    label=field.get("label"),
+                )
+            ]
+
+    amount_only = re.match(r"^\s*(\d+(?:[.,]\d+)?)\s*(?:руб|byn|р\.?)?\s*$", text, re.I)
+    if amount_only and not re.search(URGENCY_WORD_RE, text, re.I):
         field = next((f for f in fields if f["key"] == "COMMON_COLUMNS_AMOUNT"), None)
         if field:
             return [
@@ -476,30 +611,30 @@ def _parse_bare_segment(part: str, schema: dict) -> Optional[List[FormFieldActio
                 )
             ]
 
+    purpose_value: Optional[str] = None
     if re.search(r"^назначени", text, re.I):
-        value = re.sub(
+        purpose_value = re.sub(
             r"^назначени[ея]\s*(?:платеж\w*|оплаты?)?\s*[:—-]?\s*",
             "",
             text,
             flags=re.I,
         ).strip()
     elif re.search(r"^(?:оплат\w+|перевод)\s+", text, re.I):
-        value = text.strip()
-    else:
-        return None
+        purpose_value = text.strip()
+    elif re.search(r"[а-яёa-z]", text, re.I) and not re.match(r"^\s*\d", text):
+        purpose_value = text.strip()
 
-    if len(value) < 2:
-        return None
+    if purpose_value and len(purpose_value) >= 2:
+        field = next((f for f in fields if f["key"] == "PAYMENT_PURPOSE"), None)
+        if field:
+            return [
+                FormFieldAction(
+                    field=field["name"],
+                    value=purpose_value.rstrip(".,;"),
+                    label=field.get("label"),
+                )
+            ]
 
-    field = next((f for f in fields if f["key"] == "PAYMENT_PURPOSE"), None)
-    if field:
-        actions.append(
-            FormFieldAction(
-                field=field["name"],
-                value=value.rstrip(".,;"),
-                label=field.get("label"),
-            )
-        )
     return actions or None
 
 
@@ -509,7 +644,7 @@ def _merge_form_fill_parsing(
     *,
     pending_key: Optional[str] = None,
 ) -> Optional[List[FormFieldAction]]:
-    if pending_key:
+    if pending_key and not _is_multi_field_message(message):
         return _rule_based_form_fill(message, form_type, pending_key=pending_key)
 
     schema = load_form_schema(form_type)
@@ -554,14 +689,15 @@ class AssistantService:
         if not session_id:
             session_id = str(uuid.uuid4())
 
+        if is_navigation_message(message):
+            demo_nav = self._maybe_demo_navigation(message, session_id)
+            if demo_nav:
+                return demo_nav
+
         if form_type:
             form_reply = await self._handle_payment_form_chat(message, form_type, session_id)
             if form_reply is not None:
                 return form_reply
-
-        demo_nav = self._maybe_demo_navigation(message, session_id)
-        if demo_nav:
-            return demo_nav
 
         insurance_reply = self._maybe_insurance_reply(message, session_id)
         if insurance_reply:
@@ -582,6 +718,9 @@ class AssistantService:
         if not schema:
             return None
 
+        if is_navigation_message(message):
+            return None
+
         state = _get_form_session(session_id, form_type)
         engage = (
             _wants_form_fill_help(message)
@@ -597,6 +736,8 @@ class AssistantService:
 
         state.active = True
         pending_before = state.pending_key
+        if _is_multi_field_message(message):
+            state.pending_key = None
         parsed = _merge_form_fill_parsing(
             message, form_type, pending_key=state.pending_key
         )
@@ -811,31 +952,12 @@ class AssistantService:
         self, message: str, session_id: str
     ) -> Optional[AssistantResponse]:
         intent_cfg = _detect_intent(message)
-        if not intent_cfg or intent_cfg["intent"] != "insurance":
+        if not intent_cfg or "страхов" not in message.lower():
             return None
-
-        specific = detect_insurance_product(message)
-        nav_path = self.nav.get_path("insurance")
-
-        if specific:
-            link = format_link_line(specific["label"], specific["url"])
-            return AssistantResponse(
-                message=f"Подобрал программу страхования:\n{link}",
-                session_id=session_id,
-                navigation_path=nav_path,
-                action_buttons=[
-                    ActionButton(
-                        label="Открыть на сайте",
-                        url=sanitize_url(specific["url"]),
-                        variant="primary",
-                    ),
-                ],
-            )
-
         return AssistantResponse(
             message=insurance_clarify_message(),
             session_id=session_id,
-            navigation_path=nav_path,
+            navigation_path=self.nav.get_path("products"),
             action_buttons=[
                 ActionButton(
                     label=b["label"],
@@ -856,9 +978,14 @@ class AssistantService:
                 session_id=session_id,
                 action_buttons=[
                     ActionButton(
-                        label="Сайт Сбер Банка",
-                        url=section_url("home"),
+                        label="Главная СберБизнес",
+                        url="/",
                         variant="primary",
+                    ),
+                    ActionButton(
+                        label="Расчёты",
+                        url="/payments",
+                        variant="secondary",
                     ),
                 ],
             )
@@ -879,7 +1006,7 @@ class AssistantService:
 
         buttons = [
             ActionButton(
-                label="Открыть на сайте",
+                label=f"Открыть: {section_label(section)}",
                 url=sanitize_url(section_url(section)),
                 variant="primary",
             ),
@@ -928,7 +1055,7 @@ class AssistantService:
                 "type": "function",
                 "function": {
                     "name": "find_products",
-                    "description": "Найти банковские продукты Сбера",
+                    "description": "Найти продукты СберБизнес для организации",
                     "parameters": {
                         "type": "object",
                         "properties": {
@@ -942,7 +1069,7 @@ class AssistantService:
                 "type": "function",
                 "function": {
                     "name": "navigate",
-                    "description": "Указать раздел на официальном сайте sber-bank.by (cards, deposits, credits, investments, insurance, payments)",
+                    "description": "Перейти в раздел SBBOL: payments, statement, salary, products, credits, deposits, cards, services, settings",
                     "parameters": {
                         "type": "object",
                         "properties": {"section": {"type": "string"}},
@@ -1019,7 +1146,7 @@ class AssistantService:
                     ptype = args.get("product_type")
                     buttons.append(
                         ActionButton(
-                            label="Раздел на sber-bank.by",
+                            label="Раздел в SBBOL",
                             url=catalog_url(ptype),
                             variant="secondary",
                         )
@@ -1037,14 +1164,14 @@ class AssistantService:
         if form_actions:
             filled = ", ".join(a.label or a.field.split(".")[-1] for a in form_actions)
             text = ai_msg.content or f"Заполняю поля: {filled}."
-        elif "https://www.sber-bank.by" not in text:
-            text = f"{text}\n\n{format_link_line('Актуальные условия', section_url(last_section))}"
+        elif not re.search(r"(^/\w|sbbol\.bps-sberbank)", text):
+            text = f"{text}\n\n{format_link_line('Раздел СберБизнес', section_url(last_section))}"
 
         if not form_actions:
             buttons.insert(
                 0,
                 ActionButton(
-                    label="Открыть на сайте",
+                    label="Перейти в раздел",
                     url=sanitize_url(section_url(last_section)),
                     variant="primary",
                 ),
