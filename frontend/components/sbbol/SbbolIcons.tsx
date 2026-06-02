@@ -109,7 +109,13 @@ export function IconImageUpload({ className = "w-6 h-6" }: { className?: string 
 export function IconPhone({ className = "w-6 h-6" }: { className?: string }) {
   return (
     <svg className={className} viewBox="0 0 24 24" fill="none" aria-hidden>
-      <path d="M8.5 4H6.5C5.67 4 5 4.67 5 5.5C5 14.06 9.94 19 18.5 19C19.33 19 20 18.33 20 17.5V15.5C20 14.67 19.33 14 18.5 14H16C15.17 14 14.5 14.67 14.5 15.5C14.5 15.78 14.28 16 14 16C13.72 16 13.5 15.78 13.5 15.5V13.5C13.5 12.67 12.83 12 12 12H10C9.17 12 8.5 11.33 8.5 10.5V8.5C8.5 7.67 7.83 7 7 7H5.5C4.67 7 4 6.33 4 5.5V4" stroke="#7D838A" strokeWidth="1.5" strokeLinecap="round" />
+      <path
+        d="M2.25 6.75c0 8.284 6.716 15 15 15h2.25a2.25 2.25 0 002.25-2.25v-1.372c0-.516-.351-.966-.852-1.091l-4.423-1.106c-.44-.11-.902.055-1.173.417l-.97 1.293c-.282.376-.769.542-1.21.38a12.035 12.035 0 01-7.143-7.143c-.162-.441.004-.928.38-1.21l1.293-.97c.363-.271.527-.734.417-1.173L6.963 3.102a1.125 1.125 0 00-1.091-.852H4.5A2.25 2.25 0 002.25 4.5v2.25z"
+        stroke="#7D838A"
+        strokeWidth="1.5"
+        strokeLinecap="round"
+        strokeLinejoin="round"
+      />
     </svg>
   );
 }
