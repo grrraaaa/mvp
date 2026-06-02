@@ -1,5 +1,7 @@
 # 3D-консультант (Алексей)
 
+> Схема подсистемы: [FEATURE_MAP.md §10](./FEATURE_MAP.md#10-3d-консультант-алексей)
+
 Модель по умолчанию: **`frontend/public/models/personage.glb`** (~20 MB, Sketchfab scan).
 
 | Параметр | Значение |

@@ -1,19 +1,22 @@
 # Документация SBBOL Demo (MVP)
 
-Полное описание демо **СберБизнес** с AI-консультантом (Алексей), 3D-навигацией по разделам, озвучкой ответов и заполнением платёжных форм.
+Демо **СберБизнес** с AI-консультантом **Алексей**, 3D-картой разделов, озвучкой ответов и AI-заполнением платёжных форм.
+
+**Начните здесь:** [FEATURE_MAP.md](./FEATURE_MAP.md) — карта фич с Mermaid-диаграммами.
 
 | Документ | Содержание |
 |----------|------------|
+| **[FEATURE_MAP.md](./FEATURE_MAP.md)** | **Карта фич, mindmap, pipeline, матрица** |
 | [../README.md](../README.md) | Обзор репозитория, быстрый старт |
 | [LOCAL_DEV.md](./LOCAL_DEV.md) | Локальный запуск, проверка API и ИИ |
 | [VERCEL_DEPLOY.md](./VERCEL_DEPLOY.md) | Деплой на Vercel (Next.js + FastAPI) |
-| [ARCHITECTURE.md](./ARCHITECTURE.md) | Архитектура, потоки данных, диаграммы |
+| [ARCHITECTURE.md](./ARCHITECTURE.md) | Архитектура и потоки данных |
 | [TECH_STACK.md](./TECH_STACK.md) | Стек и зависимости |
 | [FILE_STRUCTURE.md](./FILE_STRUCTURE.md) | Дерево каталогов |
 | [MODULES.md](./MODULES.md) | Модули frontend / backend |
 | [API.md](./API.md) | REST API (эндпоинты, примеры) |
-| [ASSISTANT.md](./ASSISTANT.md) | Поведение AI: только СберБизнес, навигация, формы |
-| [TTS.md](./TTS.md) | Озвучка Speechify, выбор голоса |
+| [ASSISTANT.md](./ASSISTANT.md) | AI: только SBBOL, навигация, формы |
+| [TTS.md](./TTS.md) | Speechify, выбор голоса |
 | [UI_AND_3D.md](./UI_AND_3D.md) | UI, адаптив, карта планет, чат |
 | [CHARACTER_3D.md](./CHARACTER_3D.md) | 3D-консультант, камера, липсинг |
 
@@ -23,36 +26,26 @@
 
 ---
 
-## Возможности
+## Что умеет демо (кратко)
 
-### Интерфейс СберБизнес
+```mermaid
+flowchart LR
+    A[Shell СберБизнес] --> B[AI-чат Алексей]
+    B --> C[Навигация / формы / OCR]
+    B --> D[3D + TTS]
+    E[Карта планет] --> A
+    D --> F[Speechify ru-RU]
+```
 
-- Shell: шапка, sidebar 104px, footer, мобильный гамбургер
-- Страницы: `/`, `/payments`, `/statement`, `/salary`, формы `paydocbyn`, `paydoccur`, instant и др.
-- Контент: захваченный HTML (`CapturedSbbolPage`) + синтетические страницы (`SyntheticPageBody`)
+| Блок | Фичи |
+|------|------|
+| **UI** | Shell, sidebar, 19+ маршрутов, captured HTML |
+| **AI** | LLM / rules, SBBOL-only, `navigation_path`, `form_actions` |
+| **Ввод** | текст, голос, фото OCR |
+| **3D** | планеты + GLB-консультант, vertex lip sync |
+| **TTS** | Speechify, 59 голосов на выбор |
 
-### AI-консультант
-
-- Чат: плавающая панель (`AssistantFloatingChat`) и встроенная панель
-- LLM: OpenRouter / OpenAI (`OPENAI_API_KEY`) или **rule-based** без ключа
-- Контекст: только **СберБизнес** (внутренние пути `/…`, не retail `sber-bank.by` в ответах чата)
-- Навигация по демо-маршрутам (`demo_routes.py`, `navigation_path` в ответе)
-- Заполнение полей форм на страницах платежей (текст + быстрые чипы)
-- Голосовой ввод: Web Speech API (`useWebSpeechInput`)
-- OCR с фото: ImageToText.com → `POST /api/forms/ocr-fill`
-
-### Озвучка (TTS)
-
-- Провайдер по умолчанию: **Speechify** (`simba-multilingual`, `ru-RU`)
-- Выбор голоса в UI: русские (50) + многоязычные (9), сохранение в `localStorage`
-- Запасные провайдеры: Soniox, Deepgram
-- Без серверного TTS — fallback на `speechSynthesis` браузера
-
-### 3D
-
-- **Карта разделов:** планеты → внутренние URL демо (`planetMap.ts`), слайдер `PlanetNavSlider`
-- **Консультант:** `personage.glb`, портретный режим, тёмный фон, камера на дистанции ~6.9 m
-- Липсинг: деформация вершин рта (`mouthVertexDeform.ts`) — у скана нет morph targets
+Подробная матрица и диаграммы → [FEATURE_MAP.md](./FEATURE_MAP.md).
 
 ---
 
@@ -87,9 +80,6 @@ cd mvp\frontend
 npm install
 npm run dev
 
-# Сборка
-cd mvp\frontend && npm run build
-
 # Деплой
 cd mvp && vercel --prod
 ```
@@ -103,6 +93,6 @@ Invoke-RestMethod http://127.0.0.1:8000/api/health
 Invoke-RestMethod http://127.0.0.1:8000/api/tts/status
 ```
 
-В браузере: http://localhost:3000 → открыть AI-чат → задать «выписка по счёту» → переход в `/statement`.
+В браузере: http://localhost:3000 → AI-чат → «выписка по счёту» → `/statement`.
 
-Подробные сценарии: [LOCAL_DEV.md](./LOCAL_DEV.md).
+Сценарии демо: [FEATURE_MAP.md §14](./FEATURE_MAP.md#14-быстрые-сценарии-для-демо).

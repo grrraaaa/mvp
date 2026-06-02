@@ -77,23 +77,20 @@ mvp/
 
 ## Документация
 
-Полное оглавление (12 документов): **[docs/README.md](docs/README.md)**
-
-- Запуск: [docs/LOCAL_DEV.md](docs/LOCAL_DEV.md)
-- API: [docs/API.md](docs/API.md)
-- Озвучка: [docs/TTS.md](docs/TTS.md)
-- 3D / камера: [docs/CHARACTER_3D.md](docs/CHARACTER_3D.md)
-- AI-консультант: [docs/ASSISTANT.md](docs/ASSISTANT.md)
+**Карта фич (Mermaid):** **[docs/FEATURE_MAP.md](docs/FEATURE_MAP.md)**  
+Оглавление (13 документов): **[docs/README.md](docs/README.md)**
 
 | Файл | Содержание |
 |------|------------|
-| [LOCAL_DEV.md](docs/LOCAL_DEV.md) | Локальный запуск, проверка ИИ |
-| [VERCEL_DEPLOY.md](docs/VERCEL_DEPLOY.md) | Vercel, env, Postgres |
-| [UI_AND_3D.md](docs/UI_AND_3D.md) | Адаптив, иконки, 3D-сцены |
-| [ARCHITECTURE.md](docs/ARCHITECTURE.md) | Архитектура |
-| [FILE_STRUCTURE.md](docs/FILE_STRUCTURE.md) | Дерево файлов |
-| [TECH_STACK.md](docs/TECH_STACK.md) | Стек |
-| [CHARACTER_3D.md](docs/CHARACTER_3D.md) | GLB-консультант |
+| **[FEATURE_MAP.md](docs/FEATURE_MAP.md)** | **Mindmap, pipeline, матрица фич** |
+| [LOCAL_DEV.md](docs/LOCAL_DEV.md) | Локальный запуск |
+| [ARCHITECTURE.md](docs/ARCHITECTURE.md) | Архитектура + C4 |
+| [ASSISTANT.md](docs/ASSISTANT.md) | AI-консультант SBBOL |
+| [TTS.md](docs/TTS.md) | Speechify, голоса |
+| [CHARACTER_3D.md](docs/CHARACTER_3D.md) | 3D Алексей |
+| [UI_AND_3D.md](docs/UI_AND_3D.md) | UI и 3D-сцены |
+| [API.md](docs/API.md) | REST API |
+| [VERCEL_DEPLOY.md](docs/VERCEL_DEPLOY.md) | Деплой |
 
 ---
 

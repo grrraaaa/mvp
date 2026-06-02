@@ -1,17 +1,20 @@
 # Модули
 
+> Карта фич и связи модулей: [FEATURE_MAP.md](./FEATURE_MAP.md) (§2, §12)
+
 ## Frontend
 
 | Модуль | Файлы | Задача |
 |--------|-------|--------|
-| Shell | `SbbolShell`, `SbbolAppLayout`, `PlanetNavSlider` | Layout, навигация, слайдер планет |
+| Shell | `SbbolShell`, `SbbolAppLayout`, `PlanetNavSlider` | Layout, nav, слайдер планет |
 | SBBOL pages | `CapturedSbbolPage`, `SbbolRoutePage`, `PaymentFormPageContent` | Страницы демо |
 | AI Chat | `AssistantFloatingChat`, `AssistantPanel`, `ChatInput` | Чат, микрофон, OCR |
 | TTS UI | `AssistantVoicePicker`, `useAssistantSpeech`, `ttsStore` | Озвучка и выбор голоса |
-| 3D Map | `PlanetMapOverlay`, `SolarSystemScene`, `SberSolarSystem` | Карта разделов |
+| 3D Map | `PlanetMapOverlay`, `SolarSystemScene`, `PlanetLink` | Карта разделов, hover tooltips |
 | 3D Character | `CharacterRoomScene`, `GlbCharacter3D`, `mouthVertexDeform` | Консультант Алексей |
 | Form AI | `useSbbolFormFill`, `assistantQuickChips` | Заполнение форм |
 | Character settings | `CharacterSettings`, `characterStore` | Имя, пресеты, голос |
+| Icons / UI | `SbbolIcons`, `globals.css` | Иконки header, токены SBBOL |
 
 ## Backend
 
@@ -34,5 +37,34 @@
 | Speechify | `SPEECHIFY_*` | [TTS.md](./TTS.md) |
 | ImageToText | `IMAGETOTEXT_*` | [API.md](./API.md) |
 | Vercel Postgres | `POSTGRES_URL` | [VERCEL_DEPLOY.md](./VERCEL_DEPLOY.md) |
+
+## Диаграмма зависимостей модулей
+
+```mermaid
+flowchart TB
+    subgraph FE_M["Frontend modules"]
+        SHELL[SbbolShell]
+        CHAT[Assistant*]
+        MAP[PlanetMap*]
+        CHAR[character3d/*]
+        STORES[store/*]
+    end
+
+    subgraph BE_M["Backend modules"]
+        API_CHAT[api/chat]
+        API_TTS[api/tts]
+        API_FORMS[api/forms]
+        SVC_AI[services/ai]
+        SVC_TTS[services/tts]
+    end
+
+    CHAT --> API_CHAT & API_TTS
+    CHAT --> STORES
+    MAP --> STORES
+    CHAR --> STORES
+    API_CHAT --> SVC_AI
+    API_TTS --> SVC_TTS
+    CHAT --> API_FORMS
+```
 
 См. [UI_AND_3D.md](./UI_AND_3D.md), [FILE_STRUCTURE.md](./FILE_STRUCTURE.md).

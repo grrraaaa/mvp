@@ -1,5 +1,7 @@
 # REST API (FastAPI)
 
+> API в контексте системы: [FEATURE_MAP.md §2](./FEATURE_MAP.md#2-карта-фич-по-слоям) · [ARCHITECTURE.md §4](./ARCHITECTURE.md#4-backend--маршруты)
+
 Базовый URL локально: `http://127.0.0.1:8000`  
 На Vercel: `https://<ваш-домен>/api` (тот же origin, что и фронт).
 

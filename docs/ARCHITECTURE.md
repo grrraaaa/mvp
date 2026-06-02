@@ -1,78 +1,118 @@
 # Архитектура — SBBOL Demo
 
+> Полная **карта фич и диаграммы**: [FEATURE_MAP.md](./FEATURE_MAP.md)
+
 ## 1. Обзор
 
-**Next.js 15** (демо СберБизнес) + **FastAPI** на одном домене (Vercel) или раздельно локально.
+**Next.js 15** + **FastAPI** на одном домене (Vercel) или раздельно локально.
 
 | Слой | Назначение |
 |------|------------|
-| **UI** | `SbbolShell`, страницы платежей/выписки, плавающий AI-чат |
-| **3D** | Карта разделов (планеты) + консультант GLB в чате |
-| **AI** | OpenRouter/OpenAI + rule-based; навигация `demo_routes.py` |
+| **UI** | `SbbolShell`, страницы, плавающий AI-чат |
+| **3D** | Карта планет + GLB-консультант Алексей |
+| **AI** | OpenRouter / rule-based, SBBOL-only |
 | **TTS** | Speechify → Soniox → Deepgram → браузер |
 | **OCR** | ImageToText для фото платёжек |
 
-Референс продукта: https://sbbol.bps-sberbank.by/
-
 ```mermaid
-graph TB
-    U([Пользователь]) --> FE[Next.js]
+C4Context
+    title SBBOL Demo — контекст системы
 
-    subgraph FE
-        SHELL[SbbolShell + PlanetNavSlider]
-        CHAT[AssistantFloatingChat]
-        MAP[PlanetMapOverlay]
-        STUDIO[CharacterRoomScene + GlbCharacter3D]
-        TTS_UI[AssistantVoicePicker]
-    end
+    Person(user, "Пользователь", "Юрлицо в демо СберБизнес")
+    System(demo, "SBBOL Demo", "Next.js + FastAPI MVP")
+    System_Ext(sbbol, "sbbol.bps-sberbank.by", "Референс UI")
+    System_Ext(or, "OpenRouter", "LLM")
+    System_Ext(sp, "Speechify", "TTS ru-RU")
+    System_Ext(ocr, "ImageToText", "OCR")
 
-    FE -->|/api/chat/guest| API[FastAPI]
-    FE -->|/api/tts/*| API
-
-    subgraph API
-        AIS[AssistantService]
-        TTS[Speechify TTS]
-        FORMS[forms OCR]
-        PRD[ProductService]
-    end
-
-    AIS --> LLM[OpenRouter]
-    TTS --> SP[Speechify API]
-    PRD --> DB[(Postgres / SQLite)]
+    Rel(user, demo, "HTTPS")
+    Rel(demo, or, "chat completion")
+    Rel(demo, sp, "TTS API")
+    Rel(demo, ocr, "OCR API")
+    Rel(demo, sbbol, "visual reference")
 ```
 
 ---
 
-## 2. Деплой Vercel
+## 2. Контейнеры (Vercel)
+
+```mermaid
+flowchart TB
+    subgraph VERCEL["Единый домен Vercel"]
+        FE["Next.js 15<br/>frontend/"]
+        API["Python ASGI<br/>api/index.py → main.py"]
+    end
+
+    FE -->|rewrite /api/*| API
+    API --> DB[(Postgres / SQLite)]
+    API --> OR[OpenRouter]
+    API --> SP[Speechify]
+```
 
 | Часть | Путь |
 |-------|------|
 | Frontend build | `frontend/` |
 | Python API | `api/index.py` → `backend/main.py` |
-| Rewrites | `/api/*` → serverless Python |
+| Rewrites | `/api/*` → serverless |
 
 См. [VERCEL_DEPLOY.md](./VERCEL_DEPLOY.md).
 
 ---
 
-## 3. 3D
+## 3. Frontend — основные потоки
 
-### Карта разделов
+```mermaid
+flowchart LR
+    subgraph Pages
+        P1["/"]
+        P2["/payments/*"]
+        P3["/statement/*"]
+    end
 
-`PlanetMapOverlay` → `SolarSystemScene` → `SberSolarSystem`  
-Данные: `lib/sber/planetMap.ts` — **внутренние URL** (`/payments`, `/statement`, …).  
-Слайдер: `PlanetNavSlider` в `SbbolShell`.
+    subgraph Assistant
+        FAB[FloatingChat]
+        AP[AssistantPanel]
+        CHAR[3D Алексей]
+    end
 
-### Консультант в чате
+    subgraph Map3D
+        SL[PlanetNavSlider]
+        PO[PlanetMapOverlay]
+    end
 
-`AssistantCharacter` → `CharacterRoomScene` → `GlbCharacter3D`  
-Портретный режим, камера Z ≈ 6.9, липсинг vertex deform.
+    SHELL[SbbolShell] --> Pages & SL
+    FAB --> AP --> CHAR
+    SL --> PO
+```
 
-См. [UI_AND_3D.md](./UI_AND_3D.md), [CHARACTER_3D.md](./CHARACTER_3D.md).
+Ключевые файлы: [MODULES.md](./MODULES.md) · [FILE_STRUCTURE.md](./FILE_STRUCTURE.md).
 
 ---
 
-## 4. Поток чата
+## 4. Backend — маршруты
+
+```mermaid
+flowchart TD
+    MAIN[main.py FastAPI]
+    MAIN --> CHAT["/api/chat/guest"]
+    MAIN --> TTS["/api/tts/*"]
+    MAIN --> FORMS["/api/forms/ocr-fill"]
+    MAIN --> NAV["/api/navigation/*"]
+    MAIN --> PROD["/api/products"]
+    MAIN --> AUTH["/api/auth/*"]
+    MAIN --> HEALTH["/api/health"]
+
+    CHAT --> ASST[AssistantService]
+    ASST --> DEMO[demo_routes]
+    ASST --> LLM[OpenAI SDK]
+    ASST --> RULES[rule-based]
+```
+
+Полная спецификация: [API.md](./API.md).
+
+---
+
+## 5. Поток чата (sequence)
 
 ```mermaid
 sequenceDiagram
@@ -83,44 +123,27 @@ sequenceDiagram
 
     U->>FE: текст / голос / фото
     FE->>BE: POST /api/chat/guest
-    Note over BE: demo_nav / form_fill / LLM
-    BE-->>FE: message + navigation_path
-    FE->>FE: router.push + lipSync timeline
-    FE->>BE: POST /api/tts/speak (voice_id)
-    BE->>SP: synthesize ru-RU
-    SP-->>FE: MP3
-    FE-->>U: аудио + анимация рта
+    Note over BE: nav → forms → LLM → rules
+    BE-->>FE: message + navigation_path + form_actions
+    FE->>FE: router.push + lipSync
+    FE->>BE: POST /api/tts/speak
+    BE->>SP: ru-RU MP3
+    SP-->>FE: audio
+    FE-->>U: озвучка + анимация
 ```
 
----
-
-## 5. Frontend (ключевые пути)
-
-| Путь | Описание |
-|------|----------|
-| `components/layout/SbbolShell.tsx` | Shell, nav, слайдер планет |
-| `components/assistant/AssistantFloatingChat.tsx` | FAB + чат + TTS + голос |
-| `components/assistant/AssistantVoicePicker.tsx` | Выбор голоса Speechify |
-| `hooks/useAssistantSpeech.ts` | Озвучка ответов |
-| `hooks/useSbbolFormFill.ts` | Заполнение DOM форм |
-| `middleware.ts` | Basic Auth |
-| `lib/api/baseUrl.ts` | Same-origin на Vercel |
+Детали AI: [ASSISTANT.md](./ASSISTANT.md) · TTS: [TTS.md](./TTS.md).
 
 ---
 
-## 6. Backend
+## 6. 3D-подсистемы
 
-| Маршрут | Назначение |
-|---------|------------|
-| `POST /api/chat/guest` | Чат |
-| `GET/POST /api/tts/*` | Статус, голоса, синтез |
-| `POST /api/forms/ocr-fill` | OCR |
-| `GET /api/health` | Статус |
+| Подсистема | Компоненты | Документ |
+|------------|------------|----------|
+| Карта планет | `SberSolarSystem`, `PlanetLink` | [UI_AND_3D.md](./UI_AND_3D.md) |
+| Консультант | `CharacterRoomScene`, `GlbCharacter3D` | [CHARACTER_3D.md](./CHARACTER_3D.md) |
 
-Полный список: [API.md](./API.md).
-
-`AssistantService`: демо-навигация → формы → LLM → rules.  
-Ссылки SBBOL: `services/sber_links.py`.
+Портретная камера: Z ≈ **7.8**, Y offset **-0.30**.
 
 ---
 
@@ -133,5 +156,12 @@ sequenceDiagram
 
 ## 8. Безопасность
 
-- `SITE_ACCESS_*` — Basic Auth (Next.js middleware + FastAPI middleware)
-- Секреты только в `.env` / Vercel Environment (не в git)
+- `SITE_ACCESS_*` — Basic Auth (Next.js middleware + FastAPI)
+- Секреты только в `.env` / Vercel Environment
+
+---
+
+## См. также
+
+- [FEATURE_MAP.md](./FEATURE_MAP.md) — mindmap, матрица фич, все pipeline
+- [TECH_STACK.md](./TECH_STACK.md) — версии пакетов
