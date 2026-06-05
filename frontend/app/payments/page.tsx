@@ -1,13 +1,12 @@
-import { SbbolCapturedRoute } from "@/components/sbbol/SbbolCapturedRoute";
-import { SbbolRoutePage } from "@/components/sbbol/SbbolRoutePage";
-import { getCapturedPageHtml } from "@/lib/sbbol/capturedOrigHtml";
+"use client";
+
+import { SbbolAppLayout } from "@/components/layout/SbbolAppLayout";
+import PaymentsView from "@/components/banking/PaymentsView";
 
 export default function PaymentsPage() {
-  const pageHtml = getCapturedPageHtml("/payments");
-
-  if (pageHtml) {
-    return <SbbolCapturedRoute activeNav="payments" route="/payments" html={pageHtml} />;
-  }
-
-  return <SbbolRoutePage path="/payments" />;
+  return (
+    <SbbolAppLayout>
+      <PaymentsView />
+    </SbbolAppLayout>
+  );
 }

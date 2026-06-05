@@ -106,9 +106,11 @@ def _ocr_extra_fields(text: str, form_type: str) -> List[FormFieldAction]:
 
     unp = UNP_PATTERN.search(text)
     if unp:
-        # Store in recipient if no separate UNP field
-        if "CONTRAGENT_ID" not in seen:
-            pass  # optional: could extend schema
+        unp_val = unp.group(1)
+        if "CONTRAGENT_UNP" not in seen:
+            add("CONTRAGENT_UNP", unp_val)
+        elif "CONTRAGENT_ID" not in seen:
+            add("CONTRAGENT_ID", unp_val)
 
     urgency = re.search(r"очер[её]дност\w*\s*[:№]?\s*(\d)", text, re.I)
     if urgency:

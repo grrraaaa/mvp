@@ -50,7 +50,7 @@ docker compose up -d postgres
 DATABASE_URL=postgresql+asyncpg://sber:sber@127.0.0.1:5432/sber
 ```
 
-Без `DATABASE_URL` — SQLite в `backend/data/sber.db`.
+`DATABASE_URL` обязателен (только PostgreSQL).
 
 ### Опционально: камера 3D
 
@@ -139,7 +139,7 @@ Invoke-RestMethod -Uri http://127.0.0.1:8000/api/chat/guest -Method POST `
 |---|----------|--------|
 | API | `http://127.0.0.1:8000` | same-origin `/api` |
 | `NEXT_PUBLIC_API_URL` | `http://127.0.0.1:8000` | пусто |
-| БД | SQLite / Docker Postgres | `POSTGRES_URL` |
+| БД | Docker Postgres (`DATABASE_URL`) | `POSTGRES_URL` |
 | Basic Auth | если задан `SITE_ACCESS_PASSWORD` | рекомендуется |
 
 Деплой: [VERCEL_DEPLOY.md](./VERCEL_DEPLOY.md)

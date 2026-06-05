@@ -1,11 +1,12 @@
 "use client";
 
 import { ReactNode, Suspense, useEffect, useMemo, useState } from "react";
-import { useSearchParams } from "next/navigation";
+import { usePathname, useSearchParams } from "next/navigation";
 import { AssistantFloatingChat } from "@/components/assistant/AssistantFloatingChat";
 import { DocumentTypeSelectionModal } from "@/components/sbbol/DocumentTypeSelectionModal";
-import { PlanetMapOverlay } from "@/components/map/PlanetMapOverlay";
 import { SbbolUiContext } from "@/components/layout/SbbolUiContext";
+import { AssistantUiBridge } from "@/components/assistant/AssistantUiBridge";
+import { useAuthStore } from "@/store/authStore";
 
 interface Props {
   children: ReactNode;
@@ -23,13 +24,22 @@ function NewDocQueryOpener({ onOpen }: { onOpen: () => void }) {
 }
 
 function AppProvidersInner({ children, documentModalHtml }: Props) {
-  const [mapOpen, setMapOpen] = useState(false);
+  const pathname = usePathname();
+  const token = useAuthStore((s) => s.token);
+  const isLoginPage = pathname === "/login";
+  const showBankingExtras = Boolean(token) && !isLoginPage;
+
   const [chatOpen, setChatOpen] = useState(false);
   const [docModalOpen, setDocModalOpen] = useState(false);
 
+  useEffect(() => {
+    if (!showBankingExtras) {
+      setChatOpen(false);
+    }
+  }, [showBankingExtras]);
+
   const ui = useMemo(
     () => ({
-      openMap: () => setMapOpen(true),
       openDocumentModal: () => setDocModalOpen(true),
       openChat: () => setChatOpen(true),
     }),
@@ -42,9 +52,13 @@ function AppProvidersInner({ children, documentModalHtml }: Props) {
         <NewDocQueryOpener onOpen={() => setDocModalOpen(true)} />
       </Suspense>
       {children}
-      <AssistantFloatingChat open={chatOpen} onOpenChange={setChatOpen} />
-      <PlanetMapOverlay open={mapOpen} onClose={() => setMapOpen(false)} />
-      {docModalOpen && documentModalHtml ? (
+      {showBankingExtras && (
+        <>
+          <AssistantUiBridge />
+          <AssistantFloatingChat open={chatOpen} onOpenChange={setChatOpen} />
+        </>
+      )}
+      {showBankingExtras && docModalOpen && documentModalHtml ? (
         <DocumentTypeSelectionModal html={documentModalHtml} onClose={() => setDocModalOpen(false)} />
       ) : null}
     </SbbolUiContext.Provider>

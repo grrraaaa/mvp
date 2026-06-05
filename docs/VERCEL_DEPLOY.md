@@ -5,7 +5,7 @@
 Один проект Vercel (`grrraaaas-projects/mvp`):
 - **Next.js 15** — `frontend/`
 - **FastAPI** — `api/index.py` → маршруты `/api/*`
-- **БД:** Vercel Postgres (рекомендуется) или временная SQLite в `/tmp`, если Postgres ещё не подключён
+- **БД:** Vercel Postgres (обязательно для production)
 
 Продакшен: **https://mvp-beta-umber.vercel.app**
 
@@ -47,9 +47,9 @@ vercel --prod
 1. Vercel → проект **mvp** → **Storage** → **Postgres** → **Connect**
 2. Появится `POSTGRES_URL` — бэкенд сам переведёт в `postgresql+asyncpg://`
 
-Без Postgres API всё равно стартует (SQLite в `/tmp` на serverless), но данные не сохраняются между холодными запусками.
+Без Postgres API не сможет инициализировать БД и будет отдавать ошибки.
 
-Проверка: `/api/health` → `"db": "postgres"` или `"sqlite"`.
+Проверка: `/api/health` → `"db": "postgres"`.
 
 ---
 
@@ -118,7 +118,7 @@ npm run dev
 |--------|---------|
 | `npm install` / JSON parse | В репо не должно быть `<<<<<<<` в `package.json` — см. `git grep '<<<<<<<'` |
 | No Next.js version detected | Деплой из `mvp/`, в корне есть `dependencies.next` |
-| Чат: HTTP 500 | Подключить Postgres или обновить бэкенд (fallback SQLite на Vercel) |
+| Чат: HTTP 500 | Подключить Postgres или обновить бэкенд (`POSTGRES_URL` / `DATABASE_URL`) |
 | Чат: HTTP 401 | Задать тот же Basic Auth, что у сайта, или открыть сайт после входа в браузере |
 
 ---

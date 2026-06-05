@@ -1,6 +1,6 @@
 import Link from "next/link";
 import { notFound } from "next/navigation";
-import { SyntheticPageBody } from "@/components/sbbol/SyntheticPageBody";
+import { SbbolHydratedBody } from "@/components/sbbol/SbbolHydratedBody";
 import { CapturedSbbolPage } from "@/components/sbbol/CapturedSbbolPage";
 import { SbbolPageHeader } from "@/components/sbbol/SbbolPageHeader";
 import { SbbolAppLayout } from "@/components/layout/SbbolAppLayout";
@@ -46,11 +46,11 @@ export function SbbolRoutePage({ path }: Props) {
 
   return (
     <SbbolAppLayout activeNav={meta.navId}>
-      <div className="sbbol-page-wrap max-w-[1440px]">
+      <div className="sbbol-page-wrap w-full">
         <SbbolPageHeader title={meta.title} description={meta.description} />
 
         {body ? (
-          <SyntheticPageBody body={body} />
+          <SbbolHydratedBody path={path} body={body} />
         ) : (
           <div className="sbbol-card p-6">
             <p className="text-sm text-sbbol-muted">Раздел в разработке.</p>

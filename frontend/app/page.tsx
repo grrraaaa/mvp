@@ -1,12 +1,12 @@
 "use client";
 
 import { SbbolAppLayout } from "@/components/layout/SbbolAppLayout";
-import { DashboardHome } from "@/components/dashboard/DashboardHome";
+import MoneyView from "@/components/banking/MoneyView";
 
 export default function HomePage() {
   return (
-    <SbbolAppLayout activeNav="moneyAndEvents">
-      <DashboardHome />
+    <SbbolAppLayout>
+      <MoneyView />
     </SbbolAppLayout>
   );
 }

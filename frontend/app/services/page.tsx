@@ -1,5 +1,12 @@
-import { SbbolRoutePage } from "@/components/sbbol/SbbolRoutePage";
+"use client";
+
+import { SbbolAppLayout } from "@/components/layout/SbbolAppLayout";
+import ServicesView from "@/components/banking/ServicesView";
 
 export default function ServicesPage() {
-  return <SbbolRoutePage path="/services" />;
+  return (
+    <SbbolAppLayout>
+      <ServicesView />
+    </SbbolAppLayout>
+  );
 }

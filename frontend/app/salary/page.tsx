@@ -1,5 +1,12 @@
-import { SbbolRoutePage } from "@/components/sbbol/SbbolRoutePage";
+"use client";
+
+import { SbbolAppLayout } from "@/components/layout/SbbolAppLayout";
+import PayrollView from "@/components/banking/PayrollView";
 
 export default function SalaryPage() {
-  return <SbbolRoutePage path="/salary" />;
+  return (
+    <SbbolAppLayout>
+      <PayrollView />
+    </SbbolAppLayout>
+  );
 }

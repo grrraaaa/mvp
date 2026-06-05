@@ -299,37 +299,37 @@ def build_demo_nav_path(route: str) -> List[NavigationStep]:
         return steps
 
     if route.startswith("/payments"):
-        steps.append(NavigationStep(label="Расчёты", url="/payments", icon="planet"))
+        steps.append(NavigationStep(label="Расчёты", url="/payments", icon="link"))
         if route != "/payments":
             steps.append(
                 NavigationStep(
                     label=DEMO_ROUTE_LABELS.get(route, route),
                     url=route,
-                    icon="planet",
+                    icon="link",
                 )
             )
         return steps
 
     if route.startswith("/statement"):
-        steps.append(NavigationStep(label="Выписка", url="/statement", icon="planet"))
+        steps.append(NavigationStep(label="Выписка", url="/statement", icon="link"))
         if route != "/statement":
             steps.append(
                 NavigationStep(
                     label=DEMO_ROUTE_LABELS.get(route, route),
                     url=route,
-                    icon="planet",
+                    icon="link",
                 )
             )
         return steps
 
     if route.startswith("/salary"):
-        steps.append(NavigationStep(label="Зарплата", url="/salary", icon="planet"))
+        steps.append(NavigationStep(label="Зарплата", url="/salary", icon="link"))
         if route != "/salary":
             steps.append(
                 NavigationStep(
                     label=DEMO_ROUTE_LABELS.get(route, route),
                     url=route,
-                    icon="planet",
+                    icon="link",
                 )
             )
         return steps
@@ -342,17 +342,17 @@ def build_demo_nav_path(route: str) -> List[NavigationStep]:
         ("/money", "Деньги и события"),
     ):
         if route.startswith(prefix):
-            steps.append(NavigationStep(label=label, url=prefix if prefix != "/money" else "/", icon="planet"))
+            steps.append(NavigationStep(label=label, url=prefix if prefix != "/money" else "/", icon="link"))
             if route != prefix and not (prefix == "/money" and route == "/"):
                 steps.append(
                     NavigationStep(
                         label=DEMO_ROUTE_LABELS.get(route, route),
                         url=route,
-                        icon="planet",
+                        icon="link",
                     )
                 )
             return steps
 
     label = DEMO_ROUTE_LABELS.get(route, route)
-    steps.append(NavigationStep(label=label, url=route, icon="planet"))
+    steps.append(NavigationStep(label=label, url=route, icon="link"))
     return steps

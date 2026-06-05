@@ -45,7 +45,7 @@ mindmap
       FastAPI guest chat
       TTS voices speak
       OCR forms
-      Products Postgres SQLite
+      Products Postgres
 ```
 
 ---
@@ -87,7 +87,7 @@ flowchart TB
         OR[OpenRouter]
         SP[Speechify]
         OCR[ImageToText]
-        DB[(Postgres / SQLite)]
+        DB[(Postgres)]
     end
 
     U1 & U2 --> CHAT

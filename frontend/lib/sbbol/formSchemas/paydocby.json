@@ -16,6 +16,17 @@
       ]
     },
     {
+      "key": "CONTRAGENT_UNP",
+      "name": "forms.PAYDOCBY.CONTRAGENT_UNP",
+      "label": "УНП получателя",
+      "type": "text",
+      "fillPriority": 8,
+      "aliases": [
+        "унп",
+        "унп получателя"
+      ]
+    },
+    {
       "key": "COMMON_COLUMNS_CUSTOMER_ACCOUNT",
       "name": "forms.PAYDOCBY.COMMON_COLUMNS_CUSTOMER_ACCOUNT",
       "label": "Со счета",

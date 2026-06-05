@@ -25,14 +25,14 @@ _db_initialized = False
 
 @app.middleware("http")
 async def vercel_lazy_db_init(request, call_next):
-    """PostgreSQL/SQLite + tables — init once per warm serverless instance."""
+    """PostgreSQL + tables — init once per warm serverless instance."""
     global _db_initialized
     if not _db_initialized:
         try:
             await init_db()
+            _db_initialized = True
         except Exception as exc:
             import logging
 
-            logging.getLogger(__name__).warning("init_db skipped: %s", exc)
-        _db_initialized = True
+            logging.getLogger(__name__).warning("init_db failed, will retry: %s", exc)
     return await call_next(request)

@@ -1,4 +1,4 @@
-import { MOCK_ACCOUNTS, MOCK_ORG_NAME } from "./mockSbbolData";
+import type { BankAccount, BankDocument, Counterparty } from "@/lib/banking/types";
 
 export type DemoContentType =
   | "table"
@@ -96,23 +96,7 @@ export const SYNTHETIC_PAGE_BODIES: Record<string, SyntheticPageBody> = {
         { key: "title", label: "Уведомление" },
         { key: "status", label: "Статус" },
       ],
-      rows: [
-        {
-          date: "30.05.2026 14:22",
-          title: "Поступление средств на счёт BY51 BPSB…2222",
-          status: "Новое",
-        },
-        {
-          date: "29.05.2026 09:15",
-          title: "Документ №124 успешно исполнен",
-          status: "Прочитано",
-        },
-        {
-          date: "27.05.2026 18:40",
-          title: "Напоминание: подпишите документы на подписании",
-          status: "Прочитано",
-        },
-      ],
+      rows: [],
     },
   },
   "/money/inbox": {
@@ -150,22 +134,7 @@ export const SYNTHETIC_PAGE_BODIES: Record<string, SyntheticPageBody> = {
         { key: "amount", label: "Сумма", align: "right" },
         { key: "status", label: "Статус" },
       ],
-      rows: [
-        {
-          number: "124",
-          date: "30.05.2026",
-          recipient: 'ООО "БелТорг"',
-          amount: "1 250.00 BYN",
-          status: "Исполнен",
-        },
-        {
-          number: "125",
-          date: "31.05.2026",
-          recipient: "УФК по г. Минску",
-          amount: "320.00 BYN",
-          status: "На подписании",
-        },
-      ],
+      rows: [],
     },
   },
   "/payments/order": {
@@ -174,7 +143,7 @@ export const SYNTHETIC_PAGE_BODIES: Record<string, SyntheticPageBody> = {
     form: {
       submitLabel: "Подписать и отправить",
       fields: [
-        { label: "Счёт списания", type: "select", value: MOCK_ACCOUNTS[0].iban, options: MOCK_ACCOUNTS.map((a) => a.iban) },
+        { label: "Счёт списания", type: "select", value: "", options: [] },
         { label: "Получатель", placeholder: "Наименование или УНП" },
         { label: "УНП получателя", placeholder: "123456789" },
         { label: "Счёт получателя", placeholder: "BY__ BPSB ____ ____ ____ ____" },
@@ -188,7 +157,7 @@ export const SYNTHETIC_PAGE_BODIES: Record<string, SyntheticPageBody> = {
     form: {
       submitLabel: "Создать перевод",
       fields: [
-        { label: "Счёт списания", type: "select", value: MOCK_ACCOUNTS[2].iban, options: MOCK_ACCOUNTS.map((a) => a.iban) },
+        { label: "Счёт списания", type: "select", value: "", options: [] },
         { label: "Валюта перевода", type: "select", value: "EUR", options: ["EUR", "USD", "RUB"] },
         { label: "Сумма", placeholder: "0.00" },
         { label: "Банк получателя", placeholder: "SWIFT / наименование" },
@@ -214,20 +183,7 @@ export const SYNTHETIC_PAGE_BODIES: Record<string, SyntheticPageBody> = {
         { key: "account", label: "Счёт" },
         { key: "bank", label: "Банк" },
       ],
-      rows: [
-        {
-          name: 'ООО "БелТорг"',
-          unp: "123456789",
-          account: "BY12 BPSB 3012 0000 0000 0000 0001",
-          bank: "БПС-Сбербанк",
-        },
-        {
-          name: "ИП Иванов А.С.",
-          unp: "987654321",
-          account: "BY34 ALFA 3012 0000 0000 0000 0002",
-          bank: "Альфа-Банк",
-        },
-      ],
+      rows: [],
     },
   },
   "/statement": {
@@ -235,7 +191,7 @@ export const SYNTHETIC_PAGE_BODIES: Record<string, SyntheticPageBody> = {
     form: {
       submitLabel: "Сформировать выписку",
       fields: [
-        { label: "Счёт", type: "select", value: MOCK_ACCOUNTS[0].iban, options: MOCK_ACCOUNTS.map((a) => a.iban) },
+        { label: "Счёт", type: "select", value: "", options: [] },
         { label: "Период с", type: "date", value: "2026-05-01" },
         { label: "Период по", type: "date", value: "2026-05-31" },
         { label: "Формат", type: "select", value: "PDF", options: ["PDF", "1C", "Excel"] },
@@ -244,7 +200,7 @@ export const SYNTHETIC_PAGE_BODIES: Record<string, SyntheticPageBody> = {
   },
   "/statement/account": {
     type: "table",
-    toolbar: { filters: [MOCK_ACCOUNTS[0].iban, "01.05.2026 — 31.05.2026"] },
+    toolbar: { filters: ["", "01.05.2026 — 31.05.2026"] },
     table: {
       columns: [
         { key: "date", label: "Дата" },
@@ -253,11 +209,7 @@ export const SYNTHETIC_PAGE_BODIES: Record<string, SyntheticPageBody> = {
         { key: "credit", label: "Кредит", align: "right" },
         { key: "balance", label: "Остаток", align: "right" },
       ],
-      rows: [
-        { date: "01.05.2026", operation: "Входящий остаток", debit: "", credit: "", balance: "200.00" },
-        { date: "28.05.2026", operation: "Списание по поручению №123", debit: "450.00", credit: "", balance: "200.00" },
-        { date: "30.05.2026", operation: "Поступление по поручению №124", debit: "", credit: "1 250.00", balance: "1 450.00" },
-      ],
+      rows: [],
     },
   },
   "/statement/certificates": {
@@ -284,7 +236,7 @@ export const SYNTHETIC_PAGE_BODIES: Record<string, SyntheticPageBody> = {
     type: "info",
     info: {
       image: "/sber-orig/images/cash-register.png",
-      html: `<p>Зарплатный проект ${MOCK_ORG_NAME} активен.</p><p>Следующая зарплатная ведомость запланирована на 05.06.2026.</p>`,
+      html: `<p>Зарплатный проект активен.</p><p>Следующая зарплатная ведомость запланирована на 05.06.2026.</p>`,
     },
   },
   "/salary/project": {
@@ -516,7 +468,7 @@ export const SYNTHETIC_PAGE_BODIES: Record<string, SyntheticPageBody> = {
   "/settings": {
     type: "profile",
     info: {
-      html: `<p><strong>${MOCK_ORG_NAME}</strong></p><p>УНП: 123456789</p><p>Последний вход: 31.05.2026, 09:42</p>`,
+      html: `<p><strong>Организация</strong></p><p>УНП: 123456789</p><p>Последний вход: 31.05.2026, 09:42</p>`,
     },
   },
   "/settings/accounts": {
@@ -528,12 +480,7 @@ export const SYNTHETIC_PAGE_BODIES: Record<string, SyntheticPageBody> = {
         { key: "visible", label: "Отображение" },
         { key: "order", label: "Порядок" },
       ],
-      rows: MOCK_ACCOUNTS.map((a, i) => ({
-        iban: a.iban,
-        type: a.type,
-        visible: "Отображается",
-        order: String(i + 1),
-      })),
+      rows: [],
     },
   },
   "/settings/security": {
@@ -547,5 +494,151 @@ export const SYNTHETIC_PAGE_BODIES: Record<string, SyntheticPageBody> = {
 };
 
 export function getSyntheticPageBody(path: string): SyntheticPageBody | null {
-  return SYNTHETIC_PAGE_BODIES[path] ?? null;
+  const body = SYNTHETIC_PAGE_BODIES[path];
+  if (!body) return null;
+  return JSON.parse(JSON.stringify(body)) as SyntheticPageBody;
+}
+
+export interface BankingPageContext {
+  orgName: string;
+  accounts: BankAccount[];
+  documents: BankDocument[];
+  counterparties: Counterparty[];
+}
+
+const ACCOUNT_FIELD_LABELS = new Set(["Счёт списания", "Счёт"]);
+
+function accountIbans(accounts: BankAccount[]): string[] {
+  return accounts.map((a) => a.id);
+}
+
+function pickAccount(accounts: BankAccount[], currency?: string): string {
+  if (accounts.length === 0) return "";
+  if (currency) {
+    const match = accounts.find((a) => a.currency === currency);
+    if (match) return match.id;
+  }
+  return accounts[0].id;
+}
+
+function fmtAmount(amount: number, currency: string): string {
+  return `${amount.toLocaleString("ru-RU", { minimumFractionDigits: 2 })} ${currency}`;
+}
+
+function docStatusLabel(status: string): string {
+  if (status === "Проведен") return "Исполнен";
+  if (status === "На подписи") return "На подписании";
+  return status;
+}
+
+export function hydrateSyntheticPageBody(
+  body: SyntheticPageBody,
+  path: string,
+  ctx: BankingPageContext,
+): SyntheticPageBody {
+  const hydrated = JSON.parse(JSON.stringify(body)) as SyntheticPageBody;
+  const ibans = accountIbans(ctx.accounts);
+
+  if (hydrated.form?.fields) {
+    for (const field of hydrated.form.fields) {
+      if (field.type === "select" && ACCOUNT_FIELD_LABELS.has(field.label)) {
+        field.options = ibans;
+        if (path === "/payments/currency") {
+          field.value = pickAccount(ctx.accounts, "USD") || pickAccount(ctx.accounts);
+        } else {
+          field.value = pickAccount(ctx.accounts, "BYN") || pickAccount(ctx.accounts);
+        }
+      }
+    }
+  }
+
+  if (path === "/statement/account" && hydrated.toolbar?.filters) {
+    hydrated.toolbar.filters[0] = pickAccount(ctx.accounts, "BYN") || pickAccount(ctx.accounts);
+  }
+
+  if (path === "/settings" && hydrated.info?.html) {
+    hydrated.info.html = `<p><strong>${ctx.orgName}</strong></p><p>УНП: 123456789</p><p>Последний вход: 31.05.2026, 09:42</p>`;
+  }
+
+  if (path === "/salary" && hydrated.info?.html) {
+    hydrated.info.html = `<p>Зарплатный проект <strong>${ctx.orgName}</strong> активен.</p><p>Следующая зарплатная ведомость запланирована на 05.06.2026.</p>`;
+  }
+
+  if (path === "/settings/accounts" && hydrated.table) {
+    hydrated.table.rows = ctx.accounts.map((a, i) => ({
+      iban: a.id,
+      type: a.type,
+      visible: a.hidden ? "Скрыт" : "Отображается",
+      order: String(i + 1),
+    }));
+  }
+
+  if (path === "/payments/counterparties" && hydrated.table) {
+    hydrated.table.rows = ctx.counterparties.map((c) => ({
+      name: c.name,
+      unp: c.unp,
+      account: c.account,
+      bank: c.bank_name,
+    }));
+  }
+
+  if (path === "/payments" && hydrated.table) {
+    hydrated.table.rows = ctx.documents.map((d) => ({
+      number: d.id.replace(/^№\s*/, ""),
+      date: d.date,
+      recipient: d.counterparty,
+      amount: fmtAmount(d.amount, d.currency),
+      status: docStatusLabel(d.status),
+    }));
+  }
+
+  if (path === "/statement/account" && hydrated.table) {
+    const primary = ctx.accounts.find((a) => a.currency === "BYN") ?? ctx.accounts[0];
+    let balance = primary?.balance ?? 0;
+    const rows = [...ctx.documents].reverse().map((d) => {
+      balance = Math.max(0, balance + d.amount);
+      return {
+        date: d.date,
+        operation: `${d.type} ${d.id} — ${d.counterparty}`,
+        debit: "",
+        credit: fmtAmount(d.amount, d.currency).replace(` ${d.currency}`, ""),
+        balance: balance.toLocaleString("ru-RU", { minimumFractionDigits: 2 }),
+      };
+    });
+    if (primary) {
+      rows.unshift({
+        date: "01.05.2026",
+        operation: "Входящий остаток",
+        debit: "",
+        credit: "",
+        balance: primary.balance.toLocaleString("ru-RU", { minimumFractionDigits: 2 }),
+      });
+    }
+    hydrated.table.rows = rows;
+  }
+
+  if (path === "/money/notifications" && hydrated.table) {
+    const primaryIban = pickAccount(ctx.accounts, "BYN") || pickAccount(ctx.accounts);
+    const masked = primaryIban ? `${primaryIban.slice(0, 12)}…${primaryIban.slice(-4)}` : "счёт";
+    hydrated.table.rows = ctx.documents.slice(0, 5).map((d, i) => ({
+      date: `${d.date} 14:22`,
+      title:
+        i === 0
+          ? `Поступление средств на счёт ${masked}`
+          : `Документ ${d.id} — ${d.counterparty}`,
+      status: d.status === "На подписи" ? "Новое" : "Прочитано",
+    }));
+  }
+
+  if (path === "/money/movements" && hydrated.table) {
+    hydrated.table.rows = ctx.documents.slice(0, 8).map((d) => ({
+      date: d.date,
+      doc: `${d.type} ${d.id}`,
+      counterparty: d.counterparty,
+      amount: `-${d.amount.toLocaleString("ru-RU", { minimumFractionDigits: 2 })} ${d.currency}`,
+      status: d.status,
+    }));
+  }
+
+  return hydrated;
 }

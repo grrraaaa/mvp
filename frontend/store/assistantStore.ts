@@ -28,6 +28,14 @@ export interface FormFieldAction {
   label?: string;
 }
 
+export interface SourceRef {
+  index: number;
+  label: string;
+  kind?: string;
+  id?: string;
+  url?: string;
+}
+
 export interface ChatMessage {
   role: "user" | "assistant";
   content: string;
@@ -36,6 +44,7 @@ export interface ChatMessage {
   navigationPath?: NavigationStep[];
   pendingFormFields?: string[];
   formFillStatus?: string;
+  sources?: SourceRef[];
 }
 
 interface AssistantState {

@@ -1,17 +1,13 @@
 "use client";
 
 import { ReactNode } from "react";
-import { SbbolShell } from "@/components/layout/SbbolShell";
-import { useSbbolUi } from "@/components/layout/SbbolUiContext";
-import type { NavId } from "@/lib/sbbol/navigation";
+import { BankingShell } from "@/components/layout/BankingShell";
 
 interface Props {
   children: ReactNode;
-  activeNav?: NavId;
+  activeNav?: string;
 }
 
-export function SbbolAppLayout({ children, activeNav }: Props) {
-  const { openMap } = useSbbolUi();
-
-  return <SbbolShell activeNav={activeNav} onOpenMap={openMap}>{children}</SbbolShell>;
+export function SbbolAppLayout({ children }: Props) {
+  return <BankingShell>{children}</BankingShell>;
 }

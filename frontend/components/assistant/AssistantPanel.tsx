@@ -9,12 +9,19 @@ import { ActionButtons } from "./ActionButtons";
 import { AssistantCharacter } from "./AssistantCharacter";
 import { CharacterSettings } from "./CharacterSettings";
 import { useAssistantStore } from "@/store/assistantStore";
+import { useAuthStore } from "@/store/authStore";
 import { useCharacterStore } from "@/store/characterStore";
 import { getSbbolPageContext } from "@/lib/sbbol/formContext";
 import { getAssistantQuickChips } from "@/lib/sbbol/assistantQuickChips";
 import { ocrFillForm, readFileAsDataUrl } from "@/lib/api/forms";
 import { apiUrl } from "@/lib/api/baseUrl";
+import { authHeaders } from "@/lib/auth/tokenRef";
+import { executeUiActions } from "@/lib/assistant/uiBridge";
 import { useAssistantSpeech } from "@/hooks/useAssistantSpeech";
+import { SourceChips } from "./SourceChips";
+import { NotificationBanner } from "./NotificationBanner";
+import { fetchNotifications, fetchOrgProfile, type SmartNotification } from "@/lib/api/banking";
+import type { SourceRef } from "@/store/assistantStore";
 
 interface Props {
   variant?: "default" | "embedded";
@@ -24,6 +31,8 @@ interface Props {
 
 export function AssistantPanel({ variant = "default", compactMobile = false }: Props) {
   const [input, setInput] = useState("");
+  const [orgName, setOrgName] = useState<string | null>(null);
+  const [notifications, setNotifications] = useState<SmartNotification[]>([]);
   const bottomRef = useRef<HTMLDivElement>(null);
   const pathname = usePathname();
   const router = useRouter();
@@ -44,6 +53,7 @@ export function AssistantPanel({ variant = "default", compactMobile = false }: P
     applyFormActions,
     setSessionId,
   } = useAssistantStore();
+  const orgId = useAuthStore((s) => s.user?.org_id);
   const { config, setSettingsOpen } = useCharacterStore();
   const { speak, stop: stopSpeech } = useAssistantSpeech();
   const lastSpokenCountRef = useRef(0);
@@ -75,6 +85,15 @@ export function AssistantPanel({ variant = "default", compactMobile = false }: P
 
   useEffect(() => () => stopSpeech(), [stopSpeech]);
 
+  useEffect(() => {
+    void fetchOrgProfile()
+      .then((org) => setOrgName(org.org_name))
+      .catch(() => setOrgName(null));
+    void fetchNotifications(true)
+      .then(setNotifications)
+      .catch(() => setNotifications([]));
+  }, []);
+
   const sendMessage = useCallback(
     async (text: string) => {
       if (!text.trim() || isLoading) return;
@@ -84,15 +103,17 @@ export function AssistantPanel({ variant = "default", compactMobile = false }: P
       setLoading(true);
 
       try {
-        const res = await fetch(apiUrl("/api/chat/guest"), {
+        const chatPath = authHeaders().Authorization ? "/api/chat" : "/api/chat/guest";
+        const res = await fetch(apiUrl(chatPath), {
           method: "POST",
           credentials: "same-origin",
-          headers: { "Content-Type": "application/json" },
+          headers: { "Content-Type": "application/json", ...authHeaders() },
           body: JSON.stringify({
             message: trimmed,
             session_id: sessionId,
             page_route: pageContext.page_route,
             form_type: pageContext.form_type,
+            org_id: orgId,
           }),
         });
         if (!res.ok) throw new Error(`HTTP ${res.status}`);
@@ -107,6 +128,15 @@ export function AssistantPanel({ variant = "default", compactMobile = false }: P
         }
         if (data.session_id) setSessionId(data.session_id);
         if (data.form_actions?.length) applyFormActions(data.form_actions);
+        if (data.ui_actions?.length) {
+          for (const a of data.ui_actions) {
+            if (a.type === "navigate" && a.target?.startsWith("/")) {
+              router.push(a.target);
+            } else {
+              executeUiActions([a]);
+            }
+          }
+        }
 
         addMessage({
           role: "assistant",
@@ -116,6 +146,7 @@ export function AssistantPanel({ variant = "default", compactMobile = false }: P
           navigationPath: data.navigation_path,
           pendingFormFields: data.pending_form_fields,
           formFillStatus: data.form_fill_status,
+          sources: data.sources,
         });
       } catch (err) {
         console.error("[AssistantPanel] fetch error:", err);
@@ -138,7 +169,15 @@ export function AssistantPanel({ variant = "default", compactMobile = false }: P
       setLoading,
       setNavigationPath,
       setSessionId,
+      orgId,
     ]
+  );
+
+  const handleShowSource = useCallback(
+    (source: SourceRef) => {
+      void sendMessage(`Покажи источник №${source.index}`);
+    },
+    [sendMessage],
   );
 
   const fieldChipPrefix: Record<string, string> = {
@@ -258,9 +297,40 @@ export function AssistantPanel({ variant = "default", compactMobile = false }: P
             <p
               className={`font-medium mb-0.5 ${inputCompact ? "text-xs text-gray-800" : embedded ? "text-gray-900" : "text-white"}`}
             >
-              {inputCompact ? `Привет! Я ${config.name}.` : `Здравствуйте! Я ${config.name}.`}
+              {orgName
+                ? `Здравствуйте, ${orgName}!`
+                : inputCompact
+                  ? `Привет! Я ${config.name}.`
+                  : `Здравствуйте! Я ${config.name}.`}
             </p>
-            {!inputCompact && <p className="text-sm">{config.subtitle}</p>}
+            {!inputCompact && (
+              <p className="text-sm">
+                {orgName ? `Я ${config.name}, ваш консультант по СберБизнес.` : config.subtitle}
+              </p>
+            )}
+            {notifications.length > 0 && (
+              <div className="mt-3 text-left">
+                <NotificationBanner notifications={notifications} compact={inputCompact} />
+              </div>
+            )}
+            {!orgName && messages.length === 0 && (
+              <div className="mt-3 flex flex-wrap gap-2 justify-center">
+                <button
+                  type="button"
+                  onClick={() => void sendMessage("Сколько на счёте?")}
+                  className="text-xs px-3 py-1 rounded-full border border-sber-border text-sber-green-light hover:bg-sber-green/10"
+                >
+                  Проверить остаток
+                </button>
+                <button
+                  type="button"
+                  onClick={() => router.push("/payments/paydocbyn")}
+                  className="text-xs px-3 py-1 rounded-full border border-sber-border text-sber-green-light hover:bg-sber-green/10"
+                >
+                  Создать платёж
+                </button>
+              </div>
+            )}
             {!embedded && !inputCompact && (
               <p className="mt-4 text-sm break-all sber-link">/payments · /statement · /salary</p>
             )}
@@ -277,6 +347,13 @@ export function AssistantPanel({ variant = "default", compactMobile = false }: P
               <ActionButtons
                 buttons={msg.actionButtons}
                 onSendMessage={sendMessage}
+                compact={compactMobile}
+              />
+            )}
+            {msg.sources && msg.sources.length > 0 && (
+              <SourceChips
+                sources={msg.sources}
+                onShowSource={handleShowSource}
                 compact={compactMobile}
               />
             )}
@@ -323,7 +400,7 @@ export function AssistantPanel({ variant = "default", compactMobile = false }: P
           onPhotoSelect={handlePhotoOcr}
           showPhotoButton
           suggestions={quickChips}
-          hideSuggestions={messages.length > 0}
+          hideSuggestions={false}
           disabled={isLoading}
           compact={inputCompact}
           onVoiceComplete={sendMessage}

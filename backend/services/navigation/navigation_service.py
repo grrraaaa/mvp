@@ -27,9 +27,9 @@ class NavigationService:
         }
         if top in top_paths and url != top_paths[top][1]:
             t_label, t_url = top_paths[top]
-            steps.append(NavigationStep(label=t_label, url=t_url, icon="planet"))
+            steps.append(NavigationStep(label=t_label, url=t_url, icon="link"))
 
-        steps.append(NavigationStep(label=label, url=url, icon="planet"))
+        steps.append(NavigationStep(label=label, url=url, icon="link"))
         return steps
 
     def get_full_map(self) -> dict:

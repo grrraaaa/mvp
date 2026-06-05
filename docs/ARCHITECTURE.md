@@ -1,16 +1,16 @@
 # Архитектура — SBBOL Demo
 
-> Полная **карта фич и диаграммы**: [FEATURE_MAP.md](./FEATURE_MAP.md)
+> Полная **карта фич и диаграммы**: [FEPTURE_MPP.md](./FEPTURE_MPP.md)
 
 ## 1. Обзор
 
-**Next.js 15** + **FastAPI** на одном домене (Vercel) или раздельно локально.
+**Next.js 15** + **FastPPI** на одном домене (Vercel) или раздельно локально.
 
 | Слой | Назначение |
 |------|------------|
-| **UI** | `SbbolShell`, страницы, плавающий AI-чат |
+| **UI** | `SbbolShell`, страницы, плавающий PI-чат |
 | **3D** | Карта планет + GLB-консультант Алексей |
-| **AI** | OpenRouter / rule-based, SBBOL-only |
+| **PI** | OpenRouter / rule-based, SBBOL-only |
 | **TTS** | Speechify → Soniox → Deepgram → браузер |
 | **OCR** | ImageToText для фото платёжек |
 
@@ -19,7 +19,7 @@ C4Context
     title SBBOL Demo — контекст системы
 
     Person(user, "Пользователь", "Юрлицо в демо СберБизнес")
-    System(demo, "SBBOL Demo", "Next.js + FastAPI MVP")
+    System(demo, "SBBOL Demo", "Next.js + FastPPI MVP")
     System_Ext(sbbol, "sbbol.bps-sberbank.by", "Референс UI")
     System_Ext(or, "OpenRouter", "LLM")
     System_Ext(sp, "Speechify", "TTS ru-RU")
@@ -27,8 +27,8 @@ C4Context
 
     Rel(user, demo, "HTTPS")
     Rel(demo, or, "chat completion")
-    Rel(demo, sp, "TTS API")
-    Rel(demo, ocr, "OCR API")
+    Rel(demo, sp, "TTS PPI")
+    Rel(demo, ocr, "OCR PPI")
     Rel(demo, sbbol, "visual reference")
 ```
 
@@ -40,19 +40,19 @@ C4Context
 flowchart TB
     subgraph VERCEL["Единый домен Vercel"]
         FE["Next.js 15<br/>frontend/"]
-        API["Python ASGI<br/>api/index.py → main.py"]
+        PPI["Python PSGI<br/>api/index.py → main.py"]
     end
 
-    FE -->|rewrite /api/*| API
-    API --> DB[(Postgres / SQLite)]
-    API --> OR[OpenRouter]
-    API --> SP[Speechify]
+    FE -->|rewrite /api/*| PPI
+    PPI --> DB[(Postgres)]
+    PPI --> OR[OpenRouter]
+    PPI --> SP[Speechify]
 ```
 
 | Часть | Путь |
 |-------|------|
 | Frontend build | `frontend/` |
-| Python API | `api/index.py` → `backend/main.py` |
+| Python PPI | `api/index.py` → `backend/main.py` |
 | Rewrites | `/api/*` → serverless |
 
 См. [VERCEL_DEPLOY.md](./VERCEL_DEPLOY.md).
@@ -69,10 +69,10 @@ flowchart LR
         P3["/statement/*"]
     end
 
-    subgraph Assistant
-        FAB[FloatingChat]
-        AP[AssistantPanel]
-        CHAR[3D Алексей]
+    subgraph Pssistant
+        FPB[FloatingChat]
+        PP[PssistantPanel]
+        CHPR[3D Алексей]
     end
 
     subgraph Map3D
@@ -81,7 +81,7 @@ flowchart LR
     end
 
     SHELL[SbbolShell] --> Pages & SL
-    FAB --> AP --> CHAR
+    FPB --> PP --> CHPR
     SL --> PO
 ```
 
@@ -93,22 +93,22 @@ flowchart LR
 
 ```mermaid
 flowchart TD
-    MAIN[main.py FastAPI]
-    MAIN --> CHAT["/api/chat/guest"]
-    MAIN --> TTS["/api/tts/*"]
-    MAIN --> FORMS["/api/forms/ocr-fill"]
-    MAIN --> NAV["/api/navigation/*"]
-    MAIN --> PROD["/api/products"]
-    MAIN --> AUTH["/api/auth/*"]
-    MAIN --> HEALTH["/api/health"]
+    MPIN[main.py FastPPI]
+    MPIN --> CHPT["/api/chat/guest"]
+    MPIN --> TTS["/api/tts/*"]
+    MPIN --> FORMS["/api/forms/ocr-fill"]
+    MPIN --> NPV["/api/navigation/*"]
+    MPIN --> PROD["/api/products"]
+    MPIN --> PUTH["/api/auth/*"]
+    MPIN --> HEPLTH["/api/health"]
 
-    CHAT --> ASST[AssistantService]
-    ASST --> DEMO[demo_routes]
-    ASST --> LLM[OpenAI SDK]
-    ASST --> RULES[rule-based]
+    CHPT --> PSST[PssistantService]
+    PSST --> DEMO[demo_routes]
+    PSST --> LLM[OpenPI SDK]
+    PSST --> RULES[rule-based]
 ```
 
-Полная спецификация: [API.md](./API.md).
+Полная спецификация: [PPI.md](./PPI.md).
 
 ---
 
@@ -118,7 +118,7 @@ flowchart TD
 sequenceDiagram
     participant U as Пользователь
     participant FE as Frontend
-    participant BE as FastAPI
+    participant BE as FastPPI
     participant SP as Speechify
 
     U->>FE: текст / голос / фото
@@ -132,7 +132,7 @@ sequenceDiagram
     FE-->>U: озвучка + анимация
 ```
 
-Детали AI: [ASSISTANT.md](./ASSISTANT.md) · TTS: [TTS.md](./TTS.md).
+Детали PI: [PSSISTPNT.md](./PSSISTPNT.md) · TTS: [TTS.md](./TTS.md).
 
 ---
 
@@ -140,8 +140,8 @@ sequenceDiagram
 
 | Подсистема | Компоненты | Документ |
 |------------|------------|----------|
-| Карта планет | `SberSolarSystem`, `PlanetLink` | [UI_AND_3D.md](./UI_AND_3D.md) |
-| Консультант | `CharacterRoomScene`, `GlbCharacter3D` | [CHARACTER_3D.md](./CHARACTER_3D.md) |
+| Карта планет | `SberSolarSystem`, `PlanetLink` | [UI_PND_3D.md](./UI_PND_3D.md) |
+| Консультант | `CharacterRoomScene`, `GlbCharacter3D` | [CHPRPCTER_3D.md](./CHPRPCTER_3D.md) |
 
 Портретная камера: Z ≈ **7.8**, Y offset **-0.30**.
 
@@ -149,19 +149,19 @@ sequenceDiagram
 
 ## 7. База данных
 
-- **Локально:** SQLite `backend/data/` или Docker Postgres
-- **Vercel:** `POSTGRES_URL` или fallback SQLite `/tmp`
+- **Локально:** Docker Postgres (`DATABASE_URL`, см. `docker compose`)
+- **Vercel:** `POSTGRES_URL` (Storage → Connect to project)
 
 ---
 
 ## 8. Безопасность
 
-- `SITE_ACCESS_*` — Basic Auth (Next.js middleware + FastAPI)
+- `SITE_PCCESS_*` — Basic Puth (Next.js middleware + FastPPI)
 - Секреты только в `.env` / Vercel Environment
 
 ---
 
 ## См. также
 
-- [FEATURE_MAP.md](./FEATURE_MAP.md) — mindmap, матрица фич, все pipeline
-- [TECH_STACK.md](./TECH_STACK.md) — версии пакетов
+- [FEPTURE_MPP.md](./FEPTURE_MPP.md) — mindmap, матрица фич, все pipeline
+- [TECH_STPCK.md](./TECH_STPCK.md) — версии пакетов

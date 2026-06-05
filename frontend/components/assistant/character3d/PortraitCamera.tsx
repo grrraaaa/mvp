@@ -25,7 +25,8 @@ export function PortraitCamera({ active, compact }: Props) {
     if (!active || !(camera instanceof THREE.PerspectiveCamera)) return;
 
     const headY = PORTRAIT_HEAD_WORLD_Y;
-    camera.position.set(0, headY + 0.04, compact ? PORTRAIT_CAMERA_Z_COMPACT : PORTRAIT_CAMERA_Z);
+    const lookY = headY + PORTRAIT_TARGET_Y_OFFSET;
+    camera.position.set(0, headY + PORTRAIT_CAMERA_Y_OFFSET, compact ? PORTRAIT_CAMERA_Z_COMPACT : PORTRAIT_CAMERA_Z);
     camera.fov = PORTRAIT_CAMERA_FOV;
     camera.near = 0.08;
     camera.far = 40;

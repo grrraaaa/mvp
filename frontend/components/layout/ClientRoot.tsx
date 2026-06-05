@@ -2,6 +2,7 @@
 
 import { ReactNode, useEffect, useState } from "react";
 import { AppProviders } from "@/components/layout/AppProviders";
+import { AuthGuard } from "@/components/auth/AuthGuard";
 
 interface Props {
   children: ReactNode;
@@ -28,6 +29,8 @@ export function ClientRoot({ children, documentModalHtml }: Props) {
   }
 
   return (
-    <AppProviders documentModalHtml={documentModalHtml}>{children}</AppProviders>
+    <AuthGuard>
+      <AppProviders documentModalHtml={documentModalHtml}>{children}</AppProviders>
+    </AuthGuard>
   );
 }

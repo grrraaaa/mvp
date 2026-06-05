@@ -23,8 +23,7 @@ class Settings(BaseSettings):
     OPENROUTER_APP_NAME: str = "Sber AI Navigator"
 
     SECRET_KEY: str = "dev-secret-key-change-in-production"
-    # Локально: sqlite или postgresql+asyncpg из .env
-    # Vercel: POSTGRES_URL от Vercel Postgres (Storage)
+    # PostgreSQL: DATABASE_URL или POSTGRES_URL (Vercel Postgres)
     DATABASE_URL: str = ""
 
     def model_post_init(self, __context) -> None:

@@ -12,7 +12,10 @@ class User(Base):
 
     id: Mapped[str] = mapped_column(String, primary_key=True, default=lambda: str(uuid.uuid4()))
     email: Mapped[str] = mapped_column(String, unique=True, nullable=False)
+    login: Mapped[Optional[str]] = mapped_column(String, unique=True, nullable=True)
     password_hash: Mapped[str] = mapped_column(String, nullable=False)
+    org_id: Mapped[str] = mapped_column(String, default="demo")
+    display_name: Mapped[Optional[str]] = mapped_column(String, nullable=True)
     created_at: Mapped[datetime] = mapped_column(DateTime, default=datetime.utcnow)
 
     sessions: Mapped[List["ChatSession"]] = relationship(back_populates="user")
@@ -52,3 +55,126 @@ class Product(Base):
     description: Mapped[Optional[str]] = mapped_column(Text, nullable=True)
     url: Mapped[str] = mapped_column(String)
     is_active: Mapped[bool] = mapped_column(Boolean, default=True)
+
+
+class BankAccount(Base):
+    __tablename__ = "bank_accounts"
+
+    iban: Mapped[str] = mapped_column(String, primary_key=True)
+    org_id: Mapped[str] = mapped_column(String, default="demo", index=True)
+    account_type: Mapped[str] = mapped_column(String, nullable=False)
+    label: Mapped[str] = mapped_column(String, default="")
+    balance: Mapped[float] = mapped_column(Float, default=0.0)
+    currency: Mapped[str] = mapped_column(String, nullable=False)
+    hidden: Mapped[bool] = mapped_column(Boolean, default=False)
+
+
+class BankDocument(Base):
+    __tablename__ = "bank_documents"
+
+    id: Mapped[str] = mapped_column(String, primary_key=True, default=lambda: str(uuid.uuid4()))
+    org_id: Mapped[str] = mapped_column(String, default="demo", index=True)
+    doc_number: Mapped[str] = mapped_column(String, nullable=False)
+    doc_date: Mapped[str] = mapped_column(String, nullable=False)
+    doc_type: Mapped[str] = mapped_column(String, nullable=False)
+    counterparty: Mapped[str] = mapped_column(String, nullable=False)
+    amount: Mapped[float] = mapped_column(Float, nullable=False)
+    currency: Mapped[str] = mapped_column(String, nullable=False)
+    status: Mapped[str] = mapped_column(String, nullable=False)
+    purpose: Mapped[str] = mapped_column(Text, default="")
+
+
+class Counterparty(Base):
+    __tablename__ = "counterparties"
+
+    id: Mapped[str] = mapped_column(String, primary_key=True, default=lambda: str(uuid.uuid4()))
+    org_id: Mapped[str] = mapped_column(String, default="demo", index=True)
+    name: Mapped[str] = mapped_column(String, nullable=False)
+    unp: Mapped[str] = mapped_column(String, default="")
+    account: Mapped[str] = mapped_column(String, default="")
+    bank_name: Mapped[str] = mapped_column(String, default="")
+
+
+class Employee(Base):
+    __tablename__ = "employees"
+
+    id: Mapped[str] = mapped_column(String, primary_key=True)
+    org_id: Mapped[str] = mapped_column(String, default="demo", index=True)
+    full_name: Mapped[str] = mapped_column(String, nullable=False)
+    card_mask: Mapped[str] = mapped_column(String, nullable=False)
+    amount: Mapped[float] = mapped_column(Float, nullable=False)
+    status: Mapped[str] = mapped_column(String, nullable=False)
+
+
+class OrganizationProfile(Base):
+    """Профиль демо-организации (singleton id=demo)."""
+
+    __tablename__ = "organization_profiles"
+
+    id: Mapped[str] = mapped_column(String, primary_key=True, default="demo")
+    org_name: Mapped[str] = mapped_column(String, nullable=False)
+    user_role: Mapped[str] = mapped_column(String, default="businessman")  # businessman | accountant | ip
+    daily_payment_limit: Mapped[float] = mapped_column(Float, default=5000.0)
+
+
+class SmartNotification(Base):
+    __tablename__ = "smart_notifications"
+
+    id: Mapped[str] = mapped_column(String, primary_key=True, default=lambda: str(uuid.uuid4()))
+    org_id: Mapped[str] = mapped_column(String, default="demo", index=True)
+    title: Mapped[str] = mapped_column(String, nullable=False)
+    body: Mapped[str] = mapped_column(Text, nullable=False)
+    severity: Mapped[str] = mapped_column(String, default="info")  # info | warn | critical
+    category: Mapped[str] = mapped_column(String, default="general")
+    action_url: Mapped[Optional[str]] = mapped_column(String, nullable=True)
+    action_label: Mapped[Optional[str]] = mapped_column(String, nullable=True)
+    due_date: Mapped[Optional[str]] = mapped_column(String, nullable=True)
+    is_read: Mapped[bool] = mapped_column(Boolean, default=False)
+
+
+class BankService(Base):
+    """Каталог банковских сервисов для консультаций."""
+
+    __tablename__ = "bank_services"
+
+    id: Mapped[str] = mapped_column(String, primary_key=True)
+    name: Mapped[str] = mapped_column(String, nullable=False)
+    description: Mapped[str] = mapped_column(Text, default="")
+    tariff: Mapped[str] = mapped_column(String, default="")
+    connect_url: Mapped[str] = mapped_column(String, default="/services")
+    keywords: Mapped[str] = mapped_column(String, default="")
+
+
+class OneCConnection(Base):
+    """Эмуляция подключения к 1С — состояние хранится в PostgreSQL."""
+
+    __tablename__ = "onec_connections"
+
+    org_id: Mapped[str] = mapped_column(String, primary_key=True)
+    server_url: Mapped[str] = mapped_column(String, default="http://1c-emulator.local/sber")
+    access_token: Mapped[str] = mapped_column(String, default="demo-1c-token")
+    is_active: Mapped[bool] = mapped_column(Boolean, default=True)
+    last_sync_at: Mapped[Optional[datetime]] = mapped_column(DateTime, nullable=True)
+
+
+class OneCDocument(Base):
+    """Документы «из 1С»: платёжные требования, налоги, ТТН, зарплата, договоры."""
+
+    __tablename__ = "onec_documents"
+
+    id: Mapped[str] = mapped_column(String, primary_key=True, default=lambda: str(uuid.uuid4()))
+    org_id: Mapped[str] = mapped_column(String, index=True)
+    external_id: Mapped[str] = mapped_column(String, nullable=False)
+    doc_kind: Mapped[str] = mapped_column(String, nullable=False)
+    counterparty: Mapped[str] = mapped_column(String, nullable=False)
+    unp: Mapped[str] = mapped_column(String, default="")
+    iban: Mapped[str] = mapped_column(String, default="")
+    bik: Mapped[str] = mapped_column(String, default="")
+    amount: Mapped[float] = mapped_column(Float, nullable=False)
+    currency: Mapped[str] = mapped_column(String, default="BYN")
+    purpose: Mapped[str] = mapped_column(Text, default="")
+    payment_code: Mapped[Optional[str]] = mapped_column(String, nullable=True)
+    due_date: Mapped[Optional[str]] = mapped_column(String, nullable=True)
+    status: Mapped[str] = mapped_column(String, default="pending")
+    bank_doc_number: Mapped[Optional[str]] = mapped_column(String, nullable=True)
+    imported_at: Mapped[Optional[datetime]] = mapped_column(DateTime, nullable=True)

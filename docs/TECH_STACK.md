@@ -70,7 +70,7 @@
 
 | Компонент | Путь |
 |-----------|------|
-| БД | SQLite или Postgres (`core/db_url.py`) |
+| БД | Postgres (`core/db_url.py`) |
 | Seed | `db/seed.py` |
 | Карта знаний | `ai/knowledge/app_map.json` |
 
@@ -118,5 +118,5 @@ FastAPI · httpx · SQLAlchemy
  ├─ assistant.py (LLM | rules | SBBOL links)
  └─ tts/ (Speechify | Soniox | Deepgram)
         │
- OpenRouter · Speechify API · SQLite/Postgres
+ OpenRouter · Speechify API · Postgres
 ```

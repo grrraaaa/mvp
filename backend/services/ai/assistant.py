@@ -10,7 +10,13 @@ from typing import Optional, List, Dict, Any
 from core.config import settings
 
 logger = logging.getLogger(__name__)
-from models.schemas import AssistantResponse, NavigationStep, BankProduct, ActionButton, FormFieldAction
+from models.schemas import AssistantResponse, NavigationStep, BankProduct, ActionButton, FormFieldAction, SourceRef
+from db.database import AsyncSessionLocal
+from services.banking.queries import handle_banking_query, get_org_profile
+from services.onec.assistant import handle_onec_query
+from services.ui.page_actions import get_page_help, get_page_quick_actions, handle_page_ui_action
+from services.banking.services_consult import find_service, format_service_reply
+from services.forms.payment_validators import hints_for_payment
 from services.navigation.navigation_service import NavigationService
 from services.navigation.demo_routes import (
     DEMO_ROUTE_LABELS,
@@ -96,8 +102,20 @@ INTENTS = [
     },
     {
         "intent": "services",
-        "patterns": [r"аналитик", r"курс\w*\s+валют", r"обучени", r"сервис"],
+        "patterns": [r"аналитик", r"курс\w*\s+валют", r"обучени", r"сервис", r"эквайринг", r"тариф"],
         "section": "services",
+        "product_type": None,
+    },
+    {
+        "intent": "tax",
+        "patterns": [r"налог", r"фсзн", r"отчётност", r"отчетност", r"ндс", r"подоходн", r"бухгалтер"],
+        "section": "salary",
+        "product_type": None,
+    },
+    {
+        "intent": "finance",
+        "patterns": [r"финанс", r"бюджет", r"кассов\w*\s+разрыв", r"дефицит", r"расход\w*\s+по\s+категор"],
+        "section": "statement",
         "product_type": None,
     },
     {
@@ -141,6 +159,37 @@ def _detect_intent(message: str) -> Optional[dict]:
             if re.search(pat, msg):
                 return intent_cfg
     return None
+
+
+def _is_greeting_or_empty(message: str) -> bool:
+    low = message.lower().strip()
+    if not low:
+        return True
+    return bool(
+        re.match(
+            r"^(привет|здравствуй|добрый\s+(?:день|утро|вечер)|hello|hi|start|начать)\b",
+            low,
+        )
+    )
+
+
+def _payment_hints_from_state(filled: Dict[str, str], daily_limit: float = 5000.0) -> str:
+    unp = filled.get("CONTRAGENT_UNP", "")
+    iban = filled.get("CONTRAGENT_ACCOUNT", "")
+    purpose = filled.get("PAYMENT_PURPOSE", "")
+    amount_raw = filled.get("COMMON_COLUMNS_AMOUNT", "")
+    amount: float | None = None
+    if amount_raw:
+        try:
+            amount = float(str(amount_raw).replace(",", ".").replace(" ", ""))
+        except ValueError:
+            pass
+    hints = hints_for_payment(unp=unp, iban=iban, amount=amount, purpose=purpose, daily_limit=daily_limit)
+    lines = [f"• {h.message}" for h in hints if h.level != "ok"]
+    ok_lines = [h for h in hints if h.level == "ok"]
+    if not lines and ok_lines:
+        lines = [f"✓ {h.message}" for h in ok_lines[:2]]
+    return "\n".join(lines) if lines else ""
 
 
 def _extract_max_rate(message: str) -> Optional[float]:
@@ -685,9 +734,35 @@ class AssistantService:
         user_id: str,
         page_route: Optional[str] = None,
         form_type: Optional[str] = None,
+        org_id: Optional[str] = None,
     ) -> AssistantResponse:
         if not session_id:
             session_id = str(uuid.uuid4())
+        effective_org = org_id or "demo"
+
+        if _is_greeting_or_empty(message):
+            return await self._build_welcome(session_id, effective_org, page_route)
+
+        page_ui = handle_page_ui_action(message, session_id, page_route)
+        if page_ui:
+            return page_ui
+
+        banking_reply = await self._maybe_banking_query(message, session_id, effective_org)
+        if banking_reply:
+            return banking_reply
+
+        async with AsyncSessionLocal() as db:
+            onec_reply = await handle_onec_query(db, message, session_id, effective_org)
+        if onec_reply:
+            return onec_reply
+
+        tax_salary = self._maybe_tax_salary_chain(message, session_id)
+        if tax_salary:
+            return tax_salary
+
+        service_reply = await self._maybe_service_consultation(message, session_id)
+        if service_reply:
+            return service_reply
 
         if is_navigation_message(message):
             demo_nav = self._maybe_demo_navigation(message, session_id)
@@ -695,7 +770,7 @@ class AssistantService:
                 return demo_nav
 
         if form_type:
-            form_reply = await self._handle_payment_form_chat(message, form_type, session_id)
+            form_reply = await self._handle_payment_form_chat(message, form_type, session_id, effective_org)
             if form_reply is not None:
                 return form_reply
 
@@ -712,7 +787,7 @@ class AssistantService:
         return await self._process_rules(message, session_id)
 
     async def _handle_payment_form_chat(
-        self, message: str, form_type: str, session_id: str
+        self, message: str, form_type: str, session_id: str, org_id: str = "demo"
     ) -> Optional[AssistantResponse]:
         schema = load_form_schema(form_type)
         if not schema:
@@ -829,6 +904,13 @@ class AssistantService:
             else:
                 msg = f"Готово — заполнены все основные поля: {filled_labels}."
                 status = "complete"
+            daily_limit = 5000.0
+            async with AsyncSessionLocal() as _db:
+                org_profile = await get_org_profile(_db, org_id)
+                daily_limit = getattr(org_profile, "daily_payment_limit", 5000.0) or 5000.0
+            hint_block = _payment_hints_from_state(state.filled, daily_limit=daily_limit)
+            if hint_block:
+                msg += f"\n\n**Проверки:**\n{hint_block}"
             return AssistantResponse(
                 message=msg,
                 session_id=session_id,
@@ -948,6 +1030,107 @@ class AssistantService:
             ],
         )
 
+    async def _build_welcome(
+        self, session_id: str, org_id: str = "demo", page_route: Optional[str] = None
+    ) -> AssistantResponse:
+        from sqlalchemy import select
+        from db.models import SmartNotification
+
+        async with AsyncSessionLocal() as session:
+            org = await get_org_profile(session, org_id)
+            notif_result = await session.execute(
+                select(SmartNotification)
+                .where(SmartNotification.org_id == org_id, SmartNotification.is_read == False)
+                .limit(3)
+            )
+            notifs = notif_result.scalars().all()
+
+        page_hint = get_page_help(page_route) if page_route else ""
+        msg = (
+            f"Здравствуйте, {org.org_name}! Я консультант по СберБизнес — "
+            "помогу с расчётами, выписками, зарплатой и сервисами. "
+            "Могу нажимать кнопки и заполнять формы на текущей странице."
+        )
+        if page_hint:
+            msg += f"\n\n{page_hint}"
+        if notifs:
+            msg += "\n\n**Напоминания:**"
+            for n in notifs:
+                icon = "⚠" if n.severity in ("warn", "critical") else "ℹ"
+                msg += f"\n{icon} {n.title}: {n.body}"
+
+        role_chips = {
+            "businessman": ("Проверить остаток", "Создать платёж"),
+            "accountant": ("Выписка по счёту", "Обязательства ФСЗН"),
+            "ip": ("Сколько на счёте", "Мгновенный платёж"),
+        }
+        primary_msg, secondary_msg = role_chips.get(org.user_role, role_chips["businessman"])
+
+        buttons = [
+            ActionButton(label=primary_msg, message="Сколько на счёте?", variant="primary"),
+            ActionButton(label=secondary_msg, url="/payments/paydocbyn", variant="secondary"),
+            ActionButton(label="Умный поиск", message="Найди платежи Иванова за март", variant="secondary"),
+        ]
+        buttons.extend(get_page_quick_actions(page_route)[:2])
+
+        return AssistantResponse(message=msg, session_id=session_id, action_buttons=buttons)
+
+    async def _maybe_banking_query(
+        self, message: str, session_id: str, org_id: str = "demo"
+    ) -> Optional[AssistantResponse]:
+        async with AsyncSessionLocal() as session:
+            result = await handle_banking_query(session, message, org_id=org_id)
+        if not result:
+            return None
+        return AssistantResponse(
+            message=result["message"],
+            session_id=session_id,
+            sources=[SourceRef(**s) for s in result.get("sources", [])],
+            action_buttons=[ActionButton(**b) for b in result.get("action_buttons", [])],
+        )
+
+    def _maybe_tax_salary_chain(
+        self, message: str, session_id: str
+    ) -> Optional[AssistantResponse]:
+        low = message.lower()
+        if not (re.search(r"зарплат", low) and re.search(r"фсзн|соц|страхов", low)):
+            return None
+        return AssistantResponse(
+            message=(
+                "Для выплаты зарплаты и перечисления в ФСЗН:\n"
+                "1. Подготовьте ведомость в разделе «Зарплата».\n"
+                "2. Сформируйте платёж по обязательствам (ФСЗН, подоходный налог).\n"
+                "3. Проверьте сроки в календаре обязательств."
+            ),
+            session_id=session_id,
+            navigation_path=self.nav.get_path("salary"),
+            action_buttons=[
+                ActionButton(label="Зарплатный проект", url="/salary", variant="primary"),
+                ActionButton(label="Обязательства", url="/salary/obligations", variant="secondary"),
+                ActionButton(label="Создать платёж ФСЗН", message="Создай платёж на ФСЗН", variant="secondary"),
+            ],
+        )
+
+    async def _maybe_service_consultation(
+        self, message: str, session_id: str
+    ) -> Optional[AssistantResponse]:
+        low = message.lower()
+        if not re.search(r"сервис|эквайринг|тариф|подключ|аналитик|зарплатн\w*\s+проект", low):
+            return None
+        async with AsyncSessionLocal() as session:
+            svc = await find_service(session, message)
+        if not svc:
+            return None
+        text, buttons = format_service_reply(svc)
+        return AssistantResponse(
+            message=text,
+            session_id=session_id,
+            action_buttons=[ActionButton(**b) for b in buttons],
+            sources=[
+                SourceRef(index=1, label=f"Источник 1: Каталог — {svc.name}", kind="service", url=svc.connect_url)
+            ],
+        )
+
     def _maybe_insurance_reply(
         self, message: str, session_id: str
     ) -> Optional[AssistantResponse]:
@@ -973,22 +1156,7 @@ class AssistantService:
         max_rate = _extract_max_rate(message)
 
         if not intent_cfg:
-            return AssistantResponse(
-                message=response_message("greeting"),
-                session_id=session_id,
-                action_buttons=[
-                    ActionButton(
-                        label="Главная СберБизнес",
-                        url="/",
-                        variant="primary",
-                    ),
-                    ActionButton(
-                        label="Расчёты",
-                        url="/payments",
-                        variant="secondary",
-                    ),
-                ],
-            )
+            return await self._build_welcome(session_id, "demo")
 
         intent = intent_cfg["intent"]
         section = intent_cfg["section"]

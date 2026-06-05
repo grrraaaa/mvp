@@ -8,24 +8,40 @@ import {
   IconSettings,
   QuickLinkIcon,
 } from "@/components/sbbol/SbbolIcons";
-import {
-  MOCK_ACCOUNTS,
-  MOCK_BALANCES,
-  MOCK_ORG_NAME,
-  PROMO_BANNERS,
-} from "@/lib/sbbol/mockSbbolData";
+import { PROMO_BANNERS } from "@/lib/sbbol/mockSbbolData";
 import { useSbbolUi } from "@/components/layout/SbbolUiContext";
 import { DASHBOARD_QUICK_LINKS } from "@/lib/sbbol/navigation";
 import { showStubToast } from "@/lib/sbbol/stubToast";
+import { useBankingStore } from "@/store/bankingStore";
+import { useAuthStore } from "@/store/authStore";
 
 export function DashboardHome() {
-  const { openMap, openDocumentModal } = useSbbolUi();
+  const { openDocumentModal } = useSbbolUi();
   const [bannerIndex, setBannerIndex] = useState(0);
   const [bannerVisible, setBannerVisible] = useState(true);
   const banner = PROMO_BANNERS[bannerIndex];
 
+  const accounts = useBankingStore((s) => s.accounts);
+  const loadAll = useBankingStore((s) => s.loadAll);
+  const orgName = useAuthStore((s) => s.user?.org_name) ?? "DEMO ЮРИДИЧЕСКОЕ ЛИЦО";
+
+  const sumByn = accounts
+    .filter((a) => a.currency === "BYN" && !a.hidden)
+    .reduce((sum, a) => sum + a.balance, 0);
+  const sumUsd = accounts
+    .filter((a) => a.currency === "USD" && !a.hidden)
+    .reduce((sum, a) => sum + a.balance, 0);
+  const sumRub = accounts
+    .filter((a) => a.currency === "RUB" && !a.hidden)
+    .reduce((sum, a) => sum + a.balance, 0);
+  const sumEur = accounts
+    .filter((a) => a.currency === "EUR" && !a.hidden)
+    .reduce((sum, a) => sum + a.balance, 0);
+
+  const fmt = (n: number) => n.toLocaleString("ru-RU", { minimumFractionDigits: 2 });
+
   return (
-    <div className="sbbol-dashboard sbbol-page-wrap max-w-[1440px]">
+    <div className="sbbol-dashboard sbbol-page-wrap w-full">
       {bannerVisible && (
         <section className="relative mb-6 rounded-2xl overflow-hidden bg-gradient-to-r from-[#eef0f4] via-[#e8ecf2] to-[#dfe6ee] min-h-[180px] lg:min-h-[200px]">
           <div className="absolute inset-0 opacity-40 pointer-events-none">
@@ -67,9 +83,7 @@ export function DashboardHome() {
       )}
 
       <div className="flex flex-col lg:flex-row lg:items-start lg:justify-between gap-4 mb-6">
-        <h1 className="sbbol-page-title">
-          {MOCK_ORG_NAME}
-        </h1>
+        <h1 className="sbbol-page-title">{orgName}</h1>
         <button
           type="button"
           className="sbbol-create-doc-btn shrink-0 self-start"
@@ -95,7 +109,7 @@ export function DashboardHome() {
             <div>
               <p className="text-[11px] uppercase tracking-wide text-[#7d838a] mb-1">На счетах в BYN</p>
               <p className="text-3xl font-semibold text-[#1f1f22]">
-                {MOCK_BALANCES.byn}
+                {fmt(sumByn)}
                 <span className="text-lg ml-1 font-normal text-[#565b62]">BYN</span>
               </p>
             </div>
@@ -103,13 +117,13 @@ export function DashboardHome() {
               <p className="text-[11px] uppercase tracking-wide text-[#7d838a] mb-1">На счетах в других валютах</p>
               <div className="flex flex-wrap gap-x-6 gap-y-1 text-sm text-[#565b62]">
                 <span>
-                  <span className="text-[#1f1f22] font-semibold">{MOCK_BALANCES.usd}</span> USD
+                  <span className="text-[#1f1f22] font-semibold">{fmt(sumUsd)}</span> USD
                 </span>
                 <span>
-                  <span className="text-[#1f1f22] font-semibold">{MOCK_BALANCES.rub}</span> RUB
+                  <span className="text-[#1f1f22] font-semibold">{fmt(sumRub)}</span> RUB
                 </span>
                 <span>
-                  <span className="text-[#1f1f22] font-semibold">{MOCK_BALANCES.eur}</span> EUR
+                  <span className="text-[#1f1f22] font-semibold">{fmt(sumEur)}</span> EUR
                 </span>
               </div>
             </div>
@@ -130,7 +144,11 @@ export function DashboardHome() {
                   <input type="checkbox" className="sbbol-checkbox" />
                   Отображать скрытые
                 </label>
-                <button type="button" className="flex items-center gap-1.5 text-[#107f8c] font-medium hover:underline">
+                <button
+                  type="button"
+                  className="flex items-center gap-1.5 text-[#107f8c] font-medium hover:underline"
+                  onClick={() => void loadAll()}
+                >
                   <IconRefresh />
                   Обновить остатки
                 </button>
@@ -142,8 +160,8 @@ export function DashboardHome() {
           </div>
 
           <ul className="divide-y divide-[#e4e8eb]">
-            {MOCK_ACCOUNTS.map((acc) => (
-              <li key={acc.iban} className="flex items-center gap-4 px-5 py-4 hover:bg-[#f8f9fb] transition-colors">
+            {accounts.map((acc) => (
+              <li key={acc.id} className="flex items-center gap-4 px-5 py-4 hover:bg-[#f8f9fb] transition-colors">
                 <div
                   className="w-10 h-10 rounded-full bg-[#f2f4f7] border border-[#e4e8eb] flex items-center justify-center text-xs font-semibold text-[#565b62] shrink-0"
                   suppressHydrationWarning
@@ -151,12 +169,12 @@ export function DashboardHome() {
                   <span suppressHydrationWarning>{acc.currency}</span>
                 </div>
                 <div className="flex-1 min-w-0">
-                  <p className="text-sm font-medium text-[#1f1f22] tracking-wide">{acc.iban}</p>
+                  <p className="text-sm font-medium text-[#1f1f22] tracking-wide">{acc.id}</p>
                   <p className="text-xs text-[#7d838a] mt-0.5">{acc.type}</p>
-                  <p className="text-xs text-[#107f8c] mt-0.5">{acc.note}</p>
+                  <p className="text-xs text-[#107f8c] mt-0.5">{acc.label}</p>
                 </div>
                 <div className="text-right shrink-0">
-                  <p className="text-base font-semibold text-[#1f1f22]">{acc.balance}</p>
+                  <p className="text-base font-semibold text-[#1f1f22]">{fmt(acc.balance)}</p>
                   <p className="text-xs text-[#7d838a]">{acc.currency}</p>
                 </div>
                 <button type="button" className="p-2 text-[#7d838a] hover:text-[#1f1f22]" aria-label="Действия">
@@ -180,16 +198,6 @@ export function DashboardHome() {
                 </Link>
               </li>
             ))}
-            <li>
-                <button
-                  type="button"
-                  onClick={openMap}
-                  className="w-full flex items-center gap-3 px-5 py-4 text-sm text-[#107f8c] font-medium hover:bg-[#e5fcf7] transition-colors"
-                >
-                  <QuickLinkIcon label="Карта" />
-                  Карта услуг
-                </button>
-              </li>
           </ul>
         </aside>
       </div>

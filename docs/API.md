@@ -25,11 +25,11 @@
 }
 ```
 
-| Поле | Значения |
-|------|----------|
-| `ai_mode` | `openrouter`, `openai`, `openai-compatible`, `rule-based` |
-| `db` | `postgres`, `sqlite` |
-| `tts` | есть ли любой TTS-ключ |
+  Поле   Значения  
+ ------ ---------- 
+  `ai_mode`   `openrouter`, `openai`, `openai-compatible`, `rule-based`  
+  `db`   `postgres`  
+  `tts`   есть ли любой TTS-ключ  
 
 ---
 
@@ -63,11 +63,11 @@
 }
 ```
 
-| Поле | Назначение |
-|------|------------|
-| `navigation_path` | Внутренний маршрут демо для `router.push` |
-| `form_actions` | Заполнение полей на текущей форме |
-| `products` | Карточки продуктов (если есть) |
+  Поле   Назначение  
+ ------ ------------ 
+  `navigation_path`   Внутренний маршрут демо для `router.push`  
+  `form_actions`   Заполнение полей на текущей форме  
+  `products`   Карточки продуктов (если есть)  
 
 Логика: `services/ai/assistant.py` → демо-навигация → формы → LLM → rules.
 
@@ -77,11 +77,11 @@
 
 См. [TTS.md](./TTS.md).
 
-| Метод | Путь |
-|-------|------|
-| GET | `/api/tts/status` |
-| GET | `/api/tts/voices` |
-| POST | `/api/tts/speak` |
+  Метод   Путь  
+ ------- ------ 
+  GET   `/api/tts/status`  
+  GET   `/api/tts/voices`  
+  POST   `/api/tts/speak`  
 
 ---
 
@@ -125,9 +125,9 @@
 
 ## Коды ошибок
 
-| Код | Типичная причина |
-|-----|------------------|
-| 400 | Пустой текст TTS, невалидное тело |
-| 401 | Basic Auth |
-| 503 | Нет `SPEECHIFY_API_KEY` / TTS не настроен |
-| 502 | Ошибка внешнего TTS / LLM |
+  Код   Типичная причина  
+ ----- ------------------ 
+  400   Пустой текст TTS, невалидное тело  
+  401   Basic Auth  
+  503   Нет `SPEECHIFY_API_KEY` / TTS не настроен  
+  502   Ошибка внешнего TTS / LLM  
