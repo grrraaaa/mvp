@@ -23,6 +23,8 @@ class Settings(BaseSettings):
     OPENROUTER_APP_NAME: str = "Sber AI Navigator"
 
     SECRET_KEY: str = "dev-secret-key-change-in-production"
+    # Опорная «сегодняшняя» дата демо-выписки (ДД.ММ.ГГГГ)
+    DEMO_STATEMENT_ANCHOR: str = "06.06.2026"
     # PostgreSQL: DATABASE_URL или POSTGRES_URL (Vercel Postgres)
     DATABASE_URL: str = ""
 

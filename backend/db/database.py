@@ -62,6 +62,7 @@ async def init_db():
     from db.seed_corpo_cards import seed_corpo_cards
     from db.seed_info_requests import seed_info_requests
     from db.seed_statement_accounts import seed_statement_accounts
+    from db.seed_statement_recent import seed_statement_recent
     from db.seed_notification_links import seed_notification_links
 
     await run_migrations()
@@ -75,6 +76,7 @@ async def init_db():
     await seed_corpo_cards()
     await seed_info_requests()
     await seed_statement_accounts()
+    await seed_statement_recent()
     await seed_notification_links()
 
 

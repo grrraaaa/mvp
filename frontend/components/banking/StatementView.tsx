@@ -1,6 +1,6 @@
 ﻿"use client";
 
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import Link from "next/link";
 import {
   FileText,
@@ -20,12 +20,18 @@ import { useBankingStore } from "@/store/bankingStore";
 export default function StatementView() {
   const accounts = useBankingStore((s) => s.accounts);
   const documents = useBankingStore((s) => s.documents);
+  const loadAll = useBankingStore((s) => s.loadAll);
+  const bankingLoaded = useBankingStore((s) => s.loaded);
+
+  useEffect(() => {
+    if (!bankingLoaded) void loadAll();
+  }, [bankingLoaded, loadAll]);
   // Navigation Tabs inside Statement module
   const [activeSubTab, setActiveSubTab] = useState<'accounts' | 'corp_cards' | 'balances' | 'report' | 'schedule'>('accounts');
 
   // Filters State
   const [selectedAccount, setSelectedAccount] = useState<string>('all');
-  const [selectedPeriod, setSelectedPeriod] = useState<'Сегодня' | 'Вчера' | '5дней' | 'месяц'>('Сегодня');
+  const [selectedPeriod, setSelectedPeriod] = useState<'Сегодня' | 'Вчера' | '5дней' | 'месяц'>('месяц');
   const [showZeroTurnover, setShowZeroTurnover] = useState(false);
   const [showDaily, setShowDaily] = useState(true);
   const [showRevaluation, setShowRevaluation] = useState(false);
@@ -39,7 +45,7 @@ export default function StatementView() {
 
   const resetFilters = () => {
     setSelectedAccount('all');
-    setSelectedPeriod('Сегодня');
+    setSelectedPeriod('месяц');
     setShowZeroTurnover(false);
     setShowDaily(true);
     setShowRevaluation(false);
@@ -88,12 +94,18 @@ export default function StatementView() {
           closingBalance: endBalance,
           transactionsCount: lines.length,
         });
-        bankingToast(`Выписка: ${lines.length} операций из PostgreSQL`, "ok");
+        if (lines.length === 0) {
+          bankingToast("За выбранный период операций нет — попробуйте «Текущий отчетный месяц»", "err");
+        } else {
+          bankingToast(`Выписка: ${lines.length} операций из PostgreSQL`, "ok");
+        }
         setReportGenerated(true);
       })
       .catch(() => {
         bankingToast("Не удалось загрузить выписку из API", "err");
-        setStatementData([...documents]);
+        setStatementData([]);
+        setStatementLines([]);
+        setSummaryReport(null);
         setReportGenerated(true);
       })
       .finally(() => setIsLoading(false));

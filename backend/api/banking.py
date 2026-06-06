@@ -336,18 +336,52 @@ async def mark_notification_read(
     return {"ok": True}
 
 
-def _statement_period_cutoff(period: str) -> str | None:
-    from datetime import datetime, timedelta
+def _parse_stmt_date(s: str):
+    from datetime import datetime
+
+    parts = (s or "").split(".")
+    if len(parts) == 3:
+        d, m, y = int(parts[0]), int(parts[1]), int(parts[2])
+        if y < 100:
+            y += 2000
+        return datetime(y, m, d)
+    return None
+
+
+def _statement_anchor_date():
+    from datetime import datetime
+
+    from core.config import settings
+
+    return _parse_stmt_date(settings.DEMO_STATEMENT_ANCHOR) or datetime(2026, 6, 6)
+
+
+def _filter_statement_period(rows: list, period: str) -> list:
+    from datetime import timedelta
 
     p = (period or "month").lower()
-    now = datetime.utcnow()
+    if p in ("month", "месяц") or not rows:
+        return rows
+
+    anchor = _statement_anchor_date()
+    parsed = [(r, _parse_stmt_date(r.operation_date)) for r in rows]
+    parsed = [(r, dt) for r, dt in parsed if dt is not None]
+    if not parsed:
+        return rows
+
     if p in ("today", "сегодня"):
-        return now.strftime("%d.%m.%Y")
+        target = anchor.strftime("%d.%m.%Y")
+        return [r for r, _ in parsed if r.operation_date == target]
+
     if p in ("yesterday", "вчера"):
-        return (now - timedelta(days=1)).strftime("%d.%m.%Y")
+        target = (anchor - timedelta(days=1)).strftime("%d.%m.%Y")
+        return [r for r, _ in parsed if r.operation_date == target]
+
     if p in ("week", "5days", "5дней"):
-        return (now - timedelta(days=5)).strftime("%d.%m.%Y")
-    return None
+        cut = anchor - timedelta(days=5)
+        return [r for r, dt in parsed if dt >= cut]
+
+    return rows
 
 
 @router.get("/statement", response_model=list[StatementLineOut])
@@ -364,25 +398,7 @@ async def get_statement(
     stmt = stmt.order_by(StatementLine.operation_date.desc())
     result = await db.execute(stmt)
     rows = list(result.scalars().all())
-
-    cutoff = _statement_period_cutoff(period)
-    if cutoff and period.lower() not in ("month", "месяц"):
-        from datetime import datetime
-
-        def _parse_date(s: str) -> datetime:
-            parts = s.split(".")
-            if len(parts) == 3:
-                d, m, y = int(parts[0]), int(parts[1]), int(parts[2])
-                if y < 100:
-                    y += 2000
-                return datetime(y, m, d)
-            return datetime.min
-
-        if period.lower() in ("today", "сегодня", "yesterday", "вчера"):
-            rows = [r for r in rows if r.operation_date == cutoff]
-        else:
-            cut_dt = _parse_date(cutoff)
-            rows = [r for r in rows if _parse_date(r.operation_date) >= cut_dt]
+    rows = _filter_statement_period(rows, period)
 
     return [
         StatementLineOut(
