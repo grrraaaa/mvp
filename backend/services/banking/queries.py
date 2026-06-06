@@ -337,9 +337,9 @@ async def handle_banking_query(
         text = await get_balance_summary(session, org_id)
         return {
             "message": text,
-            "sources": [{"index": 1, "label": "Источник 1: Выписка по счёту", "kind": "account", "url": "/"}],
+            "sources": [{"index": 1, "label": "Источник 1: Выписка по счёту", "kind": "account", "url": "/statement/account"}],
             "action_buttons": [
-                {"label": "Детализация счетов", "url": "/", "variant": "primary"},
+                {"label": "Детализация счетов", "url": "/statement/account", "variant": "primary"},
                 {"label": "Выписка", "url": "/statement", "variant": "secondary"},
                 {"label": "Последние операции", "message": "Покажи последние документы", "variant": "secondary"},
             ],
