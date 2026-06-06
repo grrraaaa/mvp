@@ -36,6 +36,14 @@ export interface SourceRef {
   url?: string;
 }
 
+export interface ChartSpec {
+  type: string;
+  title: string;
+  labels: string[];
+  datasets: { label: string; data: number[] }[];
+  currency?: string;
+}
+
 export interface ChatMessage {
   role: "user" | "assistant";
   content: string;
@@ -45,6 +53,7 @@ export interface ChatMessage {
   pendingFormFields?: string[];
   formFillStatus?: string;
   sources?: SourceRef[];
+  charts?: ChartSpec[];
 }
 
 interface AssistantState {

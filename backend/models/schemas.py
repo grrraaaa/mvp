@@ -108,6 +108,7 @@ class AssistantResponse(BaseModel):
     pending_form_fields: Optional[List[str]] = None
     form_fill_status: Optional[str] = None  # collecting | partial | complete
     sources: Optional[List[SourceRef]] = None
+    charts: Optional[List[ChartSpec]] = None
     stream: bool = False
 
 
@@ -130,6 +131,56 @@ class BankAccountOut(BaseModel):
     balance: float
     currency: str
     hidden: bool = False
+    note: str = ""
+
+
+class ChartSpec(BaseModel):
+    type: str  # bar | line | pie | donut
+    title: str
+    labels: List[str]
+    datasets: List[dict]
+    currency: Optional[str] = "BYN"
+
+
+class StatementLineOut(BaseModel):
+    id: str
+    account_id: str
+    operation_date: str
+    debit: float
+    credit: float
+    balance_after: float
+    counterparty: str
+    purpose: str
+    doc_ref: str
+
+
+class PaymentRequestOut(BaseModel):
+    id: str
+    request_type: str
+    status: str
+    payload: dict
+    created_at: str
+
+
+class CreatePaymentRequest(BaseModel):
+    request_type: str
+    payload: dict = {}
+
+
+class PatchAccountNoteRequest(BaseModel):
+    note: str
+
+
+class CreateEmployeeRequest(BaseModel):
+    full_name: str
+    card_mask: str
+    amount: float
+
+
+class CreateAccountRequest(BaseModel):
+    currency: str = "BYN"
+    label: str = ""
+    account_type: str = "Текущий (расчетный) счет"
 
 
 class BankDocumentOut(BaseModel):

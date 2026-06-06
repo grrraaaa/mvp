@@ -2,7 +2,7 @@
 
 import React from "react";
 import { Sparkles, Smartphone } from "lucide-react";
-import { OneCConnector } from "@/components/onec/OneCConnector";
+import { runBankingAction } from "@/lib/banking/actionRegistry";
 
 export default function ServicesView() {
   return (
@@ -13,8 +13,6 @@ export default function ServicesView() {
           Интеллектуальные облачные технологии Сбер Бизнес
         </p>
       </div>
-
-      <OneCConnector />
 
       <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
         <div className="bg-white rounded-2xl border border-gray-150 p-6 shadow-xs space-y-4">
@@ -48,7 +46,7 @@ export default function ServicesView() {
           </p>
           <button
             type="button"
-            onClick={() => alert("Ссылка активации SoftPOS направлена администратору.")}
+            onClick={() => void runBankingAction("connect-softpos")}
             className="text-xs font-bold text-[#138d8a] hover:underline bg-teal-50/50 border border-teal-100 px-3 py-1.5 rounded"
           >
             Подключить сервис

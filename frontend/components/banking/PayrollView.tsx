@@ -17,6 +17,9 @@ import {
   RefreshCw,
 } from "lucide-react";
 import type { EmployeeSalary } from "@/lib/banking/types";
+import { createEmployee } from "@/lib/api/banking";
+import { bankingToast } from "@/lib/banking/toast";
+import { runBankingAction } from "@/lib/banking/actionRegistry";
 import { useBankingStore } from "@/store/bankingStore";
 
 export default function PayrollView() {
@@ -24,6 +27,7 @@ export default function PayrollView() {
   const setEmployees = useBankingStore((s) => s.setEmployees);
   const employees = useBankingStore((s) => s.employees);
   const runPayroll = useBankingStore((s) => s.runPayroll);
+  const loadAll = useBankingStore((s) => s.loadAll);
   const [activeTab, setActiveTab] = useState<'hub' | 'employees' | 'payout' | 'onboard'>('hub');
   
   // New Employee state
@@ -71,12 +75,27 @@ export default function PayrollView() {
       status: 'Готов'
     };
 
-    setEmployees(prev => [...prev, newEmp]);
-    setEmpName('');
-    setEmpCard('');
-    setEmpAmount('');
-    setActiveTab('employees');
-    alert('Сотрудник успешно включен в зарплатный реестр компании в Сбере!');
+    void createEmployee({
+      full_name: empName,
+      card_mask: newEmp.cardNumber,
+      amount: valueNum,
+    })
+      .then((created) => {
+        setEmployees((prev) => [...prev, {
+          id: created.id,
+          fullName: created.fullName,
+          cardNumber: created.cardNumber,
+          amount: created.amount,
+          status: created.status as EmployeeSalary["status"],
+        }]);
+        setEmpName("");
+        setEmpCard("");
+        setEmpAmount("");
+        setActiveTab("employees");
+        bankingToast("Сотрудник сохранён в PostgreSQL", "ok");
+        void loadAll();
+      })
+      .catch(() => bankingToast("Ошибка добавления сотрудника", "err"));
   };
 
   const handleBulkPayrollPayout = (e: FormEvent) => {
@@ -117,7 +136,19 @@ export default function PayrollView() {
 
   return (
     <div className="space-y-6 font-sans select-none">
-      
+      <button
+        type="button"
+        data-assistant-action="run-payroll"
+        className="sr-only"
+        aria-hidden
+        tabIndex={-1}
+        onClick={() => {
+          setActiveTab("payout");
+          const byn = accounts.find((a) => a.currency === "BYN");
+          if (byn) setPayoutBynAccount(byn.id);
+        }}
+      />
+
       {/* View Header wrapper */}
       <div className="flex items-center justify-between">
         <div>
@@ -154,7 +185,9 @@ export default function PayrollView() {
 
             {/* Column links */}
             <div className="space-y-3">
-              <button 
+              <button
+                type="button"
+                data-assistant-action="open-salary-project"
                 onClick={() => setActiveTab('payout')}
                 className="w-full text-left flex items-center justify-between hover:text-sky-700 font-semibold text-xs text-sky-800 focus:outline-none focus:underline"
               >
@@ -162,7 +195,9 @@ export default function PayrollView() {
                 <ChevronRight className="w-4 h-4 text-gray-300" />
               </button>
 
-              <button 
+              <button
+                type="button"
+                data-assistant-action="open-employees"
                 onClick={() => setActiveTab('employees')}
                 className="w-full text-left flex items-center justify-between hover:text-sky-700 font-semibold text-xs text-sky-800 focus:outline-none focus:underline"
               >
@@ -198,16 +233,18 @@ export default function PayrollView() {
             </div>
 
             <div className="space-y-3">
-              <button 
-                onClick={() => alert('Формирование справки об исполнении обязательств перед налоговым ведомством Республики Беларусь. Отчет отправлен в ваш кабинет.')}
+              <button
+                type="button"
+                onClick={() => void runBankingAction("tax-certificate")}
                 className="w-full text-left flex items-center justify-between hover:text-sky-700 font-semibold text-xs text-sky-800 focus:outline-none focus:underline"
               >
                 <span>Справки об исполнении налоговых обязательств</span>
                 <ChevronRight className="w-4 h-4 text-gray-300" />
               </button>
 
-              <button 
-                onClick={() => alert('Запрос справки ФСЗН (об отсутствии задолженностей и своевременной выплате пенсионных страховых взносов).')}
+              <button
+                type="button"
+                onClick={() => void runBankingAction("fszn-certificate")}
                 className="w-full text-left flex items-center justify-between hover:text-sky-700 font-semibold text-xs text-sky-800 focus:outline-none focus:underline"
               >
                 <span>Справки об отсутствии обязательств перед Фондом</span>

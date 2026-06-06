@@ -2,7 +2,7 @@ from __future__ import annotations
 import uuid
 from datetime import datetime
 from typing import Optional, List
-from sqlalchemy import String, Float, Boolean, DateTime, ForeignKey, Text
+from sqlalchemy import String, Float, Boolean, DateTime, ForeignKey, Text, JSON
 from sqlalchemy.orm import Mapped, mapped_column, relationship
 from db.database import Base
 
@@ -67,6 +67,7 @@ class BankAccount(Base):
     balance: Mapped[float] = mapped_column(Float, default=0.0)
     currency: Mapped[str] = mapped_column(String, nullable=False)
     hidden: Mapped[bool] = mapped_column(Boolean, default=False)
+    note: Mapped[str] = mapped_column(String, default="")
 
 
 class BankDocument(Base):
@@ -178,3 +179,46 @@ class OneCDocument(Base):
     status: Mapped[str] = mapped_column(String, default="pending")
     bank_doc_number: Mapped[Optional[str]] = mapped_column(String, nullable=True)
     imported_at: Mapped[Optional[datetime]] = mapped_column(DateTime, nullable=True)
+
+
+class StatementLine(Base):
+    """Строки банковской выписки."""
+
+    __tablename__ = "statement_lines"
+
+    id: Mapped[str] = mapped_column(String, primary_key=True, default=lambda: str(uuid.uuid4()))
+    org_id: Mapped[str] = mapped_column(String, index=True)
+    account_id: Mapped[str] = mapped_column(String, nullable=False)
+    operation_date: Mapped[str] = mapped_column(String, nullable=False)
+    debit: Mapped[float] = mapped_column(Float, default=0.0)
+    credit: Mapped[float] = mapped_column(Float, default=0.0)
+    balance_after: Mapped[float] = mapped_column(Float, default=0.0)
+    counterparty: Mapped[str] = mapped_column(String, default="")
+    purpose: Mapped[str] = mapped_column(Text, default="")
+    doc_ref: Mapped[str] = mapped_column(String, default="")
+
+
+class PaymentRequest(Base):
+    """Заявки: касса, FX, справки, сервисы."""
+
+    __tablename__ = "payment_requests"
+
+    id: Mapped[str] = mapped_column(String, primary_key=True, default=lambda: str(uuid.uuid4()))
+    org_id: Mapped[str] = mapped_column(String, index=True)
+    request_type: Mapped[str] = mapped_column(String, nullable=False)
+    status: Mapped[str] = mapped_column(String, default="pending")
+    payload: Mapped[dict] = mapped_column(JSON, default=dict)
+    created_at: Mapped[datetime] = mapped_column(DateTime, default=datetime.utcnow)
+
+
+class AnalyticsMonthly(Base):
+    """Агрегаты расходов по категориям для диаграмм."""
+
+    __tablename__ = "analytics_monthly"
+
+    id: Mapped[str] = mapped_column(String, primary_key=True, default=lambda: str(uuid.uuid4()))
+    org_id: Mapped[str] = mapped_column(String, index=True)
+    month: Mapped[str] = mapped_column(String, nullable=False)  # YYYY-MM
+    category: Mapped[str] = mapped_column(String, nullable=False)
+    amount: Mapped[float] = mapped_column(Float, nullable=False)
+    currency: Mapped[str] = mapped_column(String, default="BYN")

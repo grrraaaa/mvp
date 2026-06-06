@@ -54,10 +54,19 @@ app.include_router(onec.router, prefix="/api/onec", tags=["onec"])
 @app.get("/health")
 @app.get("/api/health")
 async def health():
+    db_status = "postgres"
+    try:
+        from sqlalchemy import text
+        from db.database import engine
+
+        async with engine.connect() as conn:
+            await conn.execute(text("SELECT 1"))
+    except Exception:
+        db_status = "error"
     return {
-        "status": "ok",
+        "status": "ok" if db_status == "postgres" else "degraded",
         "version": "0.1.0",
-        "db": "postgres",
+        "db": db_status,
         "ai_mode": settings.ai_provider,
         "tts": bool(
             settings.SPEECHIFY_API_KEY

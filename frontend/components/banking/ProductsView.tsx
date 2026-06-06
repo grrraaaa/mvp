@@ -1,6 +1,7 @@
 ﻿"use client";
 
 import { useState, type FormEvent } from "react";
+import Link from "next/link";
 import {
   CreditCard,
   Coins,
@@ -18,11 +19,13 @@ import {
   ChevronRight,
 } from "lucide-react";
 import type { BankAccount } from "@/lib/banking/types";
+import { runBankingAction } from "@/lib/banking/actionRegistry";
 import { useBankingStore } from "@/store/bankingStore";
 
 export default function ProductsView() {
   const accounts = useBankingStore((s) => s.accounts);
   const setAccounts = useBankingStore((s) => s.setAccounts);
+  const loadAll = useBankingStore((s) => s.loadAll);
   // Modal controllers
   const [activeTool, setActiveTool] = useState<string | null>(null);
 
@@ -77,41 +80,34 @@ export default function ProductsView() {
   // Create an Account
   const handleOpenAccount = (e: FormEvent) => {
     e.preventDefault();
-    
-    // Sber Belarus IBAN structure generator
-    const bpnBank = 'BPSB';
-    const accClass = '3012';
-    const randomBody1 = Math.floor(1000 + Math.random() * 9000);
-    const randomBody2 = Math.floor(1000 + Math.random() * 9000);
-    const randomSeq = Math.floor(10 + Math.random() * 89);
-    
-    const currencySuffixCode = newAccCurr === 'BYN' ? '2933' : newAccCurr === 'EUR' ? '0978' : newAccCurr === 'USD' ? '0840' : '0643';
-    
-    const newIban = `BY${randomSeq} ${bpnBank} ${accClass} ${randomBody1} ${randomBody2} ${currencySuffixCode} ${Math.floor(1000 + Math.random() * 9000)}`;
-
-    const newAcc: BankAccount = {
-      id: newIban,
-      type: 'Текущий (расчетный) счет',
-      label: newAccLabel || 'Вновь открытый',
-      balance: 0,
-      currency: newAccCurr as any
-    };
-
-    setAccounts(prev => [...prev, newAcc]);
-    setActiveTool(null);
-    setNewAccLabel('');
-    alert(`Генерация расчетного счета выполнена! Счет ${newIban} успешно зарегистрирован в Сбере и готов для клиринга.`);
+    void runBankingAction(
+      "open-account",
+      { currency: newAccCurr, label: newAccLabel || "Вновь открытый" },
+      { reload: loadAll },
+    ).then((ok) => {
+      if (ok) {
+        setActiveTool(null);
+        setNewAccLabel("");
+      }
+    });
   };
 
   return (
     <div className="space-y-6 font-sans select-none">
       
       {/* Sber section identity wrapper */}
-      <div>
-        <h1 className="text-xl font-bold text-gray-900 leading-tight">Продукты и услуги</h1>
-        <p className="text-xs text-gray-400 mt-1 uppercase font-semibold tracking-wider">
-          Продуктовый портфель корпоративного бизнеса ОАО «Сбер Банк»
-        </p>
+      <div className="flex flex-col sm:flex-row sm:items-end sm:justify-between gap-3">
+        <div>
+          <h1 className="text-xl font-bold text-gray-900 leading-tight">Продукты и услуги</h1>
+          <p className="text-xs text-gray-400 mt-1 uppercase font-semibold tracking-wider">
+            Продуктовый портфель корпоративного бизнеса ОАО «Сбер Банк»
+          </p>
+        </div>
+        <div className="flex flex-wrap gap-2 text-xs">
+          <Link href="/products/credits" data-assistant-action="open-credits" className="font-bold text-sky-700 hover:underline border border-sky-200 rounded px-3 py-1.5 bg-sky-50">Кредиты</Link>
+          <Link href="/products/deposits" data-assistant-action="open-deposits" className="font-bold text-sky-700 hover:underline border border-sky-200 rounded px-3 py-1.5 bg-sky-50">Депозиты</Link>
+          <Link href="/products/cards" data-assistant-action="open-cards" className="font-bold text-sky-700 hover:underline border border-sky-200 rounded px-3 py-1.5 bg-sky-50">Карты</Link>
+        </div>
       </div>
 
       {/* Main categories listing matching Screenshot 1 exactly */}

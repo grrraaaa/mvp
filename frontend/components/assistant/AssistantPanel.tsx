@@ -147,6 +147,7 @@ export function AssistantPanel({ variant = "default", compactMobile = false }: P
           pendingFormFields: data.pending_form_fields,
           formFillStatus: data.form_fill_status,
           sources: data.sources,
+          charts: data.charts,
         });
       } catch (err) {
         console.error("[AssistantPanel] fetch error:", err);

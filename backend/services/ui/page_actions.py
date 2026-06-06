@@ -13,7 +13,7 @@ PAGE_REGISTRY: dict[str, list[dict]] = {
         {"target": "open-payments", "labels": ["расчёты", "платежи", "перейди в расчёты"], "navigate": "/payments"},
         {"target": "open-statement", "labels": ["выписка", "выписку"], "navigate": "/statement"},
         {"target": "open-salary", "labels": ["зарплат", "ведомост"], "navigate": "/salary"},
-        {"target": "open-services", "labels": ["сервис", "1с", "коннектор"], "navigate": "/services"},
+        {"target": "open-services", "labels": ["сервис", "вспомогательн"], "navigate": "/services"},
     ],
     "/payments": [
         {"target": "open-payment-byn", "labels": ["платёжное поручение", "поручение byn", "создать платёж", "перевод в byn"], "navigate": "/payments/paydocbyn"},
@@ -39,11 +39,7 @@ PAGE_REGISTRY: dict[str, list[dict]] = {
         {"target": "run-payroll", "labels": ["выплат", "оплатить зарплат", "провести ведомост"]},
         {"target": "open-employees", "labels": ["сотрудник", "реестр"], "navigate": "/salary/employees"},
     ],
-    "/services": [
-        {"target": "onec-connect", "labels": ["подключить 1с", "коннектор"]},
-        {"target": "onec-sync", "labels": ["синхрониз", "выгруз", "обновить из 1с"]},
-        {"target": "onec-import-all", "labels": ["импорт", "импортировать все", "в банк"]},
-    ],
+    "/services": [],
     "/products": [
         {"target": "open-credits", "labels": ["кредит"], "navigate": "/products/credits"},
         {"target": "open-deposits", "labels": ["депозит", "вклад"], "navigate": "/products/deposits"},
@@ -105,8 +101,6 @@ def _match_action(message: str, page_route: Optional[str]) -> Optional[dict]:
         return best
 
     # Fallback: ключевые слова по маршруту
-    if route == "/services" and re.search(r"1\s*с|onec", msg):
-        return {"target": "onec-sync", "labels": ["1с"]}
     if re.search(r"создать документ|новый документ", msg):
         return {"target": "open-doc-modal", "labels": ["документ"]}
     if re.search(r"платёж|платеж|поручен", msg) and route in ("/", "/payments"):
@@ -154,9 +148,6 @@ def handle_page_ui_action(
         "open-payment-instant": "Открываю мгновенный платёж…",
         "open-payment-cur": "Открываю перевод в инвалюте…",
         "open-doc-modal": "Открываю выбор типа документа…",
-        "onec-connect": "Подключаю коннектор 1С…",
-        "onec-sync": "Синхронизирую с 1С…",
-        "onec-import-all": "Импортирую платёжки из 1С…",
         "run-payroll": "Запускаю выплату зарплаты…",
     }
     return AssistantResponse(

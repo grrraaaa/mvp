@@ -1,7 +1,9 @@
 ﻿"use client";
 
-import { useState, type FormEvent } from "react";
+import { useEffect, useState, type FormEvent } from "react";
 import Link from "next/link";
+import { ASSISTANT_ACTION_EVENT } from "@/lib/assistant/uiBridge";
+import { useSbbolUi } from "@/components/layout/SbbolUiContext";
 import {
   CreditCard,
   Coins,
@@ -15,12 +17,15 @@ import {
   CheckCircle2,
   CalendarDays,
 } from "lucide-react";
+import { runBankingAction } from "@/lib/banking/actionRegistry";
 import { useBankingStore } from "@/store/bankingStore";
 
 export default function PaymentsView() {
   const accounts = useBankingStore((s) => s.accounts);
+  const counterparties = useBankingStore((s) => s.counterparties);
   const createPayment = useBankingStore((s) => s.createPayment);
-  // Modal states
+  const loadAll = useBankingStore((s) => s.loadAll);
+  const { openDocumentModal } = useSbbolUi();
   const [activeModal, setActiveModal] = useState<string | null>(null);
 
   // Form states - Перевод в BYN
@@ -43,6 +48,36 @@ export default function PaymentsView() {
   const [fxAmount, setFxAmount] = useState('1000');
 
   const bynAccounts = accounts.filter(acc => acc.currency === 'BYN');
+
+  useEffect(() => {
+    const handler = (e: Event) => {
+      const { action, value } = (e as CustomEvent<{ action: string; value?: string }>).detail ?? {};
+      if (action === "open-payment-byn-modal" || action === "open-doc-modal") {
+        if (action === "open-doc-modal") openDocumentModal();
+        else setActiveModal("payout_byn");
+        return;
+      }
+      if (!action?.startsWith("fill:") || activeModal !== "payout_byn") return;
+      const field = action.slice(5);
+      const v = value ?? "";
+      if (field === "rcptName") setRcptName(v);
+      else if (field === "rcptIban") setRcptIban(v);
+      else if (field === "rcptUnp") setRcptUnp(v);
+      else if (field === "payAmount") setPayAmount(v);
+      else if (field === "payPurpose") setPayPurpose(v);
+      else if (field === "sourceAcc") setSourceAcc(v);
+    };
+    window.addEventListener(ASSISTANT_ACTION_EVENT, handler);
+    return () => window.removeEventListener(ASSISTANT_ACTION_EVENT, handler);
+  }, [activeModal, openDocumentModal]);
+
+  const applyCounterpartyFromDb = (name: string) => {
+    const match = counterparties.find((c) => c.name.toLowerCase().includes(name.toLowerCase()));
+    if (!match) return;
+    setRcptName(match.name);
+    if (match.account) setRcptIban(match.account);
+    if (match.unp) setRcptUnp(match.unp);
+  };
 
   // Handle Belarus Payment in BYN Submission
   const handleSubmitPayoutByn = (e: FormEvent) => {
@@ -90,28 +125,47 @@ export default function PaymentsView() {
     e.preventDefault();
     const amt = parseFloat(fxAmount);
     if (isNaN(amt) || amt <= 0) return;
-
-    // Simulate exchange
-    alert(`Заявка на ${fxType === 'BUY' ? 'покупку' : 'продажу'} ${amt} ${fxCurrency} успешно зарегистрирована дилером ОАО «Сбер Банк» и отправлена в исполнение.`);
-    setActiveModal(null);
+    void runBankingAction(
+      "fx-trade",
+      { side: fxType, currency: fxCurrency, amount: amt },
+      { reload: loadAll },
+    ).then((ok) => {
+      if (ok) setActiveModal(null);
+    });
   };
 
   const handleOrderCash = (e: FormEvent) => {
     e.preventDefault();
-    alert(`Заказ наличных денег на сумму ${cashAmount} ${cashCurr} зарегистрирован в отделении ${cashBranch}. Номер телефона связи: ${cashPhone}.`);
-    setActiveModal(null);
-    setCashAmount('');
+    void runBankingAction(
+      "order-cash",
+      { amount: parseFloat(cashAmount) || 0, currency: cashCurr, branch: cashBranch, phone: cashPhone },
+      { reload: loadAll },
+    ).then((ok) => {
+      if (ok) {
+        setActiveModal(null);
+        setCashAmount("");
+      }
+    });
   };
 
   return (
     <div className="space-y-6 font-sans">
       
-      {/* Upper header title description */}
-      <div>
-        <h1 className="text-xl font-bold text-gray-900 leading-tight">Расчеты со Сбер Банком</h1>
-        <p className="text-xs text-gray-400 mt-1 uppercase font-semibold tracking-wider">
-          Платежная инфраструктура, валютный контроль и касса
-        </p>
+      <div className="flex flex-col sm:flex-row sm:items-start sm:justify-between gap-3">
+        <div>
+          <h1 className="text-xl font-bold text-gray-900 leading-tight">Расчеты со Сбер Банком</h1>
+          <p className="text-xs text-gray-400 mt-1 uppercase font-semibold tracking-wider">
+            Платежная инфраструктура, валютный контроль и касса
+          </p>
+        </div>
+        <button
+          type="button"
+          data-assistant-action="open-doc-modal"
+          onClick={() => openDocumentModal()}
+          className="bg-[#128e8b] hover:bg-[#107c79] text-white px-5 py-2.5 rounded-lg text-xs font-bold shadow-md shrink-0"
+        >
+          Создать документ
+        </button>
       </div>
 
       {/* Main Grid mapping Screenshot 4 */}
@@ -377,23 +431,32 @@ export default function PaymentsView() {
               {/* Recipient Brand Name */}
               <div>
                 <label className="block text-xs font-bold text-gray-700 mb-1">ФИО или Название получателя *</label>
-                <input 
-                  type="text" 
-                  value={rcptName} 
+                <input
+                  type="text"
+                  list="payments-counterparties"
+                  data-assistant-field="rcptName"
+                  value={rcptName}
                   onChange={(e) => setRcptName(e.target.value)}
+                  onBlur={(e) => applyCounterpartyFromDb(e.target.value)}
                   placeholder="Например, ООО БелТелесистемы"
                   className="w-full border border-gray-300 rounded-lg p-2"
                   required
                 />
+                <datalist id="payments-counterparties">
+                  {counterparties.map((c) => (
+                    <option key={c.id} value={c.name} />
+                  ))}
+                </datalist>
               </div>
 
               <div className="grid grid-cols-2 gap-3">
                 {/* Recipient IBAN Account */}
                 <div>
                   <label className="block text-xs font-bold text-gray-700 mb-1">Счет получателя (IBAN) *</label>
-                  <input 
-                    type="text" 
-                    value={rcptIban} 
+                  <input
+                    type="text"
+                    data-assistant-field="rcptIban"
+                    value={rcptIban}
                     onChange={(e) => setRcptIban(e.target.value)}
                     placeholder="BY70 BPSB 3012 ..."
                     className="w-full border border-gray-300 rounded-lg p-2 uppercase font-mono"
@@ -405,9 +468,10 @@ export default function PaymentsView() {
                 {/* Recipient Tax UNP code */}
                 <div>
                   <label className="block text-xs font-bold text-gray-700 mb-1">УНП Получателя</label>
-                  <input 
-                    type="text" 
-                    value={rcptUnp} 
+                  <input
+                    type="text"
+                    data-assistant-field="rcptUnp"
+                    value={rcptUnp}
                     onChange={(e) => setRcptUnp(e.target.value)}
                     placeholder="9-значный код"
                     className="w-full border border-gray-300 rounded-lg p-2"
@@ -419,9 +483,10 @@ export default function PaymentsView() {
               {/* Sum field */}
               <div>
                 <label className="block text-xs font-bold text-gray-700 mb-1">Сумма к отправке (BYN) *</label>
-                <input 
-                  type="number" 
-                  value={payAmount} 
+                <input
+                  type="number"
+                  data-assistant-field="payAmount"
+                  value={payAmount}
                   onChange={(e) => setPayAmount(e.target.value)}
                   placeholder="Сумма в рублях"
                   className="w-full border border-gray-300 rounded-lg p-2 font-black text-gray-900"
@@ -432,8 +497,9 @@ export default function PaymentsView() {
               {/* Transfer Purpose */}
               <div>
                 <label className="block text-xs font-bold text-gray-700 mb-1">Назначение платежа</label>
-                <textarea 
-                  value={payPurpose} 
+                <textarea
+                  data-assistant-field="payPurpose"
+                  value={payPurpose}
                   onChange={(e) => setPayPurpose(e.target.value)}
                   placeholder="Оплата за поставку сырья согласно счета № 203 от..."
                   className="w-full border border-gray-300 rounded-lg p-2 h-16 resize-none"

@@ -107,3 +107,71 @@ export function signDocument(docId: string): Promise<BankDocument> {
 export function markNotificationRead(id: string): Promise<{ ok: boolean }> {
   return postJson<{ ok: boolean }>(`/api/banking/notifications/${encodeURIComponent(id)}/read`);
 }
+
+export interface StatementLine {
+  id: string;
+  account_id: string;
+  operation_date: string;
+  debit: number;
+  credit: number;
+  balance_after: number;
+  counterparty: string;
+  purpose: string;
+  doc_ref: string;
+}
+
+export function fetchStatement(accountId?: string, period = "month"): Promise<StatementLine[]> {
+  const params = new URLSearchParams({ period });
+  if (accountId) params.set("account_id", accountId);
+  return fetchJson<StatementLine[]>(`/api/banking/statement?${params}`);
+}
+
+export function createPaymentRequest(requestType: string, payload: Record<string, unknown>) {
+  return postJson<{ id: string; request_type: string; status: string }>("/api/banking/requests", {
+    request_type: requestType,
+    payload,
+  });
+}
+
+export function createEmployee(body: {
+  full_name: string;
+  card_mask: string;
+  amount: number;
+}) {
+  return postJson<EmployeeSalary>("/api/banking/employees", body);
+}
+
+export function createAccount(body: {
+  currency: string;
+  label?: string;
+  account_type?: string;
+}) {
+  return postJson<BankAccount>("/api/banking/accounts", body);
+}
+
+export function patchAccountNote(accountId: string, note: string) {
+  return fetch(apiUrl(`/api/banking/accounts/${encodeURIComponent(accountId)}/note`), {
+    method: "PATCH",
+    credentials: "include",
+    headers: { "Content-Type": "application/json", ...authHeaders() },
+    body: JSON.stringify({ note }),
+  }).then(async (res) => {
+    if (!res.ok) throw new Error(`PATCH note: ${res.status}`);
+    return res.json() as Promise<BankAccount>;
+  });
+}
+
+export interface ChartSpec {
+  type: string;
+  title: string;
+  labels: string[];
+  datasets: { label: string; data: number[] }[];
+  currency?: string;
+}
+
+export function fetchAnalyticsMonthly(month?: string) {
+  const q = month ? `?month=${encodeURIComponent(month)}` : "";
+  return fetchJson<{ items: { category: string; amount: number }[]; chart: ChartSpec | null }>(
+    `/api/banking/analytics/monthly${q}`,
+  );
+}

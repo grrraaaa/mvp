@@ -1,6 +1,7 @@
 ﻿"use client";
 
 import { useState } from "react";
+import Link from "next/link";
 import {
   FileText,
   Printer,
@@ -12,6 +13,8 @@ import {
   ChevronDown,
 } from "lucide-react";
 import type { BankDocument } from "@/lib/banking/types";
+import { fetchStatement, type StatementLine } from "@/lib/api/banking";
+import { bankingToast } from "@/lib/banking/toast";
 import { useBankingStore } from "@/store/bankingStore";
 
 export default function StatementView() {
@@ -31,6 +34,7 @@ export default function StatementView() {
   const [isLoading, setIsLoading] = useState(false);
   const [reportGenerated, setReportGenerated] = useState(false);
   const [statementData, setStatementData] = useState<BankDocument[]>([]);
+  const [statementLines, setStatementLines] = useState<StatementLine[]>([]);
   const [summaryReport, setSummaryReport] = useState<any>(null);
 
   const resetFilters = () => {
@@ -45,53 +49,44 @@ export default function StatementView() {
   const handleGenerateStatement = () => {
     setIsLoading(true);
     setReportGenerated(false);
-
-    setTimeout(() => {
-      // Filter list based on selected arguments
-      let results = [...documents];
-
-      // 1. Account Filter
-      if (selectedAccount !== 'all') {
-        // match by checking if the payment/document currency matches account currency as a basic simulator,
-        // or let's match some accounts
-        const matched = accounts.find(a => a.id === selectedAccount);
-        if (matched) {
-          results = results.filter(doc => doc.currency === matched.currency);
-        }
-      }
-
-      // 2. Period Filter
-      // Simulating filter
-      if (selectedPeriod === 'Сегодня') {
-        const today = new Date();
-        const formattedToday = `${String(today.getDate()).padStart(2, '0')}.${String(today.getMonth() + 1).padStart(2, '0')}.${today.getFullYear()}`;
-        results = results.filter(doc => doc.date === formattedToday);
-      } else if (selectedPeriod === 'Вчера') {
-        results = results.filter(doc => doc.date.includes('.2026')); // all 2026 data
-      }
-
-      // Compute summaries
-      const totalDebit = results.reduce((sum, doc) => sum + doc.amount, 0); // Outgoing
-      const totalCredit = selectedAccount !== 'all' ? 450.50 : 1250.00; // Simulated incoming business turnover
-      
-      const accObject = selectedAccount !== 'all' ? accounts.find(a => a.id === selectedAccount) : null;
-      const curLabel = accObject ? accObject.currency : 'BYN';
-      const startBalance = accObject ? accObject.balance + totalDebit - totalCredit : 4500.00;
-      const endBalance = accObject ? accObject.balance : (startBalance + totalCredit - totalDebit);
-
-      setStatementData(results);
-      setSummaryReport({
-        currency: curLabel,
-        openingBalance: startBalance,
-        totalDebit: totalDebit, // Outgoing
-        totalCredit: totalCredit, // Incoming
-        closingBalance: endBalance,
-        transactionsCount: results.length
-      });
-
-      setIsLoading(false);
-      setReportGenerated(true);
-    }, 1000);
+    const accId = selectedAccount !== "all" ? selectedAccount : undefined;
+    void fetchStatement(accId, selectedPeriod === "Сегодня" ? "today" : "month")
+      .then((lines) => {
+        setStatementLines(lines);
+        const totalDebit = lines.reduce((s, l) => s + l.debit, 0);
+        const totalCredit = lines.reduce((s, l) => s + l.credit, 0);
+        const accObject = selectedAccount !== "all" ? accounts.find((a) => a.id === selectedAccount) : null;
+        const curLabel = accObject ? accObject.currency : "BYN";
+        const endBalance = lines[0]?.balance_after ?? accObject?.balance ?? 0;
+        setStatementData(
+          lines.map((l) => ({
+            id: l.doc_ref,
+            date: l.operation_date,
+            type: l.debit > 0 ? "Списание" : "Поступление",
+            counterparty: l.counterparty,
+            amount: l.debit || l.credit,
+            currency: curLabel,
+            status: "Проведен",
+            purpose: l.purpose,
+          })),
+        );
+        setSummaryReport({
+          currency: curLabel,
+          openingBalance: endBalance + totalDebit - totalCredit,
+          totalDebit,
+          totalCredit,
+          closingBalance: endBalance,
+          transactionsCount: lines.length,
+        });
+        bankingToast(`Выписка: ${lines.length} операций из PostgreSQL`, "ok");
+        setReportGenerated(true);
+      })
+      .catch(() => {
+        bankingToast("Не удалось загрузить выписку из API", "err");
+        setStatementData([...documents]);
+        setReportGenerated(true);
+      })
+      .finally(() => setIsLoading(false));
   };
 
   const triggerPrint = () => {
@@ -106,11 +101,29 @@ export default function StatementView() {
     <div className="space-y-6 font-sans select-none">
       
       {/* Sber title indicator */}
-      <div>
-        <h1 className="text-xl font-bold text-gray-900 leading-tight">Банковская выписка</h1>
-        <p className="text-xs text-gray-400 mt-1 uppercase font-semibold tracking-wider">
-          История транзакций по счетам и корпоративным картам
-        </p>
+      <div className="flex flex-col sm:flex-row sm:items-end sm:justify-between gap-3">
+        <div>
+          <h1 className="text-xl font-bold text-gray-900 leading-tight">Банковская выписка</h1>
+          <p className="text-xs text-gray-400 mt-1 uppercase font-semibold tracking-wider">
+            История транзакций по счетам и корпоративным картам
+          </p>
+        </div>
+        <div className="flex flex-wrap gap-2 text-xs">
+          <Link
+            href="/statement/account"
+            data-assistant-action="open-statement-account"
+            className="font-bold text-sky-700 hover:underline border border-sky-200 rounded px-3 py-1.5 bg-sky-50"
+          >
+            Выписка по счёту
+          </Link>
+          <Link
+            href="/statement/certificates"
+            data-assistant-action="open-statement-cert"
+            className="font-bold text-sky-700 hover:underline border border-sky-200 rounded px-3 py-1.5 bg-sky-50"
+          >
+            Справки
+          </Link>
+        </div>
       </div>
 
       {/* Main Container */}

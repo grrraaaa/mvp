@@ -10,9 +10,9 @@ from typing import Optional, List, Dict, Any
 from core.config import settings
 
 logger = logging.getLogger(__name__)
-from models.schemas import AssistantResponse, NavigationStep, BankProduct, ActionButton, FormFieldAction, SourceRef
+from models.schemas import AssistantResponse, NavigationStep, BankProduct, ActionButton, ChartSpec, FormFieldAction, SourceRef
 from db.database import AsyncSessionLocal
-from services.banking.queries import handle_banking_query, get_org_profile
+from services.banking.queries import handle_banking_query, get_org_profile, lookup_counterparty
 from services.onec.assistant import handle_onec_query
 from services.ui.page_actions import get_page_help, get_page_quick_actions, handle_page_ui_action
 from services.banking.services_consult import find_service, format_service_reply
@@ -438,6 +438,57 @@ def _parse_pending_value(
             return FormFieldAction(field=meta["name"], value=text.rstrip(".,;"), label=meta.get("label"))
 
     return None
+
+
+async def _enrich_counterparty_from_db(
+    db,
+    org_id: str,
+    actions: List[FormFieldAction],
+    schema: dict,
+    filled: Dict[str, str],
+) -> List[FormFieldAction]:
+    """Подставить УНП и счёт из PostgreSQL, если указан контрагент."""
+    fields = {f["key"]: f for f in schema.get("fields", [])}
+    extra: List[FormFieldAction] = []
+    recipient_value: str | None = None
+
+    for a in actions:
+        meta = next((f for f in schema.get("fields", []) if f["name"] == a.field), None)
+        if meta and meta.get("key") == "CONTRAGENT_ID":
+            recipient_value = a.value
+            break
+
+    if not recipient_value:
+        c_field = fields.get("CONTRAGENT_ID")
+        if c_field:
+            recipient_value = filled.get(c_field["name"], "")
+
+    if not recipient_value:
+        return actions
+
+    row = await lookup_counterparty(db, org_id, recipient_value)
+    if not row:
+        return actions
+
+    for key, attr in (("CONTRAGENT_UNP", "unp"), ("CONTRAGENT_ACCOUNT", "account")):
+        fld = fields.get(key)
+        if not fld or not getattr(row, attr, ""):
+            continue
+        if filled.get(fld["name"]) or any(a.field == fld["name"] for a in actions):
+            continue
+        extra.append(
+            FormFieldAction(
+                field=fld["name"],
+                value=getattr(row, attr),
+                label=fld.get("label"),
+            )
+        )
+
+    if extra:
+        actions = actions + extra
+        for a in extra:
+            filled[a.field] = a.value
+    return actions
 
 
 def _rule_based_form_fill(
@@ -885,6 +936,23 @@ class AssistantService:
         title = schema.get("title", form_type)
 
         if new_actions:
+            async with AsyncSessionLocal() as _db:
+                before_fields = {a.field for a in new_actions}
+                new_actions = await _enrich_counterparty_from_db(
+                    _db, org_id, new_actions, schema, state.filled
+                )
+                for a in new_actions:
+                    if a.field not in before_fields:
+                        state.filled[a.field] = a.value
+            filled_names = set(state.filled.keys())
+            missing_keys = _missing_field_keys(schema, filled_names)
+            pending_labels = field_labels_for_keys(schema, missing_keys)
+            if missing_keys:
+                state.pending_key = missing_keys[0]
+            else:
+                state.pending_key = None
+            _save_form_session(session_id, state)
+
             filled_labels = ", ".join(
                 a.label or a.field.split(".")[-1] for a in new_actions
             )
@@ -911,6 +979,8 @@ class AssistantService:
             hint_block = _payment_hints_from_state(state.filled, daily_limit=daily_limit)
             if hint_block:
                 msg += f"\n\n**Проверки:**\n{hint_block}"
+            if any(a.field not in before_fields for a in new_actions):
+                msg += "\n\n_УНП и счёт получателя подставлены из справочника контрагентов (PostgreSQL)._"
             return AssistantResponse(
                 message=msg,
                 session_id=session_id,
@@ -1087,6 +1157,8 @@ class AssistantService:
             session_id=session_id,
             sources=[SourceRef(**s) for s in result.get("sources", [])],
             action_buttons=[ActionButton(**b) for b in result.get("action_buttons", [])],
+            charts=[ChartSpec(**c) for c in result.get("charts", [])] or None,
+            pending_form_fields=result.get("pending_form_fields"),
         )
 
     def _maybe_tax_salary_chain(

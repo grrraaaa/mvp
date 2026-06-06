@@ -34,5 +34,5 @@ async def vercel_lazy_db_init(request, call_next):
         except Exception as exc:
             import logging
 
-            logging.getLogger(__name__).warning("init_db failed, will retry: %s", exc)
+            logging.getLogger(__name__).error("init_db failed, will retry: %s", exc, exc_info=True)
     return await call_next(request)

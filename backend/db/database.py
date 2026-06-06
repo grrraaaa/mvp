@@ -4,14 +4,19 @@ import os
 
 from sqlalchemy.ext.asyncio import AsyncSession, async_sessionmaker, create_async_engine
 from sqlalchemy.orm import DeclarativeBase
+from sqlalchemy.pool import NullPool
 
-from core.db_url import resolve_database_url
+from core.db_url import resolve_database_url, resolve_init_database_url
 
 DATABASE_URL = resolve_database_url()
 
 _engine_kwargs: dict = {"echo": False, "pool_pre_ping": True}
-_engine_kwargs["pool_size"] = 1 if os.getenv("VERCEL") == "1" else 5
-_engine_kwargs["max_overflow"] = 0 if os.getenv("VERCEL") == "1" else 5
+if os.getenv("VERCEL") == "1":
+    # Serverless: без долгоживущего пула
+    _engine_kwargs["poolclass"] = NullPool
+else:
+    _engine_kwargs["pool_size"] = 5
+    _engine_kwargs["max_overflow"] = 5
 
 engine = create_async_engine(DATABASE_URL, **_engine_kwargs)
 
@@ -25,8 +30,18 @@ class Base(DeclarativeBase):
 async def init_db():
     from db import models  # noqa: F401 — register models
 
-    async with engine.begin() as conn:
-        await conn.run_sync(Base.metadata.create_all)
+    init_url = resolve_init_database_url()
+    init_engine = (
+        create_async_engine(init_url, poolclass=NullPool)
+        if init_url != DATABASE_URL
+        else engine
+    )
+    try:
+        async with init_engine.begin() as conn:
+            await conn.run_sync(Base.metadata.create_all)
+    finally:
+        if init_engine is not engine:
+            await init_engine.dispose()
 
     from db.migrate import run_migrations
     from db.seed import seed_products
@@ -35,6 +50,7 @@ async def init_db():
     from db.seed_tenants import seed_tenants
     from db.seed_onec import seed_onec
     from db.seed_rich import seed_rich
+    from db.seed_comprehensive import seed_comprehensive
 
     await run_migrations()
     await seed_products()
@@ -43,6 +59,7 @@ async def init_db():
     await seed_extended()
     await seed_onec()
     await seed_rich()
+    await seed_comprehensive()
 
 
 async def get_db():

@@ -6,8 +6,31 @@ import re
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from db.models import BankAccount, BankDocument, OrganizationProfile
+from db.models import BankAccount, BankDocument, Counterparty, OrganizationProfile
+from services.banking.analytics import (
+    cash_gap_forecast,
+    compare_months,
+    monthly_expenses,
+    to_chart_bar,
+    to_chart_line,
+    to_chart_pie,
+)
 from services.banking.search import format_search_response, smart_search
+
+
+async def lookup_counterparty(
+    session: AsyncSession, org_id: str, name: str
+) -> Counterparty | None:
+    """Найти контрагента организации в PostgreSQL по имени."""
+    query = (name or "").strip()
+    if len(query) < 2:
+        return None
+    result = await session.execute(
+        select(Counterparty)
+        .where(Counterparty.org_id == org_id, Counterparty.name.ilike(f"%{query}%"))
+        .limit(1)
+    )
+    return result.scalar_one_or_none()
 
 
 async def get_org_profile(session: AsyncSession, org_id: str = "demo") -> OrganizationProfile:
@@ -89,6 +112,58 @@ async def handle_banking_query(
                 ],
             }
 
+    low = message.lower()
+
+    if re.search(r"расход|покажи\s+расход|структур\w*\s+расход", low):
+        month_m = re.search(r"(20\d{2}-\d{2})", message)
+        month = month_m.group(1) if month_m else None
+        items = await monthly_expenses(session, org_id, month)
+        if not items:
+            return {
+                "message": "За выбранный период расходов в базе нет. Укажите месяц, например: «расходы за 2026-03».",
+                "pending_form_fields": ["Период (YYYY-MM)"],
+                "action_buttons": [
+                    {"label": "За март 2026", "message": "Расходы за 2026-03", "variant": "primary"},
+                    {"label": "За июнь 2026", "message": "Расходы за 2026-06", "variant": "secondary"},
+                ],
+            }
+        lines = "\n".join(f"• {i['category']} — {i['amount']:,.2f} BYN" for i in items[:8])
+        return {
+            "message": f"Расходы по категориям:\n{lines}",
+            "charts": [to_chart_pie("Структура расходов", items)],
+            "sources": [{"index": 1, "label": "Аналитика PostgreSQL", "kind": "analytics", "url": "/services"}],
+            "action_buttons": [{"label": "Выписка", "url": "/statement", "variant": "secondary"}],
+        }
+
+    if re.search(r"сравни|сравнение", low) and re.search(r"феврал|март|апрел|май|июн", low):
+        month_a, month_b = "2026-02", "2026-03"
+        if "март" in low and "апрел" in low:
+            month_a, month_b = "2026-03", "2026-04"
+        elif "май" in low and "июн" in low:
+            month_a, month_b = "2026-05", "2026-06"
+        data = await compare_months(session, org_id, month_a, month_b)
+        return {
+            "message": (
+                f"Сравнение расходов:\n"
+                f"• {month_a}: **{data['amount_a']:,.2f} BYN**\n"
+                f"• {month_b}: **{data['amount_b']:,.2f} BYN**"
+            ),
+            "charts": [to_chart_bar(f"{month_a} vs {month_b}", [month_a, month_b], [data["amount_a"], data["amount_b"]])],
+            "sources": [{"index": 1, "label": "Аналитика PostgreSQL", "kind": "analytics", "url": "/services"}],
+        }
+
+    if re.search(r"кассов\w*\s+разрыв|прогноз\s+остат", low):
+        data = await cash_gap_forecast(session, org_id)
+        return {
+            "message": (
+                f"Текущий остаток BYN: **{data['current_balance']:,.2f}**\n"
+                f"Средний месячный отток: {data['avg_monthly_outflow']:,.2f} BYN\n"
+                f"Ориентировочно до дефицита: ~{data['days_to_gap']} дн."
+            ),
+            "charts": [to_chart_line("Прогноз остатка", data["forecast"])],
+            "sources": [{"index": 1, "label": "Счета PostgreSQL", "kind": "account", "url": "/"}],
+        }
+
     if is_balance_query(message):
         text = await get_balance_summary(session, org_id)
         return {
@@ -113,24 +188,21 @@ async def handle_banking_query(
                 buttons.append({"label": "Связанные платежи", "message": f"Платежи {h.title.split('—')[0]}", "variant": "secondary"})
         return {"message": text, "sources": sources, "action_buttons": buttons}
 
-    low = message.lower()
-    if re.search(r"расход\w*\s+по\s+категор", low):
-        return {
-            "message": (
-                "Расходы по категориям за март 2026:\n"
-                "• Поставщики — 42% (187 400 BYN)\n"
-                "• Аренда — 35% (156 000 BYN)\n"
-                "• Зарплата — 18% (80 200 BYN)\n"
-                "• Прочее — 5% (22 300 BYN)"
-            ),
-            "sources": [
-                {"index": 1, "label": "Источник 1: Бизнес-аналитика", "kind": "analytics", "url": "/services/analytics"}
-            ],
-            "action_buttons": [
-                {"label": "Открыть аналитику", "url": "/services/analytics", "variant": "primary"},
-                {"label": "Выписка", "url": "/statement", "variant": "secondary"},
-            ],
-        }
+    if re.search(r"выписк", low) and re.search(r"сч[её]т|период|за\s+", low):
+        missing = []
+        if not re.search(r"сч[её]т|byn|usd|iban|by\d", low):
+            missing.append("Счёт")
+        if not re.search(r"сегодня|вчера|месяц|недел|20\d{2}", low):
+            missing.append("Период")
+        if missing:
+            return {
+                "message": f"Для выписки укажите: {', '.join(missing)}.",
+                "pending_form_fields": missing,
+                "action_buttons": [
+                    {"label": "За месяц", "message": "Выписка за месяц", "variant": "primary"},
+                    {"label": "За сегодня", "message": "Выписка за сегодня", "variant": "secondary"},
+                ],
+            }
 
     if re.search(r"повтор\w*\s+последн|последн\w*\s+(?:платёж|платеж|документ)", low):
         result = await session.execute(

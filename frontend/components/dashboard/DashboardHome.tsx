@@ -86,6 +86,7 @@ export function DashboardHome() {
         <h1 className="sbbol-page-title">{orgName}</h1>
         <button
           type="button"
+          data-assistant-action="create-document"
           className="sbbol-create-doc-btn shrink-0 self-start"
           onClick={openDocumentModal}
         >

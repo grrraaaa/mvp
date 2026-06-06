@@ -7,6 +7,27 @@ export interface AssistantActionDetail {
   value?: string;
 }
 
+/** Действия без DOM-кнопки — только через custom event. */
+const EVENT_ONLY_ACTIONS = new Set([
+  "run-payroll",
+  "open-doc-modal",
+  "open-payments",
+  "open-statement",
+  "open-salary",
+  "open-services",
+  "open-payment-byn",
+  "open-payment-instant",
+  "open-payment-cur",
+  "open-payment-byn-modal",
+  "open-statement-account",
+  "open-statement-cert",
+  "open-salary-project",
+  "open-employees",
+  "open-credits",
+  "open-deposits",
+  "open-cards",
+]);
+
 export function dispatchAssistantAction(action: string, value?: string) {
   if (typeof window === "undefined") return;
   window.dispatchEvent(
@@ -36,12 +57,17 @@ export function executeUiActions(actions: UiActionPayload[]) {
       dispatchAssistantAction(`fill:${a.target}`, a.value);
       continue;
     }
-    // click — сначала DOM, потом custom event для React
-    const el = document.querySelector(`[data-assistant-action="${a.target}"]`);
-    if (el instanceof HTMLElement) {
-      el.click();
-    } else {
-      dispatchAssistantAction(a.target, a.value);
+    if (a.type === "click") {
+      if (EVENT_ONLY_ACTIONS.has(a.target)) {
+        dispatchAssistantAction(a.target, a.value);
+        continue;
+      }
+      const el = document.querySelector(`[data-assistant-action="${a.target}"]`);
+      if (el instanceof HTMLElement) {
+        el.click();
+      } else {
+        dispatchAssistantAction(a.target, a.value);
+      }
     }
   }
 }

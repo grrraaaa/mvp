@@ -2,6 +2,7 @@
 
 import Link from "next/link";
 import type { ChatMessage } from "@/store/assistantStore";
+import { AssistantChart } from "@/components/assistant/AssistantChart";
 import {
   normalizeAssistantLinks,
   sanitizeSbbolUrl,
@@ -77,7 +78,12 @@ export function MessageBubble({ message, isTyping, compact }: Props) {
             ))}
           </span>
         ) : (
-          renderTextWithLinks(message.content)
+          <>
+            {renderTextWithLinks(message.content)}
+            {message.charts?.map((chart, i) => (
+              <AssistantChart key={i} chart={chart} compact={compact} />
+            ))}
+          </>
         )}
       </div>
     </div>
