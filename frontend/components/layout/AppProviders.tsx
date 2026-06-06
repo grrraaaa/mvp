@@ -6,6 +6,7 @@ import { AssistantFloatingChat } from "@/components/assistant/AssistantFloatingC
 import { DocumentTypeSelectionModal } from "@/components/sbbol/DocumentTypeSelectionModal";
 import { SbbolUiContext } from "@/components/layout/SbbolUiContext";
 import { AssistantUiBridge } from "@/components/assistant/AssistantUiBridge";
+import { TtsBootstrap } from "@/components/assistant/TtsBootstrap";
 import { useAuthStore } from "@/store/authStore";
 
 interface Props {
@@ -54,6 +55,7 @@ function AppProvidersInner({ children, documentModalHtml }: Props) {
       {children}
       {showBankingExtras && (
         <>
+          <TtsBootstrap />
           <AssistantUiBridge />
           <AssistantFloatingChat open={chatOpen} onOpenChange={setChatOpen} />
         </>

@@ -83,8 +83,8 @@ export const useTtsStore = create<TtsState>((set, get) => ({
     const saved = readVoiceId();
     const allIds = new Set(groups.flatMap((g) => g.voices.map((v) => v.id)));
     let voiceId = saved && allIds.has(saved) ? saved : defaultVoice;
-    if (!allIds.has(voiceId) && groups[0]?.voices[0]) {
-      voiceId = groups[0].voices[0].id;
+    if (!allIds.has(voiceId)) {
+      voiceId = allIds.has(defaultVoice) ? defaultVoice : groups[0]?.voices[0]?.id ?? defaultVoice;
     }
     try {
       localStorage.setItem(VOICE_KEY, voiceId);

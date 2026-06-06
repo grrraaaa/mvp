@@ -1,6 +1,7 @@
 "use client";
 
 import { useCallback, useRef } from "react";
+import { DEEPGRAM_DEFAULT_VOICE, DEEPGRAM_VOICE_GROUPS } from "@/lib/tts/deepgramVoices";
 import { useTtsStore } from "@/store/ttsStore";
 
 type Theme = "embedded" | "dark";
@@ -17,13 +18,15 @@ function genderLabel(gender?: string | null): string {
 }
 
 export function AssistantVoicePicker({ theme = "embedded", className = "" }: Props) {
-  const voiceSelection = useTtsStore((s) => s.voiceSelection);
   const voiceId = useTtsStore((s) => s.voiceId);
   const defaultVoice = useTtsStore((s) => s.defaultVoice);
   const voiceGroups = useTtsStore((s) => s.voiceGroups);
   const voicesLoaded = useTtsStore((s) => s.voicesLoaded);
   const setVoiceId = useTtsStore((s) => s.setVoiceId);
   const previewRef = useRef<HTMLAudioElement | null>(null);
+
+  const groups = voiceGroups.length > 0 ? voiceGroups : DEEPGRAM_VOICE_GROUPS;
+  const loaded = voicesLoaded || groups.length > 0;
 
   const playPreview = useCallback(
     (url: string | null | undefined) => {
@@ -39,16 +42,12 @@ export function AssistantVoicePicker({ theme = "embedded", className = "" }: Pro
     [],
   );
 
-  if (!voiceSelection) {
-    return null;
-  }
-
   const embedded = theme === "embedded";
   const selectClass = embedded
-    ? "max-w-[7.5rem] sm:max-w-[9.5rem] h-8 pl-2 pr-6 text-xs rounded border border-[#d0d7dd] bg-white text-[#1f1f22] focus:outline-none focus:ring-1 focus:ring-[#107f8c] disabled:opacity-60"
+    ? "min-w-[5.5rem] max-w-[8.5rem] h-8 pl-2 pr-6 text-xs rounded border border-[#d0d7dd] bg-white text-[#1f1f22] focus:outline-none focus:ring-1 focus:ring-[#107f8c] disabled:opacity-60"
     : "max-w-[9.5rem] h-8 pl-2 pr-6 text-xs rounded border border-sber-border bg-sber-panel-elevated text-white focus:outline-none focus:ring-1 focus:ring-sber-green disabled:opacity-60";
 
-  if (!voicesLoaded) {
+  if (!loaded) {
     return (
       <select
         disabled
@@ -62,16 +61,13 @@ export function AssistantVoicePicker({ theme = "embedded", className = "" }: Pro
     );
   }
 
-  const effectiveVoiceId = voiceId ?? defaultVoice ?? voiceGroups[0]?.voices[0]?.id;
-  if (!effectiveVoiceId || voiceGroups.length === 0) {
-    return null;
-  }
+  const effectiveVoiceId = voiceId ?? defaultVoice ?? groups[0]?.voices[0]?.id ?? DEEPGRAM_DEFAULT_VOICE;
 
   const previewBtnClass = embedded
     ? "w-8 h-8 flex items-center justify-center rounded text-[#7d838a] hover:bg-[#f2f4f7] hover:text-[#107f8c]"
     : "w-8 h-8 flex items-center justify-center rounded text-sber-muted hover:bg-sber-green/10 hover:text-sber-green-light";
 
-  const selectedPreview = voiceGroups
+  const selectedPreview = groups
     .flatMap((g) => g.voices)
     .find((v) => v.id === effectiveVoiceId)?.preview_audio;
 
@@ -88,7 +84,7 @@ export function AssistantVoicePicker({ theme = "embedded", className = "" }: Pro
         title="Голос озвучки"
         aria-label="Голос озвучки"
       >
-        {voiceGroups.map((group) => (
+        {groups.map((group) => (
           <optgroup key={group.id} label={group.label}>
             {group.voices.map((v) => (
               <option key={v.id} value={v.id}>
