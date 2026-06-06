@@ -13,6 +13,7 @@ import {
   Copy,
 } from "lucide-react";
 import { fetchDocument } from "@/lib/api/banking";
+import { parseDocumentIdFromSearch } from "@/lib/banking/documentDeepLink";
 import type { BankDocument } from "@/lib/banking/types";
 import { bankingToast } from "@/lib/banking/toast";
 
@@ -36,7 +37,7 @@ function statusClass(status: string): string {
 export function DocumentDetailView() {
   const searchParams = useSearchParams();
   const router = useRouter();
-  const docId = searchParams.get("doc") ?? searchParams.get("id") ?? "";
+  const docId = parseDocumentIdFromSearch(searchParams) ?? searchParams.get("id") ?? "";
   const [doc, setDoc] = useState<BankDocument | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
