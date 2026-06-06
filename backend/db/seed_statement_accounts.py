@@ -2,17 +2,32 @@
 from __future__ import annotations
 
 import uuid
-from datetime import datetime, timedelta
+from datetime import timedelta
 
 from sqlalchemy import select
 
+from core.config import settings
 from db.database import AsyncSessionLocal
 from db.models import BankAccount, BankDocument, StatementLine
 
 ORGS = ("demo", "ip_ivanov", "buh_plus")
 
 
+def _anchor_date():
+    from datetime import datetime
+
+    raw = (settings.DEMO_STATEMENT_ANCHOR or "06.06.2026").strip()
+    parts = raw.split(".")
+    if len(parts) == 3:
+        d, m, y = int(parts[0]), int(parts[1]), int(parts[2])
+        if y < 100:
+            y += 2000
+        return datetime(y, m, d)
+    return datetime(2026, 6, 6)
+
+
 async def seed_statement_accounts():
+    anchor = _anchor_date()
     async with AsyncSessionLocal() as session:
         for org_id in ORGS:
             acc_result = await session.execute(
@@ -66,7 +81,7 @@ async def seed_statement_accounts():
 
                 credits = [320.0, 890.0, 1500.0] if account.currency == "BYN" else [120.0, 450.0]
                 for i, credit in enumerate(credits[: max(2, len(cur_docs) // 2 + 1)]):
-                    d = (datetime.utcnow() - timedelta(days=8 + i * 4)).strftime("%d.%m.%Y")
+                    d = (anchor - timedelta(days=8 + i * 4)).strftime("%d.%m.%Y")
                     balance += credit
                     session.add(
                         StatementLine(

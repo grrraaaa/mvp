@@ -198,7 +198,7 @@ async def handle_banking_query(
         missing = []
         if not re.search(r"сч[её]т|byn|usd|iban|by\d", low):
             missing.append("Счёт")
-        if not re.search(r"сегодня|вчера|месяц|недел|20\d{2}", low):
+        if not re.search(r"сегодня|вчера|месяц|недел|квартал|год|20\d{2}", low):
             missing.append("Период")
         if missing:
             return {
@@ -206,6 +206,8 @@ async def handle_banking_query(
                 "pending_form_fields": missing,
                 "action_buttons": [
                     {"label": "За месяц", "message": "Выписка за месяц", "variant": "primary"},
+                    {"label": "За квартал", "message": "Выписка за квартал", "variant": "secondary"},
+                    {"label": "За год", "message": "Выписка за год", "variant": "secondary"},
                     {"label": "За сегодня", "message": "Выписка за сегодня", "variant": "secondary"},
                 ],
             }

@@ -360,7 +360,7 @@ def _filter_statement_period(rows: list, period: str) -> list:
     from datetime import timedelta
 
     p = (period or "month").lower()
-    if p in ("month", "месяц") or not rows:
+    if not rows:
         return rows
 
     anchor = _statement_anchor_date()
@@ -380,6 +380,19 @@ def _filter_statement_period(rows: list, period: str) -> list:
     if p in ("week", "5days", "5дней"):
         cut = anchor - timedelta(days=5)
         return [r for r, dt in parsed if dt >= cut]
+
+    if p in ("month", "месяц"):
+        return [r for r, dt in parsed if dt.year == anchor.year and dt.month == anchor.month]
+
+    if p in ("quarter", "квартал"):
+        q_start = ((anchor.month - 1) // 3) * 3 + 1
+        q_end = q_start + 2
+        return [
+            r for r, dt in parsed if dt.year == anchor.year and q_start <= dt.month <= q_end
+        ]
+
+    if p in ("year", "год"):
+        return [r for r, dt in parsed if dt.year == anchor.year]
 
     return rows
 

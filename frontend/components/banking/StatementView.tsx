@@ -1,6 +1,6 @@
 ﻿"use client";
 
-import { useEffect, useState } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
 import Link from "next/link";
 import {
   FileText,
@@ -16,22 +16,42 @@ import type { BankDocument } from "@/lib/banking/types";
 import { fetchStatement, type StatementLine } from "@/lib/api/banking";
 import { bankingToast } from "@/lib/banking/toast";
 import { useBankingStore } from "@/store/bankingStore";
+import { useAuthStore } from "@/store/authStore";
+
+type StatementPeriod = "Сегодня" | "Вчера" | "5дней" | "месяц" | "квартал" | "год";
+
+function periodToApiKey(period: StatementPeriod): string {
+  switch (period) {
+    case "Сегодня":
+      return "today";
+    case "Вчера":
+      return "yesterday";
+    case "5дней":
+      return "5days";
+    case "квартал":
+      return "quarter";
+    case "год":
+      return "year";
+    default:
+      return "month";
+  }
+}
 
 export default function StatementView() {
   const accounts = useBankingStore((s) => s.accounts);
-  const documents = useBankingStore((s) => s.documents);
   const loadAll = useBankingStore((s) => s.loadAll);
   const bankingLoaded = useBankingStore((s) => s.loaded);
+  const authToken = useAuthStore((s) => s.token);
 
   useEffect(() => {
-    if (!bankingLoaded) void loadAll();
-  }, [bankingLoaded, loadAll]);
+    if (!bankingLoaded && authToken) void loadAll();
+  }, [bankingLoaded, loadAll, authToken]);
   // Navigation Tabs inside Statement module
   const [activeSubTab, setActiveSubTab] = useState<'accounts' | 'corp_cards' | 'balances' | 'report' | 'schedule'>('accounts');
 
   // Filters State
   const [selectedAccount, setSelectedAccount] = useState<string>('all');
-  const [selectedPeriod, setSelectedPeriod] = useState<'Сегодня' | 'Вчера' | '5дней' | 'месяц'>('месяц');
+  const [selectedPeriod, setSelectedPeriod] = useState<StatementPeriod>("месяц");
   const [showZeroTurnover, setShowZeroTurnover] = useState(false);
   const [showDaily, setShowDaily] = useState(true);
   const [showRevaluation, setShowRevaluation] = useState(false);
@@ -41,7 +61,16 @@ export default function StatementView() {
   const [reportGenerated, setReportGenerated] = useState(false);
   const [statementData, setStatementData] = useState<BankDocument[]>([]);
   const [statementLines, setStatementLines] = useState<StatementLine[]>([]);
-  const [summaryReport, setSummaryReport] = useState<any>(null);
+  const [summaryReport, setSummaryReport] = useState<{
+    currency: string;
+    openingBalance: number;
+    totalDebit: number;
+    totalCredit: number;
+    closingBalance: number;
+    transactionsCount: number;
+  } | null>(null);
+  const [loadError, setLoadError] = useState<string | null>(null);
+  const autoLoadedRef = useRef(false);
 
   const resetFilters = () => {
     setSelectedAccount('all');
@@ -50,20 +79,19 @@ export default function StatementView() {
     setShowDaily(true);
     setShowRevaluation(false);
     setReportGenerated(false);
+    setLoadError(null);
   };
 
-  const handleGenerateStatement = () => {
+  const handleGenerateStatement = useCallback(() => {
+    if (!authToken) {
+      bankingToast("Войдите в систему для формирования выписки", "err");
+      return;
+    }
     setIsLoading(true);
     setReportGenerated(false);
+    setLoadError(null);
     const accId = selectedAccount !== "all" ? selectedAccount : undefined;
-    const periodKey =
-      selectedPeriod === "Сегодня"
-        ? "today"
-        : selectedPeriod === "Вчера"
-          ? "yesterday"
-          : selectedPeriod === "5дней"
-            ? "5days"
-            : "month";
+    const periodKey = periodToApiKey(selectedPeriod);
     void fetchStatement(accId, periodKey)
       .then((lines) => {
         setStatementLines(lines);
@@ -82,7 +110,7 @@ export default function StatementView() {
             credit: l.credit,
             amount: l.debit || l.credit,
             currency: curLabel,
-            status: "Проведен",
+            status: "Проведен" as const,
             purpose: l.purpose,
           })),
         );
@@ -95,13 +123,15 @@ export default function StatementView() {
           transactionsCount: lines.length,
         });
         if (lines.length === 0) {
-          bankingToast("За выбранный период операций нет — попробуйте «Текущий отчетный месяц»", "err");
+          bankingToast("За выбранный период операций нет — попробуйте другой интервал", "err");
         } else {
           bankingToast(`Выписка: ${lines.length} операций из PostgreSQL`, "ok");
         }
         setReportGenerated(true);
       })
-      .catch(() => {
+      .catch((err) => {
+        const msg = err instanceof Error ? err.message : "Не удалось загрузить выписку из API";
+        setLoadError(msg === "UNAUTHORIZED" ? "Сессия истекла — войдите снова" : msg);
         bankingToast("Не удалось загрузить выписку из API", "err");
         setStatementData([]);
         setStatementLines([]);
@@ -109,7 +139,14 @@ export default function StatementView() {
         setReportGenerated(true);
       })
       .finally(() => setIsLoading(false));
-  };
+  }, [authToken, selectedAccount, selectedPeriod, accounts]);
+
+  useEffect(() => {
+    if (authToken && bankingLoaded && !autoLoadedRef.current) {
+      autoLoadedRef.current = true;
+      handleGenerateStatement();
+    }
+  }, [authToken, bankingLoaded, handleGenerateStatement]);
 
   const triggerPrint = () => {
     window.print();
@@ -210,13 +247,15 @@ export default function StatementView() {
                     <label className="block text-xs font-bold text-gray-700 mb-1.5 uppercase tracking-wide">Временной интервал</label>
                     <select
                       value={selectedPeriod}
-                      onChange={(e) => setSelectedPeriod(e.target.value as any)}
+                      onChange={(e) => setSelectedPeriod(e.target.value as StatementPeriod)}
                       className="w-full border border-gray-300 rounded-lg p-2.5 text-xs font-semibold bg-white text-gray-750 focus:ring-[#138d8a] focus:ring-1 focus:border-[#138d8a]"
                     >
                       <option value="Сегодня">Сегодня</option>
                       <option value="Вчера">За вчерашний день</option>
                       <option value="5дней">За последние 5 дней</option>
                       <option value="месяц">Текущий отчетный месяц</option>
+                      <option value="квартал">Текущий квартал</option>
+                      <option value="год">Текущий год</option>
                     </select>
                   </div>
 
@@ -292,9 +331,22 @@ export default function StatementView() {
               )}
 
               {/* Statement Result section */}
-              {reportGenerated && summaryReport && (
+              {reportGenerated && !isLoading && (
                 <div className="space-y-6 animate-fadeIn">
-                  
+                  {loadError ? (
+                    <div className="bg-red-50 border border-red-200 p-6 rounded-xl text-center space-y-2">
+                      <AlertCircle className="w-8 h-8 text-red-500 mx-auto" />
+                      <p className="text-sm font-bold text-red-700">{loadError}</p>
+                      <button
+                        type="button"
+                        onClick={handleGenerateStatement}
+                        className="text-xs font-extrabold text-sky-700 hover:underline"
+                      >
+                        Повторить запрос
+                      </button>
+                    </div>
+                  ) : summaryReport ? (
+                    <>
                   {/* Summary balances widgets */}
                   <div className="bg-slate-50 border border-gray-150 p-6 rounded-xl space-y-4">
                     <div className="flex items-center justify-between border-b pb-3 border-gray-200">
@@ -396,6 +448,8 @@ export default function StatementView() {
                     </table>
                   </div>
 
+                    </>
+                  ) : null}
                 </div>
               )}
             </>

@@ -15,7 +15,7 @@ ORGS = ("demo", "ip_ivanov", "buh_plus")
 
 RECENT_SPECS = (
     ("STMT-RECENT-0", 0, 280.0, 0.0),
-    ("STMT-RECENT-1", 2, 0.0, 450.0),
+    ("STMT-RECENT-1", 1, 0.0, 450.0),
     ("STMT-RECENT-2", 5, 120.0, 0.0),
 )
 

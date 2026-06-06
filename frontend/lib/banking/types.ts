@@ -45,7 +45,7 @@ export interface Counterparty {
 
 export interface StatementFilter {
   account: string;
-  period: "Сегодня" | "Вчера" | "5дней" | "месяц";
+  period: "Сегодня" | "Вчера" | "5дней" | "месяц" | "квартал" | "год";
   showZeroTurnover: boolean;
   showDaily: boolean;
   showRevaluation: boolean;
