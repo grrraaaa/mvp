@@ -52,7 +52,8 @@ export function executeUiActions(actions: UiActionPayload[]) {
       continue;
     }
     if (a.type === "open_modal") {
-      dispatchAssistantAction(a.target, a.value);
+      const target = a.target === "service-application" ? "service-application" : a.target;
+      dispatchAssistantAction(target, a.value);
       continue;
     }
     if (a.type === "fill") {

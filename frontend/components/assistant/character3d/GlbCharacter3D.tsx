@@ -218,9 +218,18 @@ export function GlbCharacter3D({
     lipOpenRef.current = openness;
 
     if (emotion === "concern" || emotion === "apologetic") {
-      group.rotation.z = Math.sin(t * 2) * 0.015;
+      group.rotation.z = Math.sin(t * 2) * 0.02;
+      group.rotation.x = -0.03;
     } else if (emotion === "smile") {
+      group.rotation.z = Math.sin(t * 1.5) * 0.008;
+      group.rotation.x = 0.02;
+    } else if (emotion === "explain") {
+      group.rotation.y = Math.sin(t * 0.8) * 0.04;
+      group.rotation.x = 0;
       group.rotation.z = 0;
+    } else {
+      group.rotation.x = THREE.MathUtils.lerp(group.rotation.x, 0, 0.05);
+      group.rotation.z = THREE.MathUtils.lerp(group.rotation.z, 0, 0.05);
     }
 
     if (!hasAnimations) {

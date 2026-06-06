@@ -94,10 +94,10 @@ export async function submitPaymentFormFromDom(root: HTMLElement): Promise<{ ok:
   });
 
   if (critical.length > 0) {
-    const proceed = window.confirm(
-      `Обнаружены критические ошибки в ${critical.length} поле(ях). Всё равно создать документ (демо)?`,
-    );
-    if (!proceed) return { ok: false, message: "Отправка отменена — исправьте поля с красной рамкой." };
+    return {
+      ok: false,
+      message: `Отправка заблокирована: исправьте ${critical.length} поле(я) с красной рамкой (УНП, IBAN, сумма).`,
+    };
   }
 
   const res = await fetch(apiUrl("/api/banking/documents"), {

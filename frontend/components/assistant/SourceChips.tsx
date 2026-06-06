@@ -1,6 +1,5 @@
 "use client";
 
-import Link from "next/link";
 import type { SourceRef } from "@/store/assistantStore";
 
 interface Props {
@@ -26,9 +25,15 @@ export function SourceChips({ sources, onShowSource, compact }: Props) {
 
         if (src.url?.startsWith("/")) {
           return (
-            <Link key={src.index} href={src.url} className={className} title={src.label}>
+            <button
+              key={src.index}
+              type="button"
+              className={className}
+              title={src.label}
+              onClick={() => onShowSource?.(src)}
+            >
               {inner}
-            </Link>
+            </button>
           );
         }
         return (

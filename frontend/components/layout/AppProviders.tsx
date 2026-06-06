@@ -8,6 +8,7 @@ import { SbbolUiContext } from "@/components/layout/SbbolUiContext";
 import { AssistantUiBridge } from "@/components/assistant/AssistantUiBridge";
 import { TtsBootstrap } from "@/components/assistant/TtsBootstrap";
 import { GatewayStatusBanner } from "@/components/banking/GatewayStatusBanner";
+import { ServiceApplicationModal } from "@/components/banking/ServiceApplicationModal";
 import { useAuthStore } from "@/store/authStore";
 
 interface Props {
@@ -33,6 +34,8 @@ function AppProvidersInner({ children, documentModalHtml }: Props) {
 
   const [chatOpen, setChatOpen] = useState(false);
   const [docModalOpen, setDocModalOpen] = useState(false);
+  const [serviceModalOpen, setServiceModalOpen] = useState(false);
+  const [serviceModalName, setServiceModalName] = useState<string | undefined>();
 
   useEffect(() => {
     if (!showBankingExtras) {
@@ -40,10 +43,20 @@ function AppProvidersInner({ children, documentModalHtml }: Props) {
     }
   }, [showBankingExtras]);
 
+  useEffect(() => {
+    if ("serviceWorker" in navigator) {
+      navigator.serviceWorker.register("/sw.js").catch(() => null);
+    }
+  }, []);
+
   const ui = useMemo(
     () => ({
       openDocumentModal: () => setDocModalOpen(true),
       openChat: () => setChatOpen(true),
+      openServiceApplication: (serviceName?: string) => {
+        setServiceModalName(serviceName);
+        setServiceModalOpen(true);
+      },
     }),
     [],
   );
@@ -64,6 +77,12 @@ function AppProvidersInner({ children, documentModalHtml }: Props) {
       )}
       {showBankingExtras && docModalOpen && documentModalHtml ? (
         <DocumentTypeSelectionModal html={documentModalHtml} onClose={() => setDocModalOpen(false)} />
+      ) : null}
+      {showBankingExtras && serviceModalOpen ? (
+        <ServiceApplicationModal
+          serviceName={serviceModalName}
+          onClose={() => setServiceModalOpen(false)}
+        />
       ) : null}
     </SbbolUiContext.Provider>
   );

@@ -19,6 +19,7 @@ import { authHeaders } from "@/lib/auth/tokenRef";
 import { executeUiActions } from "@/lib/assistant/uiBridge";
 import { useAssistantSpeech } from "@/hooks/useAssistantSpeech";
 import { SourceChips } from "./SourceChips";
+import { buildHighlightUrl } from "@/lib/sbbol/fieldHighlight";
 import { NotificationBanner } from "./NotificationBanner";
 import { fetchNotifications, fetchOrgProfile, type SmartNotification } from "@/lib/api/banking";
 import { fetchChatHistory, streamChatMessage } from "@/lib/api/chat";
@@ -64,6 +65,7 @@ export function AssistantPanel({ variant = "default", compactMobile = false, onR
     setSessionId,
     setSuggestedChips,
     setLastEmotion,
+    lastEmotion,
     loadMessages,
   } = useAssistantStore();
   const orgId = useAuthStore((s) => s.user?.org_id);
@@ -95,8 +97,8 @@ export function AssistantPanel({ variant = "default", compactMobile = false, onR
     }
 
     lastSpokenCountRef.current = messages.length;
-    void speak(last.content, { tone: lastToneRef.current, emotion: undefined });
-  }, [messages, isLoading, speak]);
+    void speak(last.content, { tone: lastToneRef.current, emotion: lastEmotion ?? undefined });
+  }, [messages, isLoading, speak, lastEmotion]);
 
   useEffect(() => {
     if (!sessionId) {
@@ -265,7 +267,7 @@ export function AssistantPanel({ variant = "default", compactMobile = false, onR
     (source: SourceRef) => {
       if (source.url?.startsWith("/")) {
         const url = source.highlight_fields?.length
-          ? `${source.url}${source.url.includes("?") ? "&" : "?"}hl=${source.highlight_fields.join(",")}`
+          ? buildHighlightUrl(source.url, source.highlight_fields)
           : source.url;
         router.push(url);
         return;
@@ -299,8 +301,9 @@ export function AssistantPanel({ variant = "default", compactMobile = false, onR
         });
         return;
       }
-      if (!file.type.startsWith("image/")) {
-        addMessage({ role: "assistant", content: "Выберите файл изображения (JPG, PNG)." });
+      const isPdf = file.type === "application/pdf" || file.name.toLowerCase().endsWith(".pdf");
+      if (!file.type.startsWith("image/") && !isPdf) {
+        addMessage({ role: "assistant", content: "Выберите изображение (JPG, PNG) или PDF счёта." });
         return;
       }
       if (file.size > 8 * 1024 * 1024) {
@@ -308,7 +311,7 @@ export function AssistantPanel({ variant = "default", compactMobile = false, onR
         return;
       }
 
-      addMessage({ role: "user", content: `📷 Загружено фото: ${file.name}` });
+      addMessage({ role: "user", content: `${isPdf ? "📄" : "📷"} Загружено: ${file.name}` });
       setLoading(true);
 
       try {
@@ -316,6 +319,11 @@ export function AssistantPanel({ variant = "default", compactMobile = false, onR
         const data = await ocrFillForm(dataUrl, pageContext.form_type, sessionId);
         if (data.session_id) setSessionId(data.session_id);
         if (data.form_actions?.length) applyFormActions(data.form_actions);
+        if (data.suggested_chips) setSuggestedChips(data.suggested_chips as string[]);
+        if (data.character_emotion) {
+          setLastEmotion(data.character_emotion as string);
+          setEmotion(data.character_emotion as string);
+        }
         addMessage({
           role: "assistant",
           content: data.message,

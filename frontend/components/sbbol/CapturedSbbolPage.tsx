@@ -5,6 +5,7 @@ import { useSbbolOrigPageInteractions } from "@/hooks/useSbbolOrigPageInteractio
 import { useSbbolAccountPicker } from "@/hooks/useSbbolAccountPicker";
 import { useSbbolFormFill } from "@/hooks/useSbbolFormFill";
 import { highlightOcrFields, submitPaymentFormFromDom, useSbbolPaymentValidation } from "@/hooks/useSbbolPaymentValidation";
+import { applyFieldHighlights, parseHighlightFields } from "@/lib/sbbol/fieldHighlight";
 import { showStubToast } from "@/lib/sbbol/stubToast";
 import type { OrigPageInteractionConfig } from "@/lib/sbbol/origPageRoutes";
 
@@ -27,6 +28,15 @@ export function CapturedSbbolPage({ html, interactions }: Props) {
   useSbbolAccountPicker(rootRef, [html]);
   useSbbolFormFill(rootRef);
   useSbbolPaymentValidation(rootRef);
+
+  useEffect(() => {
+    const root = rootRef.current;
+    if (!root) return;
+    const fields = parseHighlightFields(window.location.search);
+    if (!fields.length) return;
+    const timer = window.setTimeout(() => applyFieldHighlights(root, fields), 150);
+    return () => window.clearTimeout(timer);
+  }, [html]);
 
   useEffect(() => {
     const root = rootRef.current;

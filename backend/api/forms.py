@@ -10,6 +10,7 @@ from pydantic import BaseModel, Field
 from core.config import settings
 from models.schemas import AssistantResponse, FormFieldAction
 from services.forms.ocr_text_parser import parse_ocr_text_to_form_actions
+from services.chat.enrichment import enrich_response
 from services.ocr.demo_fallback import demo_ocr_from_image_b64, is_pdf_data_url
 from services.ocr.imagetotext import OcrError, recognize_base64_image
 
@@ -70,7 +71,7 @@ async def ocr_fill_form(request: OcrFillRequest):
 
     if not actions:
         preview = ocr_text[:400] + ("…" if len(ocr_text) > 400 else "")
-        return AssistantResponse(
+        partial = AssistantResponse(
             message=(
                 "Текст с фото распознан, но поля формы автоматически не определены.\n\n"
                 f"Распознанный текст:\n{preview}\n\n"
@@ -80,11 +81,17 @@ async def ocr_fill_form(request: OcrFillRequest):
             session_id=request.session_id or "ocr",
             form_fill_status="partial",
         )
+        return await enrich_response(
+            partial,
+            user_message="ocr",
+            page_route=None,
+            form_type=form_type,
+        )
 
     filled_labels = ", ".join(a.label or a.field.split(".")[-1] for a in actions)
     preview = ocr_text[:280] + ("…" if len(ocr_text) > 280 else "")
 
-    return AssistantResponse(
+    complete = AssistantResponse(
         message=(
             f"Распознано с фото и подготовлено к заполнению: {filled_labels}.\n\n"
             f"Фрагмент текста:\n{preview}"
@@ -94,4 +101,10 @@ async def ocr_fill_form(request: OcrFillRequest):
         form_actions=actions,
         form_fill_status="partial" if demo_mode else "complete",
         suggested_chips=["Подтвердить реквизиты", "Исправь сумму", "Проверь УНП"],
+    )
+    return await enrich_response(
+        complete,
+        user_message="ocr",
+        page_route=None,
+        form_type=form_type,
     )

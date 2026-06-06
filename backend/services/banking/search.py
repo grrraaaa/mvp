@@ -164,7 +164,7 @@ def _hit_source(h: SearchHit, index: int) -> dict:
     highlight = ["amount", "counterparty", "purpose"] if h.kind == "payment" else []
     url = h.url
     if h.kind == "payment" and h.id:
-        url = f"/payments?highlight={h.id}"
+        url = f"/payments/paydocbyn?hl={','.join(highlight)}&source_doc={h.id}"
     return {
         "index": index,
         "label": f"Источник {index}: {h.title[:40]}",

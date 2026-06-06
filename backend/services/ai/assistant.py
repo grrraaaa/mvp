@@ -10,7 +10,7 @@ from typing import Optional, List, Dict, Any
 from core.config import settings
 
 logger = logging.getLogger(__name__)
-from models.schemas import AssistantResponse, NavigationStep, BankProduct, ActionButton, ChartSpec, FormFieldAction, SourceRef
+from models.schemas import AssistantResponse, NavigationStep, BankProduct, ActionButton, ChartSpec, FormFieldAction, SourceRef, UiAction
 from db.database import AsyncSessionLocal
 from services.banking.queries import handle_banking_query, get_org_profile, lookup_counterparty
 from services.onec.assistant import handle_onec_query
@@ -242,6 +242,7 @@ def _looks_like_form_fill(message: str) -> bool:
         r"назначени", r"получател", r"контрагент", r"номер документ", r"дата документ",
         URGENCY_WORD_RE, r"бик", r"сч[её]т", r"платежк", r"поручени",
         r"оплат[аы]\s", r"документ",
+        r"исправ\w*",
     ]
     return any(re.search(p, msg) for p in triggers)
 
@@ -534,6 +535,32 @@ def _rule_based_form_fill(
     schema = load_form_schema(form_type)
     if not schema:
         return None
+
+    fields = schema.get("fields", [])
+    fix_m = re.search(
+        r"исправ\w*(?:\s+поле)?\s+(.+?)(?:\s+на\s+(.+))?$",
+        message.strip(),
+        re.I,
+    )
+    if fix_m:
+        hint = fix_m.group(1).strip().rstrip(".,;").lower()
+        new_value = (fix_m.group(2) or "").strip().rstrip(".,;")
+        for fld in fields:
+            candidates = [fld.get("label", ""), fld.get("key", "")] + fld.get("aliases", [])
+            for cand in candidates:
+                cand_l = (cand or "").lower()
+                if not cand_l:
+                    continue
+                if cand_l in hint or hint in cand_l:
+                    if not new_value:
+                        return None
+                    return [
+                        FormFieldAction(
+                            field=fld["name"],
+                            value=new_value,
+                            label=fld.get("label"),
+                        )
+                    ]
 
     if pending_key:
         pending_action = _parse_pending_value(message, pending_key, schema)
@@ -1019,12 +1046,27 @@ class AssistantService:
                 msg += f"\n\n**Проверки:**\n{hint_block}"
             if any(a.field not in before_fields for a in new_actions):
                 msg += "\n\n_УНП и счёт получателя подставлены из справочника контрагентов (PostgreSQL)._"
+            action_btns = None
+            if status == "complete":
+                action_btns = [
+                    ActionButton(
+                        label="Подписать и отправить в шлюз",
+                        message="Подпиши документ и отправь в шлюз",
+                        variant="primary",
+                    ),
+                    ActionButton(
+                        label="Проверить реквизиты",
+                        message="Проверь реквизиты платежа",
+                        variant="secondary",
+                    ),
+                ]
             return AssistantResponse(
                 message=msg,
                 session_id=session_id,
                 form_actions=new_actions,
                 pending_form_fields=pending_labels or None,
                 form_fill_status=status,
+                action_buttons=action_btns,
             )
 
         if pending_before and missing_keys:
@@ -1223,14 +1265,28 @@ class AssistantService:
     ) -> Optional[AssistantResponse]:
         low = message.lower()
         if re.search(r"connect_service", low):
+            svc_name = ""
+            if ":" in message:
+                svc_name = message.split(":", 1)[-1].strip()
             return AssistantResponse(
-                message="**Заявка на подключение принята (демо).**\n\nМенеджер свяжется в течение 1 рабочего дня. Пока можете продолжить работу в СберБизнес.",
+                message="Открою форму заявки на подключение (демо). Заполните контакты — менеджер свяжется в течение 1 рабочего дня.",
                 session_id=session_id,
-                action_buttons=[ActionButton(label="Мои сервисы", url="/services", variant="primary")],
+                ui_actions=[UiAction(type="open_modal", target="service-application", value=svc_name or "Банковский сервис")],
+                action_buttons=[ActionButton(label="Мои сервисы", url="/services", variant="secondary")],
             )
-        if not re.search(r"сервис|эквайринг|тариф|подключ|аналитик|зарплатн\w*\s+проект", low):
+        if not re.search(r"сервис|эквайринг|тариф|подключ|аналитик|зарплатн\w*\s+проект|roi|окупаемост|выгод", low):
             return None
         async with AsyncSessionLocal() as session:
+            from services.banking.services_consult import maybe_roi_reply
+
+            roi = await maybe_roi_reply(session, message)
+            if roi:
+                text, buttons = roi
+                return AssistantResponse(
+                    message=text,
+                    session_id=session_id,
+                    action_buttons=[ActionButton(**b) for b in buttons],
+                )
             compare = await compare_tariffs(session, message)
             if compare:
                 text, buttons = compare

@@ -9,7 +9,7 @@ from typing import Any
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from db.models import GatewayPayment
+from db.models import BankAccount, BankDocument, GatewayPayment
 
 
 async def create_gateway_payment(
@@ -73,6 +73,47 @@ async def list_gateway_payments(session: AsyncSession, org_id: str, limit: int =
         .limit(limit)
     )
     return list(result.scalars().all())
+
+
+async def sign_latest_and_submit(
+    session: AsyncSession,
+    org_id: str,
+) -> tuple[BankDocument, GatewayPayment] | None:
+    """Sign the newest pending document and submit to demo gateway."""
+    result = await session.execute(
+        select(BankDocument)
+        .where(BankDocument.org_id == org_id, BankDocument.status == "На подписи")
+        .order_by(BankDocument.doc_date.desc())
+        .limit(1)
+    )
+    doc = result.scalar_one_or_none()
+    if not doc:
+        return None
+
+    doc.status = "Проведен"
+    acc_result = await session.execute(
+        select(BankAccount).where(
+            BankAccount.org_id == org_id,
+            BankAccount.currency == doc.currency,
+            BankAccount.hidden == False,
+        )
+    )
+    account = acc_result.scalars().first()
+    if account:
+        account.balance = max(0.0, account.balance - doc.amount)
+
+    gp = await create_gateway_payment(
+        session,
+        org_id,
+        amount=doc.amount,
+        currency=doc.currency,
+        counterparty=doc.counterparty,
+        purpose=doc.purpose or "",
+        bank_doc_id=doc.id,
+    )
+    await session.commit()
+    await session.refresh(doc)
+    return doc, gp
 
 
 def gateway_to_dict(p: GatewayPayment) -> dict[str, Any]:

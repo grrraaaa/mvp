@@ -87,6 +87,32 @@ async def handle_banking_query(
     from services.tax.calendar import demo_fszh_amount, format_tax_calendar_reply, get_tax_calendar
     import uuid as _uuid
 
+    low = message.lower()
+
+    if re.search(r"подпиш\w+.*шлюз|отправ\w+.*шлюз|подписать\s+и\s+отправ", low):
+        from services.banking.gateway_sim import sign_latest_and_submit
+
+        pair = await sign_latest_and_submit(session, org_id)
+        if pair:
+            doc, gp = pair
+            return {
+                "message": (
+                    f"Документ **{doc.doc_number}** подписан (демо) и отправлен в платёжный шлюз.\n"
+                    f"Статус шлюза: **{gp.status}** — {gp.status_message}"
+                ),
+                "action_buttons": [
+                    {"label": "Статус шлюза", "url": "/payments", "variant": "primary"},
+                    {"label": "Выписка", "url": "/statement/account", "variant": "secondary"},
+                ],
+                "severity": "success",
+            }
+        return {
+            "message": "Нет документов «На подписи». Создайте платёж через форму или чат.",
+            "action_buttons": [
+                {"label": "Создать платёж", "url": "/payments/paydocbyn", "variant": "primary"},
+            ],
+        }
+
     source_match = re.search(r"источник\s*№?\s*(\d+)", message.lower())
     if source_match:
         idx = int(source_match.group(1))
@@ -98,7 +124,7 @@ async def handle_banking_query(
             if kind == "document" and doc_id:
                 doc = await session.get(BankDocument, doc_id)
                 if doc:
-                    url = f"/payments?highlight={doc.id}"
+                    url = f"/payments/paydocbyn?hl={','.join(highlight)}&source_doc={doc.id}"
                     return {
                         "message": (
                             f"**Источник {idx}:** {doc.doc_number} от {doc.doc_date}\n"
@@ -145,8 +171,6 @@ async def handle_banking_query(
             "message": f"Источник №{idx} не найден в текущей сессии. Задайте вопрос снова — например, «найди платежи Иванова».",
             "suggested_chips": ["Найди платежи Иванова за март", "Сколько на счёте?"],
         }
-
-    low = message.lower()
 
     if re.search(r"налогов\w*\s+календар|календар\w*\s+налог|срок\w*\s+(?:фсзн|ндс|налог)", low):
         org = await session.get(OrganizationProfile, org_id)

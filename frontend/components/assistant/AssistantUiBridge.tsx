@@ -33,7 +33,7 @@ const ROUTE_BY_ACTION: Record<string, string> = {
 /** Слушает custom events от ассистента и открывает модалки / навигацию. */
 export function AssistantUiBridge() {
   const router = useRouter();
-  const { openDocumentModal } = useSbbolUi();
+  const { openDocumentModal, openServiceApplication } = useSbbolUi();
 
   useEffect(() => {
     const handler = (e: Event) => {
@@ -52,6 +52,11 @@ export function AssistantUiBridge() {
 
       if (action === "open-onec-import") {
         router.push("/services/onec");
+        return;
+      }
+
+      if (action === "service-application" || action === "connect-service") {
+        openServiceApplication(value);
         return;
       }
 
@@ -84,7 +89,7 @@ export function AssistantUiBridge() {
 
     window.addEventListener(ASSISTANT_ACTION_EVENT, handler);
     return () => window.removeEventListener(ASSISTANT_ACTION_EVENT, handler);
-  }, [openDocumentModal, router]);
+  }, [openDocumentModal, openServiceApplication, router]);
 
   return null;
 }
