@@ -407,7 +407,15 @@ async def handle_banking_query(
                     f"Последний документ: {doc.doc_number} от {doc.doc_date}, "
                     f"{doc.counterparty}, {doc.amount} {doc.currency} ({doc.status})."
                 ),
-                "sources": [{"index": 1, "label": f"Источник 1: {doc.doc_number}", "kind": "document", "url": "/payments"}],
+                "sources": [
+                    {
+                        "index": 1,
+                        "label": f"Источник 1: {doc.doc_number}",
+                        "kind": "document",
+                        "id": doc.id,
+                        "url": document_view_url(doc.id),
+                    }
+                ],
                 "action_buttons": [
                     {"label": "Повторить платёж", "message": f"Создай платёжку на {doc.amount} BYN для {doc.counterparty}", "variant": "primary"},
                     {"label": "Расчёты", "url": "/payments", "variant": "secondary"},

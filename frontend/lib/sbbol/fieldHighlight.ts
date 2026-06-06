@@ -1,3 +1,5 @@
+import { isDocumentUuid } from "@/lib/banking/documentDeepLink";
+
 /** Map source highlight keys → SBBOL form field name fragments. */
 const FIELD_PARTS: Record<string, string[]> = {
   amount: ["AMOUNT", "SUM"],
@@ -12,7 +14,11 @@ export function parseHighlightFields(search: string | URLSearchParams): string[]
   const params = typeof search === "string" ? new URLSearchParams(search) : search;
   const hl = params.get("hl");
   if (hl) return hl.split(",").map((s) => s.trim()).filter(Boolean);
-  if (params.get("highlight")) return ["amount", "counterparty", "purpose"];
+  const highlight = params.get("highlight");
+  if (highlight) {
+    if (isDocumentUuid(highlight)) return [];
+    return ["amount", "counterparty", "purpose"];
+  }
   return [];
 }
 

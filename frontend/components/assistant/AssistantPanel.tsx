@@ -19,6 +19,7 @@ import { authHeaders } from "@/lib/auth/tokenRef";
 import { executeUiActions } from "@/lib/assistant/uiBridge";
 import { useAssistantSpeech } from "@/hooks/useAssistantSpeech";
 import { SourceChips } from "./SourceChips";
+import { documentViewPath, isDocumentUuid } from "@/lib/banking/documentDeepLink";
 import { buildHighlightUrl } from "@/lib/sbbol/fieldHighlight";
 import { NotificationBanner } from "./NotificationBanner";
 import { fetchNotifications, fetchOrgProfile, type SmartNotification } from "@/lib/api/banking";
@@ -266,12 +267,23 @@ export function AssistantPanel({ variant = "default", compactMobile = false, onR
   const handleShowSource = useCallback(
     (source: SourceRef) => {
       if (source.url?.startsWith("/")) {
-        const isDocumentView =
-          source.url.includes("/other/documents/view") || source.url.includes("doc=");
-        const url =
-          isDocumentView || !source.highlight_fields?.length
-            ? source.url
-            : buildHighlightUrl(source.url, source.highlight_fields);
+        try {
+          const parsed = new URL(source.url, window.location.origin);
+          const highlightParam = parsed.searchParams.get("highlight");
+          if (isDocumentUuid(highlightParam)) {
+            router.push(documentViewPath(highlightParam!));
+            return;
+          }
+          if (parsed.pathname === "/other/documents/view" || parsed.searchParams.has("doc")) {
+            router.push(source.url);
+            return;
+          }
+        } catch {
+          /* use source.url as-is */
+        }
+        const url = source.highlight_fields?.length
+          ? buildHighlightUrl(source.url, source.highlight_fields)
+          : source.url;
         router.push(url);
         return;
       }

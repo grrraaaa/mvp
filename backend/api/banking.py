@@ -235,26 +235,31 @@ async def list_notifications(
     current_user: User = Depends(get_current_user),
     unread_only: bool = True,
 ):
+    from services.banking.notifications import resolve_notification_action_url
+
     org_id = user_org_id(current_user)
     stmt = select(SmartNotification).where(SmartNotification.org_id == org_id)
     if unread_only:
         stmt = stmt.where(SmartNotification.is_read == False)
     result = await db.execute(stmt)
     rows = result.scalars().all()
-    return [
-        SmartNotificationOut(
-            id=n.id,
-            title=n.title,
-            body=n.body,
-            severity=n.severity,
-            category=n.category,
-            action_url=n.action_url,
-            action_label=n.action_label,
-            due_date=n.due_date,
-            is_read=n.is_read,
+    out: list[SmartNotificationOut] = []
+    for n in rows:
+        action_url = await resolve_notification_action_url(db, org_id, n)
+        out.append(
+            SmartNotificationOut(
+                id=n.id,
+                title=n.title,
+                body=n.body,
+                severity=n.severity,
+                category=n.category,
+                action_url=action_url,
+                action_label=n.action_label,
+                due_date=n.due_date,
+                is_read=n.is_read,
+            )
         )
-        for n in rows
-    ]
+    return out
 
 
 @router.get("/services", response_model=list[dict])

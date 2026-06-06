@@ -1,6 +1,6 @@
 "use client";
 
-import { ReactNode, useEffect, useState } from "react";
+import { ReactNode, Suspense, useEffect, useState } from "react";
 import { usePathname, useRouter } from "next/navigation";
 import { motion, AnimatePresence } from "framer-motion";
 import { ArrowLeft, Menu } from "lucide-react";
@@ -11,6 +11,12 @@ import { BankingModals } from "@/components/banking/BankingModals";
 import { useBankingStore } from "@/store/bankingStore";
 import { useAuthStore } from "@/store/authStore";
 import { fetchNotifications } from "@/lib/api/banking";
+import { useDocumentDeepLink } from "@/hooks/useDocumentDeepLink";
+
+function DocumentDeepLinkHandler() {
+  useDocumentDeepLink();
+  return null;
+}
 
 interface Props {
   children: ReactNode;
@@ -52,6 +58,9 @@ export function BankingShell({ children }: Props) {
 
   return (
     <div className="banking-app min-h-screen w-full bg-[#f4f6f9] text-[#2c3e50] flex flex-col font-sans relative">
+      <Suspense fallback={null}>
+        <DocumentDeepLinkHandler />
+      </Suspense>
       <Navbar
         notificationsCount={notificationCount}
         messagesCount={unreadEmails}

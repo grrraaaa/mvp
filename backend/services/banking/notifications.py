@@ -7,6 +7,7 @@ from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from db.models import BankDocument, SmartNotification
+from services.banking.search import document_view_url
 
 _DOC_NUM_RE = re.compile(r"№\s*(\d+)")
 
@@ -43,8 +44,19 @@ def _doc_action_url(doc: BankDocument | None, fallback: str | None) -> str:
     if doc and doc.status == "На подписи":
         return "/other/documents/signing"
     if doc:
-        return "/payments"
+        return document_view_url(doc.id)
     return fallback or "/payments"
+
+
+async def resolve_notification_action_url(
+    session: AsyncSession, org_id: str, notif: SmartNotification
+) -> str:
+    """Публичный URL действия для баннера / API (с привязкой к документу по № в тексте)."""
+    doc = None
+    m = _DOC_NUM_RE.search(notif.body or "")
+    if m:
+        doc = await _find_doc_by_number(session, org_id, m.group(1))
+    return _doc_action_url(doc, notif.action_url)
 
 
 async def _notification_buttons(
