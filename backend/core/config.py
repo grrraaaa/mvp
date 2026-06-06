@@ -36,25 +36,10 @@ class Settings(BaseSettings):
     IMAGETOTEXT_API_KEY: str = ""
     IMAGETOTEXT_API_SECRET: str = ""
 
-    # Speechify TTS (озвучка ответов ассистента, приоритет)
-    SPEECHIFY_API_KEY: str = ""
-    SPEECHIFY_TTS_MODEL: str = "simba-multilingual"
-    SPEECHIFY_TTS_LANGUAGE: str = "ru-RU"
-    SPEECHIFY_TTS_VOICE: str = "george"
-    SPEECHIFY_TTS_AUDIO_FORMAT: str = "mp3"
-
-    # Soniox TTS (запасной)
-    SONIOX_API_KEY: str = ""
-    SONIOX_TTS_MODEL: str = "tts-rt-v1"
-    SONIOX_TTS_LANGUAGE: str = ""  # пусто = авто ru/en по тексту
-    SONIOX_TTS_VOICE: str = "Adrian"
-    SONIOX_TTS_AUDIO_FORMAT: str = "mp3"
-    SONIOX_TTS_SAMPLE_RATE: int = 0
-    SONIOX_TTS_BITRATE: int = 128000
-
-    # Deepgram TTS (запасной вариант, если Soniox не задан)
+    # Deepgram Aura TTS (озвучка ассистента)
     DEEPGRAM_API_KEY: str = ""
-    DEEPGRAM_TTS_MODEL: str = "aura-2-thalia-en"
+    DEEPGRAM_TTS_VOICE: str = "alexei"
+    DEEPGRAM_TTS_MODEL: str = "aura-2-arcas-en"
     ALLOWED_ORIGINS: str = "http://localhost:3000,http://127.0.0.1:3000"
     JWT_ALGORITHM: str = "HS256"
     ACCESS_TOKEN_EXPIRE_MINUTES: int = 60

@@ -5,26 +5,6 @@ import { fetchAssistantSpeech, fetchTtsStatus, fetchTtsVoices } from "@/lib/api/
 import { playTtsBlob, stopTtsPlayback } from "@/lib/tts/playback";
 import { useTtsStore } from "@/store/ttsStore";
 
-function isMostlyCyrillic(text: string): boolean {
-  const cyr = (text.match(/[\u0400-\u04FF]/g) ?? []).length;
-  const lat = (text.match(/[a-zA-Z]/g) ?? []).length;
-  return cyr > lat;
-}
-
-function speakWithBrowser(text: string): void {
-  if (typeof window === "undefined" || !window.speechSynthesis) return;
-  window.speechSynthesis.cancel();
-  const utterance = new SpeechSynthesisUtterance(text);
-  utterance.lang = "ru-RU";
-  utterance.rate = 1.02;
-  const voices = window.speechSynthesis.getVoices();
-  const ru =
-    voices.find((v) => v.lang.startsWith("ru")) ??
-    voices.find((v) => v.lang.includes("ru"));
-  if (ru) utterance.voice = ru;
-  window.speechSynthesis.speak(utterance);
-}
-
 function isTtsEnabled(): boolean {
   return useTtsStore.getState().enabled;
 }
@@ -69,24 +49,16 @@ export function useAssistantSpeech() {
   const speak = useCallback(
     async (text: string) => {
       const trimmed = text.trim();
-      if (!isTtsEnabled() || !trimmed) return;
+      if (!isTtsEnabled() || !trimmed || !useTtsStore.getState().serverTts) return;
 
       stopTtsPlayback();
 
-      if (useTtsStore.getState().serverTts) {
-        try {
-          const blob = await fetchAssistantSpeech(trimmed, voiceId);
-          if (!isTtsEnabled()) return;
-          await playTtsBlob(blob);
-          return;
-        } catch {
-          /* fallback */
-        }
-      }
-
-      if (!isTtsEnabled()) return;
-      if (isMostlyCyrillic(trimmed) || !useTtsStore.getState().serverTts) {
-        speakWithBrowser(trimmed);
+      try {
+        const blob = await fetchAssistantSpeech(trimmed, voiceId);
+        if (!isTtsEnabled()) return;
+        await playTtsBlob(blob);
+      } catch {
+        /* Deepgram недоступен — без озвучки */
       }
     },
     [voiceId],

@@ -50,7 +50,7 @@ export function CharacterSettings() {
             <p className="text-xs text-gray-500 uppercase tracking-wide mb-2">Голос озвучки</p>
             <AssistantVoicePicker theme="dark" className="flex-wrap gap-2" />
             <p className="text-[11px] text-gray-500 mt-2 leading-relaxed">
-              Русские голоса — нативный ru-RU. Многоязычные подходят для смешанного текста.
+              Голоса Deepgram Aura. По умолчанию — Alexei. Сменить в выпадающем списке или через DEEPGRAM_TTS_VOICE в .env.
             </p>
           </section>
         ) : null}
