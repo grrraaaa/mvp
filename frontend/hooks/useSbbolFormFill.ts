@@ -1,8 +1,10 @@
 "use client";
 
 import { useEffect, type RefObject } from "react";
+import { fillCustomerAccountField } from "@/hooks/useSbbolAccountPicker";
 import { useAssistantStore, type FormFieldAction } from "@/store/assistantStore";
 import { showStubToast } from "@/lib/sbbol/stubToast";
+import { useBankingStore } from "@/store/bankingStore";
 
 type FillableElement =
   | HTMLInputElement
@@ -236,8 +238,18 @@ function applyFieldValue(el: FillableElement, value: string): boolean {
 }
 
 function fillField(root: HTMLElement, action: FormFieldAction): FillOutcome {
+  if (action.field.includes("COMMON_COLUMNS_CUSTOMER_ACCOUNT")) {
+    const accounts = useBankingStore.getState().accounts;
+    if (fillCustomerAccountField(root, action.value, accounts)) return "filled";
+  }
+
   const el = findFieldElement(root, action.field);
   if (!el) return "missed";
+
+  if (el instanceof HTMLElement && el.matches('[data-name$="COMMON_COLUMNS_CUSTOMER_ACCOUNT"]')) {
+    const accounts = useBankingStore.getState().accounts;
+    return fillCustomerAccountField(root, action.value, accounts) ? "filled" : "failed";
+  }
 
   const before = readFieldValue(el);
   const ok = applyFieldValue(el, action.value);
@@ -263,6 +275,12 @@ export function useSbbolFormFill(rootRef: RefObject<HTMLElement | null>) {
     if (!formActions?.length || !rootRef.current) return;
 
     const root = rootRef.current;
+
+    const run = async () => {
+      if (!useBankingStore.getState().accounts.length) {
+        await useBankingStore.getState().loadAll();
+      }
+
     const filled: string[] = [];
     const missed: string[] = [];
     const failed: string[] = [];
@@ -286,5 +304,8 @@ export function useSbbolFormFill(rootRef: RefObject<HTMLElement | null>) {
     }
 
     clearFormActions();
+    };
+
+    void run();
   }, [formActions, rootRef, clearFormActions]);
 }

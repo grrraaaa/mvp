@@ -2,6 +2,7 @@
 
 import { useEffect, useRef } from "react";
 import { useSbbolOrigPageInteractions } from "@/hooks/useSbbolOrigPageInteractions";
+import { useSbbolAccountPicker } from "@/hooks/useSbbolAccountPicker";
 import { useSbbolFormFill } from "@/hooks/useSbbolFormFill";
 import type { OrigPageInteractionConfig } from "@/lib/sbbol/origPageRoutes";
 
@@ -21,6 +22,7 @@ export function CapturedSbbolPage({ html, interactions }: Props) {
   }, [html]);
 
   useSbbolOrigPageInteractions(rootRef, interactions, [html, interactions]);
+  useSbbolAccountPicker(rootRef, [html]);
   useSbbolFormFill(rootRef);
 
   useEffect(() => {
