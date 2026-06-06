@@ -336,6 +336,20 @@ async def mark_notification_read(
     return {"ok": True}
 
 
+def _statement_period_cutoff(period: str) -> str | None:
+    from datetime import datetime, timedelta
+
+    p = (period or "month").lower()
+    now = datetime.utcnow()
+    if p in ("today", "сегодня"):
+        return now.strftime("%d.%m.%Y")
+    if p in ("yesterday", "вчера"):
+        return (now - timedelta(days=1)).strftime("%d.%m.%Y")
+    if p in ("week", "5days", "5дней"):
+        return (now - timedelta(days=5)).strftime("%d.%m.%Y")
+    return None
+
+
 @router.get("/statement", response_model=list[StatementLineOut])
 async def get_statement(
     account_id: str | None = None,
@@ -349,7 +363,27 @@ async def get_statement(
         stmt = stmt.where(StatementLine.account_id == account_id)
     stmt = stmt.order_by(StatementLine.operation_date.desc())
     result = await db.execute(stmt)
-    rows = result.scalars().all()
+    rows = list(result.scalars().all())
+
+    cutoff = _statement_period_cutoff(period)
+    if cutoff and period.lower() not in ("month", "месяц"):
+        from datetime import datetime
+
+        def _parse_date(s: str) -> datetime:
+            parts = s.split(".")
+            if len(parts) == 3:
+                d, m, y = int(parts[0]), int(parts[1]), int(parts[2])
+                if y < 100:
+                    y += 2000
+                return datetime(y, m, d)
+            return datetime.min
+
+        if period.lower() in ("today", "сегодня", "yesterday", "вчера"):
+            rows = [r for r in rows if r.operation_date == cutoff]
+        else:
+            cut_dt = _parse_date(cutoff)
+            rows = [r for r in rows if _parse_date(r.operation_date) >= cut_dt]
+
     return [
         StatementLineOut(
             id=r.id,

@@ -22,6 +22,10 @@ MULTILINGUAL_VOICE_PICKS = (
     "sabrina",
     "lyla",
     "sienna",
+    "alexei",
+    "mikhail",
+    "nadezhda",
+    "oksana",
 )
 
 _CACHE_TTL_SEC = 3600
@@ -30,6 +34,16 @@ _cache: tuple[float, list[dict[str, Any]]] | None = None
 
 def _has_model(voice: dict[str, Any], model_name: str) -> bool:
     return any(m.get("name") == model_name for m in voice.get("models") or [])
+
+
+def _voice_usable(voice: dict[str, Any]) -> bool:
+    if _has_model(voice, "simba-multilingual"):
+        return True
+    locale = (voice.get("locale") or "").lower()
+    if locale.startswith("ru"):
+        return True
+    vid = str(voice.get("id") or "")
+    return vid in MULTILINGUAL_VOICE_PICKS
 
 
 def _voice_item(voice: dict[str, Any]) -> dict[str, str | None]:
@@ -77,12 +91,7 @@ async def list_assistant_voices() -> dict[str, Any]:
     raw = await _fetch_all_voices()
     by_id = {str(v.get("id")): v for v in raw if v.get("id")}
 
-    ru_native = [
-        v
-        for v in raw
-        if (v.get("locale") or "").startswith("ru")
-        and _has_model(v, "simba-multilingual")
-    ]
+    ru_native = [v for v in raw if (v.get("locale") or "").lower().startswith("ru") and _voice_usable(v)]
     ru_native.sort(
         key=lambda v: (
             0 if v.get("gender") == "male" else 1,
@@ -93,7 +102,7 @@ async def list_assistant_voices() -> dict[str, Any]:
     intl: list[dict[str, Any]] = []
     for vid in MULTILINGUAL_VOICE_PICKS:
         v = by_id.get(vid)
-        if v and _has_model(v, "simba-multilingual"):
+        if v and _voice_usable(v):
             intl.append(v)
 
     default = (settings.SPEECHIFY_TTS_VOICE or "george").strip()

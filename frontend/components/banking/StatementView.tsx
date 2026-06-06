@@ -50,7 +50,15 @@ export default function StatementView() {
     setIsLoading(true);
     setReportGenerated(false);
     const accId = selectedAccount !== "all" ? selectedAccount : undefined;
-    void fetchStatement(accId, selectedPeriod === "Сегодня" ? "today" : "month")
+    const periodKey =
+      selectedPeriod === "Сегодня"
+        ? "today"
+        : selectedPeriod === "Вчера"
+          ? "yesterday"
+          : selectedPeriod === "5дней"
+            ? "5days"
+            : "month";
+    void fetchStatement(accId, periodKey)
       .then((lines) => {
         setStatementLines(lines);
         const totalDebit = lines.reduce((s, l) => s + l.debit, 0);
@@ -64,6 +72,8 @@ export default function StatementView() {
             date: l.operation_date,
             type: l.debit > 0 ? "Списание" : "Поступление",
             counterparty: l.counterparty,
+            debit: l.debit,
+            credit: l.credit,
             amount: l.debit || l.credit,
             currency: curLabel,
             status: "Проведен",
@@ -358,10 +368,14 @@ export default function StatementView() {
                               <td className="py-3.5 px-4 font-extrabold text-gray-900">{doc.counterparty}</td>
                               <td className="py-3.5 px-4 text-gray-550 max-w-[220px] truncate">{doc.purpose}</td>
                               <td className="py-3.5 px-4 text-right text-red-600 font-extrabold whitespace-nowrap">
-                                - {doc.amount.toLocaleString()} {doc.currency}
+                                {(doc as { debit?: number }).debit
+                                  ? `- ${((doc as { debit?: number }).debit ?? 0).toLocaleString("ru-RU", { minimumFractionDigits: 2 })} ${doc.currency}`
+                                  : "—"}
                               </td>
                               <td className="py-3.5 px-4 text-right text-indigo-700 font-extrabold whitespace-nowrap">
-                                0.00 {doc.currency}
+                                {(doc as { credit?: number }).credit
+                                  ? `+ ${((doc as { credit?: number }).credit ?? 0).toLocaleString("ru-RU", { minimumFractionDigits: 2 })} ${doc.currency}`
+                                  : "—"}
                               </td>
                             </tr>
                           ))

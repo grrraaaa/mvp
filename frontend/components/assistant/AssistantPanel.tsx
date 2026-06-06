@@ -27,12 +27,15 @@ interface Props {
   variant?: "default" | "embedded";
   /** Passed from floating chat on narrow screens */
   compactMobile?: boolean;
+  /** Floating chat: scroll to welcome / top */
+  onRegisterReset?: (reset: () => void) => void;
 }
 
-export function AssistantPanel({ variant = "default", compactMobile = false }: Props) {
+export function AssistantPanel({ variant = "default", compactMobile = false, onRegisterReset }: Props) {
   const [input, setInput] = useState("");
   const [orgName, setOrgName] = useState<string | null>(null);
   const [notifications, setNotifications] = useState<SmartNotification[]>([]);
+  const scrollRef = useRef<HTMLDivElement>(null);
   const bottomRef = useRef<HTMLDivElement>(null);
   const pathname = usePathname();
   const router = useRouter();
@@ -93,6 +96,12 @@ export function AssistantPanel({ variant = "default", compactMobile = false }: P
       .then(setNotifications)
       .catch(() => setNotifications([]));
   }, [orgId]);
+
+  useEffect(() => {
+    onRegisterReset?.(() => {
+      scrollRef.current?.scrollTo({ top: 0, behavior: "smooth" });
+    });
+  }, [onRegisterReset]);
 
   const sendMessage = useCallback(
     async (text: string) => {
@@ -279,10 +288,14 @@ export function AssistantPanel({ variant = "default", compactMobile = false }: P
         />
       </div>
 
-      <div className={`flex-1 overflow-y-auto ${compactMobile ? "p-2" : "p-4"}`}>
+      <div ref={scrollRef} className={`flex-1 overflow-y-auto ${compactMobile ? "p-2" : "p-4"}`}>
         {notifications.length > 0 && (
           <div className={`text-left w-full max-w-md mx-auto ${inputCompact ? "mb-2" : "mb-4"}`}>
-            <NotificationBanner notifications={notifications} compact={inputCompact} />
+            <NotificationBanner
+              notifications={notifications}
+              compact={inputCompact}
+              onAsk={(n) => void sendMessage(`Расскажи про напоминание «${n.title}»`)}
+            />
           </div>
         )}
         {messages.length === 0 && (

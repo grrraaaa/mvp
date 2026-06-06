@@ -61,6 +61,8 @@ async def init_db():
     from db.seed_comprehensive import seed_comprehensive
     from db.seed_corpo_cards import seed_corpo_cards
     from db.seed_info_requests import seed_info_requests
+    from db.seed_statement_accounts import seed_statement_accounts
+    from db.seed_notification_links import seed_notification_links
 
     await run_migrations()
     await seed_products()
@@ -72,6 +74,8 @@ async def init_db():
     await seed_comprehensive()
     await seed_corpo_cards()
     await seed_info_requests()
+    await seed_statement_accounts()
+    await seed_notification_links()
 
 
 async def get_db():

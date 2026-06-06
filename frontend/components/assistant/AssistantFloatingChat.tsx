@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useRef, useState } from "react";
+import { Volume2, VolumeX } from "lucide-react";
 import { AssistantPanel } from "./AssistantPanel";
 import { IconChat, IconClose } from "@/components/sbbol/SbbolIcons";
 import { useIsMobile } from "@/hooks/useIsMobile";
@@ -19,6 +20,7 @@ export function AssistantFloatingChat({ open, onOpenChange }: Props) {
   const toggleTts = useTtsStore((s) => s.toggleEnabled);
   const [dragPos, setDragPos] = useState<{ x: number; y: number } | null>(null);
   const dragRef = useRef<{ startX: number; startY: number; origX: number; origY: number } | null>(null);
+  const resetChatRef = useRef<(() => void) | null>(null);
 
   useEffect(() => {
     if (!open) setDragPos(null);
@@ -35,7 +37,7 @@ export function AssistantFloatingChat({ open, onOpenChange }: Props) {
 
   const onPointerDown = (e: React.PointerEvent) => {
     if (isMobile) return;
-    if ((e.target as HTMLElement).closest("button[data-close]")) return;
+    if ((e.target as HTMLElement).closest("button")) return;
     const panel = (e.currentTarget as HTMLElement).closest("[data-chat-panel]") as HTMLElement | null;
     if (!panel) return;
 
@@ -58,6 +60,11 @@ export function AssistantFloatingChat({ open, onOpenChange }: Props) {
 
   const onPointerUp = () => {
     dragRef.current = null;
+  };
+
+  const resetChatPosition = () => {
+    setDragPos(null);
+    resetChatRef.current?.();
   };
 
   const desktopStyle = dragPos
@@ -130,9 +137,20 @@ export function AssistantFloatingChat({ open, onOpenChange }: Props) {
             onPointerUp={onPointerUp}
           >
             <div className="flex items-center gap-2 min-w-0">
-              <svg width="20" height="20" viewBox="0 0 24 24" fill="none" aria-hidden className="flex-shrink-0 sm:w-6 sm:h-6">
-                <path d="M7.18 7.18L17.08 17.08M17.08 17.08V10.72M17.08 17.08H10.72" stroke="#107F8C" strokeWidth="2" strokeLinecap="round" />
-              </svg>
+              <button
+                type="button"
+                onClick={(e) => {
+                  e.stopPropagation();
+                  resetChatPosition();
+                }}
+                className="w-8 h-8 flex items-center justify-center rounded text-[#107f8c] hover:bg-[#f2f4f7] shrink-0"
+                aria-label="Вернуть чат на место"
+                title="Вернуть чат на место"
+              >
+                <svg width="20" height="20" viewBox="0 0 24 24" fill="none" aria-hidden className="sm:w-6 sm:h-6">
+                  <path d="M7.18 7.18L17.08 17.08M17.08 17.08V10.72M17.08 17.08H10.72" stroke="#107F8C" strokeWidth="2" strokeLinecap="round" />
+                </svg>
+              </button>
               <span className="text-sm font-semibold text-[#1f1f22] truncate">AI-консультант</span>
             </div>
             <div className="flex items-center gap-1 shrink-0">
@@ -148,14 +166,11 @@ export function AssistantFloatingChat({ open, onOpenChange }: Props) {
                 aria-label={ttsEnabled ? "Выключить озвучку" : "Включить озвучку"}
                 title={ttsEnabled ? "Озвучка включена" : "Озвучка выключена"}
               >
-                <svg className="w-5 h-5" viewBox="0 0 24 24" fill="none" aria-hidden>
-                  <path
-                    d="M11 5L6 9H3v6h3l5 4V5zm4.5 2.5a7 7 0 010 9M16 7a11 11 0 010 10"
-                    stroke="currentColor"
-                    strokeWidth="1.75"
-                    strokeLinecap="round"
-                  />
-                </svg>
+                {ttsEnabled ? (
+                  <Volume2 className="w-5 h-5" aria-hidden />
+                ) : (
+                  <VolumeX className="w-5 h-5" aria-hidden />
+                )}
               </button>
               <button
                 type="button"
@@ -170,7 +185,13 @@ export function AssistantFloatingChat({ open, onOpenChange }: Props) {
           </div>
 
           <div className="flex-1 min-h-0 flex flex-col overflow-hidden">
-            <AssistantPanel variant="embedded" compactMobile={isMobile} />
+            <AssistantPanel
+              variant="embedded"
+              compactMobile={isMobile}
+              onRegisterReset={(fn) => {
+                resetChatRef.current = fn;
+              }}
+            />
           </div>
         </div>
       )}

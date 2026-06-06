@@ -7,6 +7,7 @@ import type { SmartNotification } from "@/lib/api/banking";
 interface Props {
   notifications: SmartNotification[];
   compact?: boolean;
+  onAsk?: (notification: SmartNotification) => void;
 }
 
 const SEVERITY_STYLES: Record<string, string> = {
@@ -21,7 +22,7 @@ const SEVERITY_TITLE: Record<string, string> = {
   critical: "text-red-900",
 };
 
-export function NotificationBanner({ notifications, compact }: Props) {
+export function NotificationBanner({ notifications, compact, onAsk }: Props) {
   if (!notifications.length) return null;
 
   return (
@@ -45,15 +46,26 @@ export function NotificationBanner({ notifications, compact }: Props) {
               <div className="min-w-0 flex-1">
                 <div className={`font-semibold text-sm leading-snug ${titleStyle}`}>{n.title}</div>
                 <p className="text-sm text-gray-700 mt-1 leading-relaxed">{n.body}</p>
-                {n.action_url && n.action_label && (
-                  <Link
-                    href={n.action_url}
-                    className="inline-flex items-center gap-1 mt-2 text-sm font-semibold text-sky-700 hover:text-sky-900 hover:underline"
-                  >
-                    {n.action_label}
-                    <ChevronRight className="w-4 h-4" />
-                  </Link>
-                )}
+                <div className="flex flex-wrap items-center gap-3 mt-2">
+                  {n.action_url && n.action_label && (
+                    <Link
+                      href={n.action_url}
+                      className="inline-flex items-center gap-1 text-sm font-semibold text-sky-700 hover:text-sky-900 hover:underline"
+                    >
+                      {n.action_label}
+                      <ChevronRight className="w-4 h-4" />
+                    </Link>
+                  )}
+                  {onAsk && (
+                    <button
+                      type="button"
+                      onClick={() => onAsk(n)}
+                      className="text-sm font-semibold text-[#107f8c] hover:underline"
+                    >
+                      Спросить у консультанта
+                    </button>
+                  )}
+                </div>
               </div>
             </div>
           </div>

@@ -36,21 +36,7 @@ def _decode_audio_payload(data: dict) -> bytes:
     raise TtsProviderError("Speechify: неизвестный формат audio_data", 502)
 
 
-async def synthesize_speech(text: str, voice_id: str | None = None) -> bytes:
-    if not settings.SPEECHIFY_API_KEY:
-        raise TtsNotConfiguredError("Задайте SPEECHIFY_API_KEY в .env")
-
-    payload_text = clean_text_for_tts(text)
-    if not payload_text:
-        raise TtsProviderError("Пустой текст для озвучки", 400)
-
-    language = settings.SPEECHIFY_TTS_LANGUAGE.strip()
-    if not language:
-        lang = detect_tts_language(payload_text, default="ru")
-        language = "ru-RU" if lang.startswith("ru") else "en-US"
-
-    voice = (voice_id or settings.SPEECHIFY_TTS_VOICE or "george").strip()
-
+async def _synthesize_once(payload_text: str, voice: str, language: str) -> bytes:
     body: dict[str, str] = {
         "input": payload_text,
         "voice_id": voice,
@@ -83,3 +69,27 @@ async def synthesize_speech(text: str, voice_id: str | None = None) -> bytes:
     if not audio:
         raise TtsProviderError("Пустой ответ от Speechify TTS", 502)
     return audio
+
+
+async def synthesize_speech(text: str, voice_id: str | None = None) -> bytes:
+    if not settings.SPEECHIFY_API_KEY:
+        raise TtsNotConfiguredError("Задайте SPEECHIFY_API_KEY в .env")
+
+    payload_text = clean_text_for_tts(text)
+    if not payload_text:
+        raise TtsProviderError("Пустой текст для озвучки", 400)
+
+    language = settings.SPEECHIFY_TTS_LANGUAGE.strip()
+    if not language:
+        lang = detect_tts_language(payload_text, default="ru")
+        language = "ru-RU" if lang.startswith("ru") else "en-US"
+
+    default_voice = (settings.SPEECHIFY_TTS_VOICE or "george").strip()
+    voice = (voice_id or default_voice).strip()
+
+    try:
+        return await _synthesize_once(payload_text, voice, language)
+    except TtsProviderError as exc:
+        if voice != default_voice and exc.status_code in (400, 404, 422):
+            return await _synthesize_once(payload_text, default_voice, language)
+        raise

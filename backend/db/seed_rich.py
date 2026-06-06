@@ -64,16 +64,16 @@ RICH_EMPLOYEES: dict[str, list[dict]] = {
 RICH_NOTIFICATIONS: dict[str, list[dict]] = {
     "demo": [
         {"title": "Кассовый прогноз", "body": "Прогноз остатка показывает возможный дефицит через 7 дней.", "severity": "warn", "category": "analytics", "action_url": "/statement", "action_label": "Выписка", "due_date": "12.06.2026"},
-        {"title": "Документ на подписи", "body": "Платёж №100 ожидает подписи.", "severity": "warn", "category": "document", "action_url": "/", "action_label": "Подписать", "due_date": None},
+        {"title": "Документ на подписи", "body": "Платёж №100 ожидает подписи.", "severity": "warn", "category": "document", "action_url": "/other/documents/signing", "action_label": "Подписать", "due_date": None},
     ],
     "ip_ivanov": [
-        {"title": "Платёж на подписи", "body": "Платёж №16 (БелТелесистемы) ожидает подписи.", "severity": "warn", "category": "document", "action_url": "/", "action_label": "Подписать", "due_date": "08.06.2026"},
+        {"title": "Платёж на подписи", "body": "Платёж №16 (БелТелесистемы) ожидает подписи.", "severity": "warn", "category": "document", "action_url": "/other/documents/signing", "action_label": "Подписать", "due_date": "08.06.2026"},
         {"title": "Поставщик", "body": "Через 5 дней оплата ООО «СтройМат» по графику.", "severity": "info", "category": "payment", "action_url": "/payments", "action_label": "Создать платёж", "due_date": "11.06.2026"},
         {"title": "Налог ИП", "body": "Напоминание: подоходный налог до 15.06.", "severity": "critical", "category": "tax", "action_url": "/payments/paydocbyn", "action_label": "Оплатить", "due_date": "15.06.2026"},
     ],
     "buh_plus": [
         {"title": "Зарплата 8 сотрудников", "body": "Подготовьте ведомость на 8 сотрудников до 10.06.", "severity": "info", "category": "payment", "action_url": "/salary", "action_label": "Зарплатный проект", "due_date": "10.06.2026"},
-        {"title": "Документ на подписи", "body": "Платёж №504 (Логистик BY) без подписи.", "severity": "warn", "category": "document", "action_url": "/", "action_label": "Открыть", "due_date": None},
+        {"title": "Документ на подписи", "body": "Платёж №503 ожидает подписи.", "severity": "warn", "category": "document", "action_url": "/other/documents/signing", "action_label": "Открыть на подпись", "due_date": None},
         {"title": "Отчётность", "body": "Срок подачи отчётности через 2 дня.", "severity": "critical", "category": "tax", "action_url": "/salary/obligations", "action_label": "Обязательства", "due_date": "07.06.2026"},
         {"title": "Сумма выше среднего", "body": "Платёж ООО «Поставщик Плюс» превышает среднее по контрагенту.", "severity": "warn", "category": "payment", "action_url": "/payments", "action_label": "Проверить", "due_date": None},
     ],

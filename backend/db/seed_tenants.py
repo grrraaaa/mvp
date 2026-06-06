@@ -34,7 +34,7 @@ TENANT_PACKAGES: dict[str, dict] = {
         ],
         "notifications": [
             {"title": "Платёж поставщику", "body": "Через 3 дня платёж ООО «АльфаИнвест».", "severity": "info", "category": "payment", "action_url": "/payments/paydocbyn", "action_label": "Подготовить платёж", "due_date": "08.06.2026"},
-            {"title": "Документ на подписи", "body": "Платёжное поручение №105 ожидает подписи.", "severity": "warn", "category": "document", "action_url": "/", "action_label": "Открыть", "due_date": None},
+            {"title": "Документ на подписи", "body": "Платёжное поручение №105 ожидает подписи.", "severity": "warn", "category": "document", "action_url": "/other/documents/signing", "action_label": "Открыть на подпись", "due_date": None},
         ],
     },
     "ip_ivanov": {

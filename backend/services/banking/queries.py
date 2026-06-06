@@ -15,6 +15,7 @@ from services.banking.analytics import (
     to_chart_line,
     to_chart_pie,
 )
+from services.banking.notifications import handle_notification_query, is_notification_query
 from services.banking.search import format_search_response, smart_search
 
 
@@ -111,6 +112,11 @@ async def handle_banking_query(
                     {"label": "Открыть расчёты", "url": "/payments", "variant": "primary"},
                 ],
             }
+
+    if is_notification_query(message):
+        notif_reply = await handle_notification_query(session, message, org_id)
+        if notif_reply:
+            return notif_reply
 
     low = message.lower()
 
