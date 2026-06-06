@@ -35,6 +35,10 @@ export function fetchAccounts(): Promise<BankAccount[]> {
   return fetchJson<BankAccount[]>("/api/banking/accounts");
 }
 
+export function fetchDocument(docId: string): Promise<BankDocument> {
+  return fetchJson<BankDocument>(`/api/banking/documents/${encodeURIComponent(docId)}`);
+}
+
 export function fetchDocuments(params?: {
   docType?: string;
   docPrefix?: string;

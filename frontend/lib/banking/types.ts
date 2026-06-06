@@ -25,6 +25,7 @@ export interface BankDocument {
   currency: "BYN" | "USD" | "EUR" | "RUB";
   status: DocumentStatus;
   purpose: string;
+  doc_number?: string;
 }
 
 export interface EmployeeSalary {

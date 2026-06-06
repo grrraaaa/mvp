@@ -1,4 +1,4 @@
-"""Умный поиск по демо-данным банка (документы, контрагенты, платежи)."""
+"""Умный поиск по демо-данным банка (документы, контрагенты, платежи, отчёты)."""
 from __future__ import annotations
 
 import re
@@ -8,6 +8,8 @@ from sqlalchemy import or_, select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from db.models import BankDocument, Counterparty
+
+INFO_PREFIX = "INFO:"
 
 
 @dataclass
@@ -55,6 +57,79 @@ def _parse_month_year(text: str) -> tuple[str | None, str | None]:
     return month, year
 
 
+def document_view_url(doc_id: str) -> str:
+    """Страница просмотра документа / отчёта в демо-интерфейсе."""
+    return f"/other/documents/view?doc={doc_id}"
+
+
+def is_report_query(query: str) -> bool:
+    low = query.lower()
+    return bool(re.search(r"отчёт|отчет|report|выписк", low)) and bool(
+        re.search(r"найди|найти|покажи|поиск|где", low)
+    )
+
+
+async def search_reports(
+    session: AsyncSession, query: str, limit: int = 10, org_id: str = "demo"
+) -> list[SearchHit]:
+    """Поиск отчётов и информационных документов (INFO:*, выписки)."""
+    month, year = _parse_month_year(query)
+    stmt = select(BankDocument).where(BankDocument.org_id == org_id)
+    result = await session.execute(stmt.limit(200))
+    rows = result.scalars().all()
+
+    hits: list[SearchHit] = []
+    for d in rows:
+        is_info = d.doc_type.startswith(INFO_PREFIX)
+        is_reportish = bool(
+            re.search(r"отчёт|отчет|выписк|период|остаток|ведомость", d.purpose.lower())
+            or re.search(r"выписк|остаток|ведомость|сведен", d.doc_type.lower())
+        )
+        if not is_info and not is_reportish:
+            continue
+        if month and (not d.doc_date or f".{month}." not in d.doc_date):
+            if not (d.purpose and month == "03" and "март" in d.purpose.lower()):
+                continue
+        if year and d.doc_date and year not in d.doc_date and year not in d.purpose:
+            continue
+        kind_label = d.doc_type.replace(INFO_PREFIX, "") if is_info else d.doc_type
+        hits.append(
+            SearchHit(
+                kind="report",
+                id=d.id,
+                title=f"{d.doc_number} — {kind_label[:50]}",
+                subtitle=d.purpose[:120] or d.counterparty[:80],
+                amount=d.amount,
+                currency=d.currency,
+                status=d.status,
+                url=document_view_url(d.id),
+            )
+        )
+
+    if not hits and (month or year):
+        for d in rows:
+            if month and d.doc_date and f".{month}." not in d.doc_date:
+                continue
+            if year and d.doc_date and year not in d.doc_date:
+                continue
+            if d.amount <= 0 and not d.doc_type.startswith(INFO_PREFIX):
+                continue
+            hits.append(
+                SearchHit(
+                    kind="payment",
+                    id=d.id,
+                    title=f"{d.doc_number} — {d.counterparty}",
+                    subtitle=d.purpose[:120],
+                    amount=d.amount,
+                    currency=d.currency,
+                    status=d.status,
+                    url=document_view_url(d.id),
+                )
+            )
+
+    return hits[:limit]
+
+
 async def smart_search(
     session: AsyncSession, query: str, limit: int = 10, org_id: str = "demo"
 ) -> list[SearchHit]:
@@ -95,7 +170,7 @@ async def smart_search(
             amount=d.amount,
             currency=d.currency,
             status=d.status,
-            url="/payments",
+            url=document_view_url(d.id),
         )
         for d in docs
     ]
@@ -140,6 +215,22 @@ def format_search_response(query: str, hits: list[SearchHit]) -> tuple[str, list
             [],
         )
 
+    report_hits = [h for h in hits if h.kind == "report"]
+    payment_hits = [h for h in hits if h.kind == "payment"]
+
+    if report_hits and (len(report_hits) >= len(payment_hits) or is_report_query(query)):
+        hits = report_hits
+        if len(hits) > 1:
+            lines = [f"Найдено {len(hits)} отчётов. Выберите нужный:"]
+            for i, h in enumerate(hits[:5], 1):
+                lines.append(f"{i}. {h.title} ({h.status})")
+            return "\n".join(lines), [_hit_source(h, i) for i, h in enumerate(hits[:5], 1)]
+        h = hits[0]
+        return (
+            f"**Отчёт:** {h.title}\n{h.subtitle}\nСтатус: {h.status}",
+            [_hit_source(h, 1)],
+        )
+
     if len(hits) > 1 and all(h.kind == "payment" for h in hits):
         lines = [f"Найдено {len(hits)} платежей. Выберите нужный:"]
         for i, h in enumerate(hits[:5], 1):
@@ -149,6 +240,11 @@ def format_search_response(query: str, hits: list[SearchHit]) -> tuple[str, list
         return "\n".join(lines), [_hit_source(h, i) for i, h in enumerate(hits[:5], 1)]
 
     h = hits[0]
+    if h.kind == "report":
+        return (
+            f"**Отчёт:** {h.title}\n{h.subtitle}\nСтатус: {h.status}",
+            [_hit_source(h, 1)],
+        )
     if h.kind == "counterparty":
         return (
             f"Карточка контрагента: **{h.title}**. {h.subtitle}",
@@ -162,9 +258,7 @@ def format_search_response(query: str, hits: list[SearchHit]) -> tuple[str, list
 
 def _hit_source(h: SearchHit, index: int) -> dict:
     highlight = ["amount", "counterparty", "purpose"] if h.kind == "payment" else []
-    url = h.url
-    if h.kind == "payment" and h.id:
-        url = f"/payments/paydocbyn?hl={','.join(highlight)}&source_doc={h.id}"
+    url = h.url or (document_view_url(h.id) if h.id else "/other/documents")
     return {
         "index": index,
         "label": f"Источник {index}: {h.title[:40]}",

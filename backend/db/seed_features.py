@@ -6,7 +6,19 @@ import uuid
 from sqlalchemy import select
 
 from db.database import AsyncSessionLocal
-from db.models import BankService, Counterparty, InsuranceProduct, TaxDeadline
+from db.models import BankDocument, BankService, Counterparty, InsuranceProduct, TaxDeadline
+
+INFO_PREFIX = "INFO:"
+MARCH_REPORTS = [
+    {
+        "row_id": "info-{org}-mar-report",
+        "doc_number": "№168",
+        "doc_date": "31.03.2026",
+        "doc_type": f"{INFO_PREFIX}Выписка по счету (исполненные документы)",
+        "purpose": "Период: март 2026",
+        "status": "Проведен",
+    },
+]
 
 TAX_DEADLINES = [
     {"code": "fszn_q2", "title": "ФСЗН — взносы за II квартал", "due_date": "15.07.2026", "org_type": "ul", "description": "Страховые взносы работодателя", "demo_amount": 5980.0},
@@ -62,5 +74,25 @@ async def seed_features():
             risk = COUNTERPARTY_RISK.get(cp.name)
             if risk:
                 cp.risk_score, cp.risk_level, cp.risk_notes = risk
+
+        for org_id in ("demo", "ip_ivanov", "buh_plus"):
+            for tpl in MARCH_REPORTS:
+                row_id = tpl["row_id"].format(org=org_id)
+                if await session.get(BankDocument, row_id):
+                    continue
+                session.add(
+                    BankDocument(
+                        id=row_id,
+                        org_id=org_id,
+                        doc_number=tpl["doc_number"],
+                        doc_date=tpl["doc_date"],
+                        doc_type=tpl["doc_type"],
+                        counterparty="BY51 BPSB 3012 2222 2222 2933 2222",
+                        amount=0.0,
+                        currency="BYN",
+                        status=tpl["status"],
+                        purpose=tpl["purpose"],
+                    )
+                )
 
         await session.commit()

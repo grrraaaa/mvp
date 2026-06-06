@@ -16,7 +16,13 @@ from services.banking.analytics import (
     to_chart_pie,
 )
 from services.banking.notifications import handle_notification_query, is_notification_query
-from services.banking.search import format_search_response, smart_search
+from services.banking.search import (
+    document_view_url,
+    format_search_response,
+    is_report_query,
+    search_reports,
+    smart_search,
+)
 
 
 async def lookup_counterparty(
@@ -121,32 +127,34 @@ async def handle_banking_query(
             kind = src.get("kind", "document")
             doc_id = src.get("id")
             highlight = src.get("highlight_fields") or ["amount", "counterparty", "purpose"]
-            if kind == "document" and doc_id:
+            if kind in ("document", "payment", "report") and doc_id:
                 doc = await session.get(BankDocument, doc_id)
                 if doc:
-                    url = f"/payments/paydocbyn?hl={','.join(highlight)}&source_doc={doc.id}"
+                    url = document_view_url(doc.id)
+                    is_report = doc.doc_type.startswith("INFO:") or kind == "report"
                     return {
                         "message": (
                             f"**Источник {idx}:** {doc.doc_number} от {doc.doc_date}\n"
-                            f"Контрагент: {doc.counterparty}\n"
-                            f"Сумма: **{doc.amount:,.2f}** {doc.currency}\n"
+                            f"{'Вид' if is_report else 'Контрагент'}: {doc.counterparty if not is_report else doc.doc_type.replace('INFO:', '')}\n"
+                            f"{f'Сумма: **{doc.amount:,.2f}** {doc.currency}\n' if doc.amount else ''}"
                             f"Назначение: {doc.purpose}\n"
                             f"Статус: {doc.status}\n\n"
-                            f"Открываю документ с подсветкой полей."
+                            f"Открываю {'отчёт' if is_report else 'документ'}."
                         ),
                         "sources": [
                             {
                                 "index": idx,
                                 "label": f"Источник {idx}: {doc.doc_number}",
-                                "kind": "document",
+                                "kind": "report" if is_report else kind,
                                 "id": doc.id,
                                 "url": url,
-                                "highlight_fields": highlight,
+                                "highlight_fields": highlight if not is_report else None,
                             }
                         ],
                         "ui_actions": [{"type": "navigate", "target": url}],
                         "action_buttons": [
-                            {"label": "Открыть документ", "url": url, "variant": "primary"},
+                            {"label": "Открыть отчёт" if is_report else "Открыть документ", "url": url, "variant": "primary"},
+                            {"label": "Выписка", "url": "/statement/account", "variant": "secondary"},
                         ],
                     }
             if kind == "counterparty" and doc_id:
@@ -337,16 +345,34 @@ async def handle_banking_query(
             ],
         }
 
+    if is_report_query(message) or (
+        is_search_query(message) and re.search(r"отчёт|отчет|report", low)
+    ):
+        hits = await search_reports(session, message, org_id=org_id)
+        if not hits and is_search_query(message):
+            hits = await smart_search(session, message, org_id=org_id)
+        text, sources = format_search_response(message, hits)
+        buttons = []
+        if hits:
+            first_url = sources[0]["url"] if sources else document_view_url(hits[0].id)
+            label = "Открыть отчёт" if hits[0].kind == "report" else "Открыть"
+            buttons.append({"label": label, "url": first_url, "variant": "primary"})
+            buttons.append({"label": "Выписка за период", "url": "/statement/account?period=month", "variant": "secondary"})
+            if len(hits) > 1:
+                buttons.append({"label": "Все документы", "url": "/other/documents", "variant": "secondary"})
+        return {"message": text, "sources": sources, "action_buttons": buttons}
+
     if is_search_query(message):
         hits = await smart_search(session, message, org_id=org_id)
         text, sources = format_search_response(message, hits)
         buttons = []
         if hits:
-            h = hits[0]
-            if h.url:
-                buttons.append({"label": "Открыть", "url": h.url, "variant": "primary"})
-            if h.kind == "payment":
-                buttons.append({"label": "Связанные платежи", "message": f"Платежи {h.title.split('—')[0]}", "variant": "secondary"})
+            first_url = sources[0]["url"] if sources else document_view_url(hits[0].id)
+            buttons.append({"label": "Открыть", "url": first_url, "variant": "primary"})
+            if hits[0].kind == "payment":
+                cp = hits[0].title.split("—")[-1].strip() if "—" in hits[0].title else ""
+                if cp:
+                    buttons.append({"label": "Связанные платежи", "message": f"Платежи {cp}", "variant": "secondary"})
         return {"message": text, "sources": sources, "action_buttons": buttons}
 
     if re.search(r"выписк", low) and re.search(r"сч[её]т|период|за\s+", low):

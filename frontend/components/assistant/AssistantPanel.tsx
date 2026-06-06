@@ -266,9 +266,12 @@ export function AssistantPanel({ variant = "default", compactMobile = false, onR
   const handleShowSource = useCallback(
     (source: SourceRef) => {
       if (source.url?.startsWith("/")) {
-        const url = source.highlight_fields?.length
-          ? buildHighlightUrl(source.url, source.highlight_fields)
-          : source.url;
+        const isDocumentView =
+          source.url.includes("/other/documents/view") || source.url.includes("doc=");
+        const url =
+          isDocumentView || !source.highlight_fields?.length
+            ? source.url
+            : buildHighlightUrl(source.url, source.highlight_fields);
         router.push(url);
         return;
       }

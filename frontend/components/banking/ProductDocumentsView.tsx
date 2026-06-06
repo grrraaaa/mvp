@@ -2,6 +2,7 @@
 
 import { useCallback, useEffect, useMemo, useState } from "react";
 import Link from "next/link";
+import { useRouter } from "next/navigation";
 import { ArrowLeft, ChevronDown, MoreVertical, Pencil } from "lucide-react";
 import { fetchDocuments, createDocument } from "@/lib/api/banking";
 import type { BankDocument } from "@/lib/banking/types";
@@ -87,6 +88,7 @@ export default function ProductDocumentsView({
   hideAmount = false,
   docRefLabel = "Платежное поручение",
 }: Props) {
+  const router = useRouter();
   const [documents, setDocuments] = useState<BankDocument[]>([]);
   const [loading, setLoading] = useState(true);
   const [activeTab, setActiveTab] = useState<TabKey>(defaultTab);
@@ -300,15 +302,24 @@ export default function ProductDocumentsView({
                   ? `Номер счета: ${account || ""}`
                   : `На счет: ${account || "\u00a0"}`;
               const subLine = variant === "info" ? doc.purpose : rowSubtitle;
+              const num = doc.doc_number ?? doc.id;
               const refLine =
                 docRefLabel.trim() === ""
-                  ? `${doc.id} от ${doc.date}`
-                  : `${docRefLabel} ${doc.id} от ${doc.date}`;
+                  ? `${num} от ${doc.date}`
+                  : `${docRefLabel} ${num} от ${doc.date}`;
               const showAmt = !hideAmount && !(variant === "info" && doc.amount === 0);
               return (
                 <li
                   key={doc.id}
-                  className={`flex items-start gap-4 px-4 sm:px-6 py-4 hover:bg-gray-50/80 ${
+                  role="button"
+                  tabIndex={0}
+                  onClick={() => router.push(`/other/documents/view?doc=${encodeURIComponent(doc.id)}`)}
+                  onKeyDown={(e) => {
+                    if (e.key === "Enter") {
+                      router.push(`/other/documents/view?doc=${encodeURIComponent(doc.id)}`);
+                    }
+                  }}
+                  className={`flex items-start gap-4 px-4 sm:px-6 py-4 hover:bg-gray-50/80 cursor-pointer ${
                     isSelected ? "bg-teal-50/40" : ""
                   }`}
                 >
@@ -316,6 +327,7 @@ export default function ProductDocumentsView({
                     <input
                       type="checkbox"
                       checked={isSelected}
+                      onClick={(e) => e.stopPropagation()}
                       onChange={() => {
                         const next = new Set(selected);
                         if (next.has(doc.id)) next.delete(doc.id);

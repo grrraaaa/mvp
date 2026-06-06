@@ -84,6 +84,42 @@ async def list_accounts(
     ]
 
 
+async def _resolve_document(db: AsyncSession, org_id: str, doc_id: str) -> BankDocument | None:
+    row = await db.get(BankDocument, doc_id)
+    if row and row.org_id == org_id:
+        return row
+    result = await db.execute(
+        select(BankDocument).where(
+            BankDocument.org_id == org_id,
+            BankDocument.doc_number == doc_id,
+        )
+    )
+    return result.scalar_one_or_none()
+
+
+@router.get("/documents/{doc_id}", response_model=BankDocumentOut)
+async def get_document(
+    doc_id: str,
+    db: AsyncSession = Depends(get_db),
+    current_user: User = Depends(get_current_user),
+):
+    org_id = user_org_id(current_user)
+    doc = await _resolve_document(db, org_id, doc_id)
+    if not doc:
+        raise HTTPException(status_code=404, detail="Документ не найден")
+    return BankDocumentOut(
+        id=doc.id,
+        date=doc.doc_date,
+        type=doc.doc_type,
+        counterparty=doc.counterparty,
+        amount=doc.amount,
+        currency=doc.currency,
+        status=doc.status,
+        purpose=doc.purpose,
+        doc_number=doc.doc_number,
+    )
+
+
 @router.get("/documents", response_model=list[BankDocumentOut])
 async def list_documents(
     db: AsyncSession = Depends(get_db),
@@ -104,7 +140,7 @@ async def list_documents(
     rows = result.scalars().all()
     return [
         BankDocumentOut(
-            id=d.doc_number,
+            id=d.id,
             date=d.doc_date,
             type=d.doc_type,
             counterparty=d.counterparty,
@@ -112,6 +148,7 @@ async def list_documents(
             currency=d.currency,
             status=d.status,
             purpose=d.purpose,
+            doc_number=d.doc_number,
         )
         for d in rows
     ]
@@ -268,7 +305,7 @@ async def create_document(
     await db.commit()
     await db.refresh(row)
     return BankDocumentOut(
-        id=row.doc_number,
+        id=row.id,
         date=row.doc_date,
         type=row.doc_type,
         counterparty=row.counterparty,
@@ -276,6 +313,7 @@ async def create_document(
         currency=row.currency,
         status=row.status,
         purpose=row.purpose,
+        doc_number=row.doc_number,
     )
 
 
@@ -286,13 +324,7 @@ async def sign_document(
     current_user: User = Depends(get_current_user),
 ):
     org_id = user_org_id(current_user)
-    result = await db.execute(
-        select(BankDocument).where(
-            BankDocument.org_id == org_id,
-            BankDocument.doc_number == doc_id,
-        )
-    )
-    doc = result.scalar_one_or_none()
+    doc = await _resolve_document(db, org_id, doc_id)
     if not doc:
         raise HTTPException(status_code=404, detail="Документ не найден")
     if doc.status != "На подписи":
@@ -313,7 +345,7 @@ async def sign_document(
     await db.commit()
     await db.refresh(doc)
     return BankDocumentOut(
-        id=doc.doc_number,
+        id=doc.id,
         date=doc.doc_date,
         type=doc.doc_type,
         counterparty=doc.counterparty,
@@ -321,6 +353,7 @@ async def sign_document(
         currency=doc.currency,
         status=doc.status,
         purpose=doc.purpose,
+        doc_number=doc.doc_number,
     )
 
 
@@ -675,15 +708,7 @@ async def submit_document_to_gateway(
     from services.banking.gateway_sim import create_gateway_payment, gateway_to_dict
 
     org_id = user_org_id(current_user)
-    result = await db.execute(
-        select(BankDocument).where(BankDocument.org_id == org_id, BankDocument.doc_number == doc_id)
-    )
-    doc = result.scalar_one_or_none()
-    if not doc:
-        result = await db.execute(
-            select(BankDocument).where(BankDocument.org_id == org_id, BankDocument.id == doc_id)
-        )
-        doc = result.scalar_one_or_none()
+    doc = await _resolve_document(db, org_id, doc_id)
     if not doc:
         raise HTTPException(status_code=404, detail="Документ не найден")
     gp = await create_gateway_payment(

@@ -197,6 +197,7 @@ class BankDocumentOut(BaseModel):
     currency: str
     status: str
     purpose: str
+    doc_number: str | None = None
 
 
 class EmployeeOut(BaseModel):
