@@ -6,6 +6,9 @@ export interface OcrFillResponse {
   session_id: string;
   form_actions?: FormFieldAction[];
   form_fill_status?: string;
+  suggested_chips?: string[];
+  response_tone?: string;
+  character_emotion?: string;
 }
 
 export async function ocrFillForm(
