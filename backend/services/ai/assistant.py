@@ -15,7 +15,7 @@ from db.database import AsyncSessionLocal
 from services.banking.queries import handle_banking_query, get_org_profile, lookup_counterparty
 from services.onec.assistant import handle_onec_query
 from services.ui.page_actions import get_page_help, get_page_quick_actions, handle_page_ui_action
-from services.banking.services_consult import find_service, format_service_reply
+from services.banking.services_consult import find_service, format_service_reply, compare_tariffs
 from services.forms.payment_validators import hints_for_payment
 from services.navigation.navigation_service import NavigationService
 from services.navigation.demo_routes import (
@@ -229,6 +229,7 @@ def _external_products(products: List[BankProduct]) -> List[BankProduct]:
             rate=p.rate,
             description=p.description,
             url=sanitize_url(product_url(p.url) if p.url.startswith("/") else p.url),
+            match_score=getattr(p, "match_score", None),
         )
         for p in products
     ]
@@ -858,9 +859,13 @@ class AssistantService:
         if service_reply:
             return service_reply
 
-        insurance_reply = self._maybe_insurance_reply(message, session_id)
+        insurance_reply = await self._maybe_insurance_reply(message, session_id)
         if insurance_reply:
             return insurance_reply
+
+        product_reply = await self._maybe_product_recommendations(message, session_id, effective_org)
+        if product_reply:
+            return product_reply
 
         if self._openai_available:
             try:
@@ -1179,7 +1184,7 @@ class AssistantService:
         self, message: str, session_id: str, org_id: str = "demo"
     ) -> Optional[AssistantResponse]:
         async with AsyncSessionLocal() as session:
-            result = await handle_banking_query(session, message, org_id=org_id)
+            result = await handle_banking_query(session, message, org_id=org_id, session_id=session_id)
         if not result:
             return None
         return AssistantResponse(
@@ -1217,9 +1222,24 @@ class AssistantService:
         self, message: str, session_id: str
     ) -> Optional[AssistantResponse]:
         low = message.lower()
+        if re.search(r"connect_service", low):
+            return AssistantResponse(
+                message="**Заявка на подключение принята (демо).**\n\nМенеджер свяжется в течение 1 рабочего дня. Пока можете продолжить работу в СберБизнес.",
+                session_id=session_id,
+                action_buttons=[ActionButton(label="Мои сервисы", url="/services", variant="primary")],
+            )
         if not re.search(r"сервис|эквайринг|тариф|подключ|аналитик|зарплатн\w*\s+проект", low):
             return None
         async with AsyncSessionLocal() as session:
+            compare = await compare_tariffs(session, message)
+            if compare:
+                text, buttons = compare
+                return AssistantResponse(
+                    message=text,
+                    session_id=session_id,
+                    action_buttons=[ActionButton(**b) for b in buttons],
+                    charts=None,
+                )
             svc = await find_service(session, message)
         if not svc:
             return None
@@ -1229,15 +1249,19 @@ class AssistantService:
             session_id=session_id,
             action_buttons=[ActionButton(**b) for b in buttons],
             sources=[
-                SourceRef(index=1, label=f"Источник 1: Каталог — {svc.name}", kind="service", url=svc.connect_url)
+                SourceRef(index=1, label=f"Источник 1: Каталог — {svc.name}", kind="service", url="/services")
             ],
         )
 
     def _maybe_insurance_reply(
         self, message: str, session_id: str
     ) -> Optional[AssistantResponse]:
-        intent_cfg = _detect_intent(message)
-        if not intent_cfg or "страхов" not in message.lower():
+        low = message.lower()
+        if "insurance_clarify_" in low or re.search(r"страхован\w*\s+(?:имуществ|сотрудник|кредит|офис|склад)", low):
+            return None  # handled async below
+        if not re.search(r"страхов", low):
+            return None
+        if re.search(r"имуществ|офис|склад|сотрудник|жизн|кредит|полис", low):
             return None
         return AssistantResponse(
             message=insurance_clarify_message(),
@@ -1251,6 +1275,63 @@ class AssistantService:
                 )
                 for b in insurance_clarify_buttons()
             ],
+        )
+
+    async def _maybe_insurance_products(
+        self, message: str, session_id: str
+    ) -> Optional[AssistantResponse]:
+        low = message.lower()
+        if not re.search(r"страхов|insurance_clarify_", low):
+            return None
+        from services.insurance.recommendations import find_insurance_products, format_insurance_reply
+
+        async with AsyncSessionLocal() as db:
+            products = await find_insurance_products(db, message)
+        if not products:
+            return None
+        buttons = [
+            ActionButton(label="Оформить заявку (демо)", message=f"Подключить {products[0].name}", variant="primary"),
+            ActionButton(label="Все продукты", url="/products", variant="secondary"),
+        ]
+        return AssistantResponse(
+            message=format_insurance_reply(products),
+            session_id=session_id,
+            action_buttons=buttons,
+        )
+
+    async def _maybe_product_recommendations(
+        self, message: str, session_id: str, org_id: str
+    ) -> Optional[AssistantResponse]:
+        ins = await self._maybe_insurance_products(message, session_id)
+        if ins:
+            return ins
+        low = message.lower()
+        if not re.search(r"кредит|депозит|продукт|подбор", low):
+            return None
+        from sqlalchemy import select
+        from db.models import StatementLine
+
+        async with AsyncSessionLocal() as db:
+            result = await db.execute(
+                select(StatementLine).where(StatementLine.org_id == org_id).order_by(StatementLine.operation_date.desc()).limit(30)
+            )
+            lines = result.scalars().all()
+            turnover = sum(l.credit for l in lines)
+            intent_cfg = _detect_intent(message)
+            product_type = intent_cfg["product_type"] if intent_cfg else None
+            raw = await self.products.search({"product_type": product_type or "credit", "max_rate": _extract_max_rate(message)})
+            scored: List[BankProduct] = []
+            for i, p in enumerate(_external_products(raw[:3])):
+                score = min(98.0, 55.0 + (turnover / 10000) + (10 - i * 3))
+                scored.append(p.model_copy(update={"match_score": round(score, 1)}))
+            products = scored
+        if not products:
+            return None
+        return AssistantResponse(
+            message=f"Подбор с учётом оборота (~{turnover:,.0f} BYN по выписке):\n\nРекомендую обратить внимание на варианты ниже.",
+            session_id=session_id,
+            products=products,
+            action_buttons=[ActionButton(label="Все кредиты", url="/products/credits", variant="secondary")],
         )
 
     async def _process_rules(self, message: str, session_id: str) -> AssistantResponse:

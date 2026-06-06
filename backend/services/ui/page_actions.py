@@ -45,10 +45,16 @@ PAGE_REGISTRY: dict[str, list[dict]] = {
     ],
     "/salary": [
         {"target": "open-salary-project", "labels": ["зарплатный проект", "проект"], "navigate": "/salary/project"},
-        {"target": "run-payroll", "labels": ["выплат", "оплатить зарплат", "провести ведомост"]},
+        {"target": "run-payroll", "labels": ["выплат", "оплатить зарплат", "провести ведомост", "запусти выплату"]},
         {"target": "open-employees", "labels": ["сотрудник", "реестр"], "navigate": "/salary/employees"},
+        {"target": "open-statement", "labels": ["выписка", "выписку"], "navigate": "/statement/account"},
     ],
-    "/services": [],
+    "/statement/account": [
+        {"target": "statement-month", "labels": ["за месяц", "выписка за месяц"], "navigate": "/statement/account"},
+    ],
+    "/services": [
+        {"target": "open-onec-import", "labels": ["1с", "onec", "импорт из 1с", "синхрониз"], "navigate": "/services/onec"},
+    ],
     "/other": [
         {"target": "open-info-requests", "labels": ["запрос выписк", "запрос информац", "выписк информац"], "navigate": "/other/info-requests"},
         {"target": "open-documents", "labels": ["документ"], "navigate": "/other/documents"},

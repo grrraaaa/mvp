@@ -56,6 +56,28 @@ ORG_ONEC_DOCS: dict[str, list[dict]] = {
             "purpose": "ТТН №8845 от 28.05.2026 — поставка канцелярии",
             "due_date": "12.06.2026",
         },
+        {
+            "external_id": "1C-DEMO-005",
+            "doc_kind": "payroll",
+            "counterparty": "Зарплатный реестр (12 сотр.)",
+            "unp": "",
+            "iban": "",
+            "bik": "",
+            "amount": 18500.00,
+            "purpose": "Зарплата за май 2026 — ведомость №18",
+            "due_date": "10.06.2026",
+        },
+        {
+            "external_id": "1C-DEMO-006",
+            "doc_kind": "payment_request",
+            "counterparty": "ООО БелТелесистемы",
+            "unp": "190823432",
+            "iban": "BY55 BPSB 3012 7777 7777 7777 7777",
+            "bik": "BPSBBY2X",
+            "amount": 890.00,
+            "purpose": "Интернет и телефония — июнь 2026",
+            "due_date": "14.06.2026",
+        },
     ],
     "ip_ivanov": [
         {

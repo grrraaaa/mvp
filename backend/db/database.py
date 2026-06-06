@@ -64,6 +64,7 @@ async def init_db():
     from db.seed_statement_accounts import seed_statement_accounts
     from db.seed_statement_recent import seed_statement_recent
     from db.seed_notification_links import seed_notification_links
+    from db.seed_features import seed_features
 
     await run_migrations()
     await seed_products()
@@ -78,6 +79,7 @@ async def init_db():
     await seed_statement_accounts()
     await seed_statement_recent()
     await seed_notification_links()
+    await seed_features()
 
 
 async def get_db():

@@ -51,6 +51,7 @@ class BankProduct(BaseModel):
     rate: Optional[float] = None
     description: Optional[str] = None
     url: str
+    match_score: Optional[float] = None
 
 class ActionButton(BaseModel):
     label: str
@@ -65,6 +66,7 @@ class SourceRef(BaseModel):
     kind: str = "document"
     id: Optional[str] = None
     url: Optional[str] = None
+    highlight_fields: Optional[List[str]] = None
 
 
 class SmartNotificationOut(BaseModel):
@@ -109,6 +111,9 @@ class AssistantResponse(BaseModel):
     form_fill_status: Optional[str] = None  # collecting | partial | complete
     sources: Optional[List[SourceRef]] = None
     charts: Optional[List[ChartSpec]] = None
+    suggested_chips: Optional[List[str]] = None
+    response_tone: Optional[str] = None  # success | warning | error | neutral | info
+    character_emotion: Optional[str] = None
     stream: bool = False
 
 
@@ -208,6 +213,9 @@ class CounterpartyOut(BaseModel):
     unp: str
     account: str
     bank_name: str
+    risk_score: float = 50.0
+    risk_level: str = "medium"
+    risk_notes: str = ""
 
 
 class CurrencyBalance(BaseModel):

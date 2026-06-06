@@ -80,38 +80,163 @@ def is_search_query(message: str) -> bool:
 
 
 async def handle_banking_query(
-    session: AsyncSession, message: str, org_id: str = "demo"
+    session: AsyncSession, message: str, org_id: str = "demo", session_id: str | None = None
 ) -> dict | None:
+    from services.chat.session_sources import get_source
+    from services.banking.counterparty_risk import format_risk_report, get_counterparty_risk
+    from services.tax.calendar import demo_fszh_amount, format_tax_calendar_reply, get_tax_calendar
+    import uuid as _uuid
+
     source_match = re.search(r"источник\s*№?\s*(\d+)", message.lower())
     if source_match:
         idx = int(source_match.group(1))
-        result = await session.execute(
-            select(BankDocument).where(BankDocument.org_id == org_id).limit(5)
-        )
-        docs = result.scalars().all()
-        if docs and idx <= len(docs):
-            doc = docs[idx - 1]
+        src = get_source(session_id, idx) if session_id else None
+        if src:
+            kind = src.get("kind", "document")
+            doc_id = src.get("id")
+            highlight = src.get("highlight_fields") or ["amount", "counterparty", "purpose"]
+            if kind == "document" and doc_id:
+                doc = await session.get(BankDocument, doc_id)
+                if doc:
+                    url = f"/payments?highlight={doc.id}"
+                    return {
+                        "message": (
+                            f"**Источник {idx}:** {doc.doc_number} от {doc.doc_date}\n"
+                            f"Контрагент: {doc.counterparty}\n"
+                            f"Сумма: **{doc.amount:,.2f}** {doc.currency}\n"
+                            f"Назначение: {doc.purpose}\n"
+                            f"Статус: {doc.status}\n\n"
+                            f"Открываю документ с подсветкой полей."
+                        ),
+                        "sources": [
+                            {
+                                "index": idx,
+                                "label": f"Источник {idx}: {doc.doc_number}",
+                                "kind": "document",
+                                "id": doc.id,
+                                "url": url,
+                                "highlight_fields": highlight,
+                            }
+                        ],
+                        "ui_actions": [{"type": "navigate", "target": url}],
+                        "action_buttons": [
+                            {"label": "Открыть документ", "url": url, "variant": "primary"},
+                        ],
+                    }
+            if kind == "counterparty" and doc_id:
+                cp = await session.get(Counterparty, doc_id)
+                if cp:
+                    url = f"/services/counterparty?cp={cp.id}"
+                    return {
+                        "message": f"**Источник {idx}:** контрагент {cp.name}, УНП {cp.unp}.",
+                        "sources": [{"index": idx, "label": cp.name, "kind": "counterparty", "id": cp.id, "url": url}],
+                        "ui_actions": [{"type": "navigate", "target": url}],
+                    }
+            if kind in ("analytics", "account", "service", "onec"):
+                url = src.get("url") or "/services"
+                return {
+                    "message": f"**Источник {idx}:** {src.get('label', 'данные')}. Открываю раздел.",
+                    "sources": [src],
+                    "ui_actions": [{"type": "navigate", "target": url}],
+                    "action_buttons": [{"label": "Открыть", "url": url, "variant": "primary"}],
+                }
+        # Fallback: search by index in last registered sources only
+        return {
+            "message": f"Источник №{idx} не найден в текущей сессии. Задайте вопрос снова — например, «найди платежи Иванова».",
+            "suggested_chips": ["Найди платежи Иванова за март", "Сколько на счёте?"],
+        }
+
+    low = message.lower()
+
+    if re.search(r"налогов\w*\s+календар|календар\w*\s+налог|срок\w*\s+(?:фсзн|ндс|налог)", low):
+        org = await session.get(OrganizationProfile, org_id)
+        items = await get_tax_calendar(session, org_id)
+        name = org.org_name if org else "организация"
+        role = org.user_role if org else "businessman"
+        return {
+            "message": format_tax_calendar_reply(items, name, role),
+            "sources": [{"index": 1, "label": "Календарь обязательств", "kind": "tax", "url": "/salary/obligations"}],
+            "action_buttons": [
+                {"label": "Обязательства", "url": "/salary/obligations", "variant": "primary"},
+                {"label": "Рассчитать ФСЗН", "message": "Рассчитай взносы ФСЗН", "variant": "secondary"},
+            ],
+        }
+
+    if re.search(r"рассчит\w*\s+фсзн|взнос\w*\s+фсзн|сколько\s+фсзн", low):
+        amt = demo_fszh_amount(5000.0)
+        return {
+            "message": f"Демо-расчёт ФСЗН при базе 5 000 BYN: **{amt:,.2f} BYN** (≈34% работодателя).\n\nДля точного расчёта укажите фонд оплаты труда.",
+            "action_buttons": [
+                {"label": "Зарплатный проект", "url": "/salary", "variant": "primary"},
+                {"label": "Налоговый календарь", "message": "Налоговый календарь", "variant": "secondary"},
+            ],
+        }
+
+    if re.search(r"провер\w*\s+контрагент|благонадёжност|due\s+diligence|риск.?\s+скор", low):
+        name_m = re.search(r"(?:контрагент\w*|поставщик\w*)\s+(.+)", message, re.I)
+        query = name_m.group(1).strip() if name_m else message
+        for token in ["проверь", "контрагента", "благонадёжность", "риск"]:
+            query = re.sub(token, "", query, flags=re.I).strip()
+        risk = await get_counterparty_risk(session, org_id, query or "Ромашка")
+        if risk:
             return {
-                "message": (
-                    f"**Источник {idx}:** {doc.doc_number} от {doc.doc_date}\n"
-                    f"Контрагент: {doc.counterparty}\n"
-                    f"Сумма: {doc.amount} {doc.currency}\n"
-                    f"Назначение: {doc.purpose}\n"
-                    f"Статус: {doc.status}"
-                ),
+                "message": format_risk_report(risk),
                 "sources": [
                     {
-                        "index": idx,
-                        "label": f"Источник {idx}: {doc.doc_number}",
-                        "kind": "document",
-                        "id": doc.id,
-                        "url": "/payments",
+                        "index": 1,
+                        "label": f"Реестр: {risk['name']}",
+                        "kind": "counterparty",
+                        "id": risk["id"],
+                        "url": f"/services/counterparty?cp={risk['id']}",
                     }
                 ],
                 "action_buttons": [
-                    {"label": "Открыть расчёты", "url": "/payments", "variant": "primary"},
+                    {"label": "Карточка контрагента", "url": f"/services/counterparty?cp={risk['id']}", "variant": "primary"},
                 ],
             }
+        return {
+            "message": "Укажите название контрагента, например: «Проверь контрагента ООО Ромашка».",
+            "pending_form_fields": ["Название контрагента"],
+        }
+
+    if re.search(r"добав\w*\s+контрагент", low):
+        name_m = re.search(r"контрагент\w*\s+(.+)", message, re.I)
+        name = (name_m.group(1).strip() if name_m else "").strip("«»\"'")
+        if len(name) >= 3:
+            existing = await session.execute(
+                select(Counterparty).where(Counterparty.org_id == org_id, Counterparty.name.ilike(f"%{name}%"))
+            )
+            if existing.scalar_one_or_none():
+                return {"message": f"Контрагент «{name}» уже есть в справочнике.", "action_buttons": [{"label": "Контрагенты", "url": "/payments/counterparties", "variant": "primary"}]}
+            cp = Counterparty(id=str(_uuid.uuid4()), org_id=org_id, name=name, risk_score=55.0, risk_level="medium", risk_notes="Добавлен из чата — проверьте УНП и счёт.")
+            session.add(cp)
+            await session.commit()
+            return {
+                "message": f"Контрагент **{name}** добавлен в справочник (демо). Укажите УНП и счёт в карточке или через OCR счёта.",
+                "action_buttons": [
+                    {"label": "Открыть контрагентов", "url": "/payments/counterparties", "variant": "primary"},
+                    {"label": "Заполнить из счёта", "message": "Помоги заполнить реквизиты контрагента", "variant": "secondary"},
+                ],
+            }
+        return {
+            "message": "Напишите, например: «Добавь контрагента ООО Новый Партнёр».",
+            "pending_form_fields": ["Название", "УНП", "Счёт IBAN"],
+        }
+
+    if re.search(r"риск\w*|опасност|аномал|проблем\w*\s+с\s+расход", low):
+        data = await cash_gap_forecast(session, org_id)
+        severity = "critical" if data.get("days_to_gap", 99) < 7 else "warn"
+        return {
+            "message": (
+                f"⚠️ **Анализ рисков (демо):**\n"
+                f"• Кассовый разрыв возможен через ~{data.get('days_to_gap', '?')} дн.\n"
+                f"• Средний отток: {data.get('avg_monthly_outflow', 0):,.0f} BYN/мес\n"
+                f"• Рекомендация: проверьте крупные платежи на подписи и резерв на счёте."
+            ),
+            "severity": severity,
+            "charts": [to_chart_line("Прогноз остатка", data["forecast"])],
+            "sources": [{"index": 1, "label": "Аналитика рисков", "kind": "analytics", "url": "/services/analytics"}],
+        }
 
     if is_notification_query(message):
         notif_reply = await handle_notification_query(session, message, org_id)
@@ -160,14 +285,20 @@ async def handle_banking_query(
 
     if re.search(r"кассов\w*\s+разрыв|прогноз\s+остат", low):
         data = await cash_gap_forecast(session, org_id)
+        expl = (
+            f"На основе среднего оттока {data['avg_monthly_outflow']:,.0f} BYN/мес "
+            f"и текущего остатка {data['current_balance']:,.0f} BYN "
+            f"дефицит возможен примерно через {data['days_to_gap']} дн."
+        )
         return {
             "message": (
                 f"Текущий остаток BYN: **{data['current_balance']:,.2f}**\n"
                 f"Средний месячный отток: {data['avg_monthly_outflow']:,.2f} BYN\n"
-                f"Ориентировочно до дефицита: ~{data['days_to_gap']} дн."
+                f"Ориентировочно до дефицита: ~{data['days_to_gap']} дн.\n\n"
+                f"_{expl}_"
             ),
             "charts": [to_chart_line("Прогноз остатка", data["forecast"])],
-            "sources": [{"index": 1, "label": "Счета PostgreSQL", "kind": "account", "url": "/"}],
+            "sources": [{"index": 1, "label": "Счета PostgreSQL", "kind": "account", "url": "/statement"}],
         }
 
     if is_balance_query(message):

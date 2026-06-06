@@ -85,7 +85,7 @@ async def handle_onec_query(
     return AssistantResponse(
         message="Документы из 1С, ожидающие импорта:\n\n" + "\n".join(lines),
         session_id=session_id,
-        sources=[SourceRef(index=1, label="Реестр 1С", kind="onec", url="/services")],
+        sources=[SourceRef(index=1, label="Реестр 1С", kind="onec", url="/services/onec")],
         action_buttons=[
             ActionButton(label="Импортировать пакетом", url="/services", variant="primary"),
             ActionButton(label="Синхронизировать", message="Синхронизировать с 1С", variant="secondary"),

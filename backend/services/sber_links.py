@@ -132,8 +132,9 @@ def insurance_clarify_message() -> str:
 
 def insurance_clarify_buttons() -> list[dict[str, str]]:
     return [
-        {"label": "Кредиты", "message": "кредиты для бизнеса", "variant": "secondary"},
-        {"label": "Продукты", "message": "продукты и услуги", "variant": "secondary"},
+        {"label": "Имущество и офис", "message": "insurance_clarify_property", "variant": "primary"},
+        {"label": "Сотрудники", "message": "insurance_clarify_life", "variant": "secondary"},
+        {"label": "Кредитное страхование", "message": "insurance_clarify_credit", "variant": "secondary"},
     ]
 
 

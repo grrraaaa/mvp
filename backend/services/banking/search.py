@@ -161,10 +161,15 @@ def format_search_response(query: str, hits: list[SearchHit]) -> tuple[str, list
 
 
 def _hit_source(h: SearchHit, index: int) -> dict:
+    highlight = ["amount", "counterparty", "purpose"] if h.kind == "payment" else []
+    url = h.url
+    if h.kind == "payment" and h.id:
+        url = f"/payments?highlight={h.id}"
     return {
         "index": index,
         "label": f"Источник {index}: {h.title[:40]}",
         "kind": h.kind,
         "id": h.id,
-        "url": h.url,
+        "url": url,
+        "highlight_fields": highlight or None,
     }

@@ -1,0 +1,17 @@
+{
+  "name": "СберБизнес — AI консультант",
+  "short_name": "SberBiz Demo",
+  "description": "Демо интернет-банка с AI-ассистентом",
+  "start_url": "/",
+  "display": "standalone",
+  "background_color": "#081810",
+  "theme_color": "#21A038",
+  "orientation": "portrait-primary",
+  "icons": [
+    {
+      "src": "/favicon.ico",
+      "sizes": "48x48",
+      "type": "image/x-icon"
+    }
+  ]
+}

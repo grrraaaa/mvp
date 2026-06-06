@@ -152,6 +152,9 @@ async def list_counterparties(
             unp=c.unp,
             account=c.account,
             bank_name=c.bank_name,
+            risk_score=getattr(c, "risk_score", 50.0) or 50.0,
+            risk_level=getattr(c, "risk_level", "medium") or "medium",
+            risk_notes=getattr(c, "risk_notes", "") or "",
         )
         for c in rows
     ]
@@ -633,3 +636,65 @@ async def banking_search(
         ],
         "sources": [SourceRef(**s) for s in sources],
     }
+
+
+@router.get("/gateway/payments")
+async def list_gateway_payments(
+    db: AsyncSession = Depends(get_db),
+    current_user: User = Depends(get_current_user),
+):
+    from services.banking.gateway_sim import gateway_to_dict, list_gateway_payments as list_gp
+
+    org_id = user_org_id(current_user)
+    rows = await list_gp(db, org_id)
+    return [gateway_to_dict(r) for r in rows]
+
+
+@router.post("/gateway/payments/{payment_id}/advance")
+async def advance_gateway_payment(
+    payment_id: str,
+    db: AsyncSession = Depends(get_db),
+    current_user: User = Depends(get_current_user),
+):
+    from services.banking.gateway_sim import advance_gateway_status, gateway_to_dict
+
+    org_id = user_org_id(current_user)
+    row = await advance_gateway_status(db, payment_id)
+    if not row or row.org_id != org_id:
+        raise HTTPException(status_code=404, detail="Payment not found")
+    return gateway_to_dict(row)
+
+
+@router.post("/documents/{doc_id}/submit-gateway")
+async def submit_document_to_gateway(
+    doc_id: str,
+    db: AsyncSession = Depends(get_db),
+    current_user: User = Depends(get_current_user),
+):
+    """Simulate sending signed document to SBBOL payment gateway."""
+    from services.banking.gateway_sim import create_gateway_payment, gateway_to_dict
+
+    org_id = user_org_id(current_user)
+    result = await db.execute(
+        select(BankDocument).where(BankDocument.org_id == org_id, BankDocument.doc_number == doc_id)
+    )
+    doc = result.scalar_one_or_none()
+    if not doc:
+        result = await db.execute(
+            select(BankDocument).where(BankDocument.org_id == org_id, BankDocument.id == doc_id)
+        )
+        doc = result.scalar_one_or_none()
+    if not doc:
+        raise HTTPException(status_code=404, detail="Документ не найден")
+    gp = await create_gateway_payment(
+        db,
+        org_id,
+        amount=doc.amount,
+        currency=doc.currency,
+        counterparty=doc.counterparty,
+        purpose=doc.purpose,
+        bank_doc_id=doc.id,
+    )
+    doc.status = "В обработке"
+    await db.commit()
+    return gateway_to_dict(gp)

@@ -94,6 +94,50 @@ class Counterparty(Base):
     unp: Mapped[str] = mapped_column(String, default="")
     account: Mapped[str] = mapped_column(String, default="")
     bank_name: Mapped[str] = mapped_column(String, default="")
+    risk_score: Mapped[float] = mapped_column(Float, default=50.0)
+    risk_level: Mapped[str] = mapped_column(String, default="medium")
+    risk_notes: Mapped[str] = mapped_column(Text, default="")
+
+
+class TaxDeadline(Base):
+    __tablename__ = "tax_deadlines"
+
+    id: Mapped[str] = mapped_column(String, primary_key=True, default=lambda: str(uuid.uuid4()))
+    code: Mapped[str] = mapped_column(String, nullable=False)
+    title: Mapped[str] = mapped_column(String, nullable=False)
+    due_date: Mapped[str] = mapped_column(String, nullable=False)
+    org_type: Mapped[str] = mapped_column(String, default="all")
+    description: Mapped[str] = mapped_column(Text, default="")
+    demo_amount: Mapped[Optional[float]] = mapped_column(Float, nullable=True)
+
+
+class InsuranceProduct(Base):
+    __tablename__ = "insurance_products"
+
+    id: Mapped[str] = mapped_column(String, primary_key=True)
+    name: Mapped[str] = mapped_column(String, nullable=False)
+    category: Mapped[str] = mapped_column(String, nullable=False)
+    description: Mapped[str] = mapped_column(Text, default="")
+    premium_from: Mapped[float] = mapped_column(Float, default=0.0)
+    coverage: Mapped[str] = mapped_column(String, default="")
+    keywords: Mapped[str] = mapped_column(String, default="")
+    is_active: Mapped[bool] = mapped_column(Boolean, default=True)
+
+
+class GatewayPayment(Base):
+    __tablename__ = "gateway_payments"
+
+    id: Mapped[str] = mapped_column(String, primary_key=True, default=lambda: str(uuid.uuid4()))
+    org_id: Mapped[str] = mapped_column(String, index=True)
+    bank_doc_id: Mapped[Optional[str]] = mapped_column(String, nullable=True)
+    amount: Mapped[float] = mapped_column(Float, nullable=False)
+    currency: Mapped[str] = mapped_column(String, default="BYN")
+    counterparty: Mapped[str] = mapped_column(String, default="")
+    purpose: Mapped[str] = mapped_column(Text, default="")
+    status: Mapped[str] = mapped_column(String, default="pending")
+    status_message: Mapped[str] = mapped_column(String, default="")
+    created_at: Mapped[datetime] = mapped_column(DateTime, default=datetime.utcnow)
+    updated_at: Mapped[datetime] = mapped_column(DateTime, default=datetime.utcnow)
 
 
 class Employee(Base):

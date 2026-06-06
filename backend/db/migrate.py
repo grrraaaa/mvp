@@ -21,6 +21,9 @@ PG_MIGRATIONS = [
     "UPDATE counterparties SET org_id = 'demo' WHERE org_id IS NULL",
     "UPDATE smart_notifications SET org_id = 'demo' WHERE org_id IS NULL",
     "ALTER TABLE bank_accounts ADD COLUMN IF NOT EXISTS note VARCHAR DEFAULT ''",
+    "ALTER TABLE counterparties ADD COLUMN IF NOT EXISTS risk_score FLOAT DEFAULT 50.0",
+    "ALTER TABLE counterparties ADD COLUMN IF NOT EXISTS risk_level VARCHAR DEFAULT 'medium'",
+    "ALTER TABLE counterparties ADD COLUMN IF NOT EXISTS risk_notes TEXT DEFAULT ''",
 ]
 
 
