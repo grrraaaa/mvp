@@ -1,7 +1,7 @@
 "use client";
 
 import { useCallback, useRef } from "react";
-import { DEEPGRAM_DEFAULT_VOICE, DEEPGRAM_VOICE_GROUPS } from "@/lib/tts/deepgramVoices";
+import { COMBINED_DEFAULT_VOICE, COMBINED_VOICE_GROUPS } from "@/lib/tts/combinedVoices";
 import { useTtsStore } from "@/store/ttsStore";
 
 type Theme = "embedded" | "dark";
@@ -17,6 +17,9 @@ function genderLabel(gender?: string | null): string {
   return "";
 }
 
+const FALLBACK_GROUPS = COMBINED_VOICE_GROUPS;
+const FALLBACK_DEFAULT = COMBINED_DEFAULT_VOICE;
+
 export function AssistantVoicePicker({ theme = "embedded", className = "" }: Props) {
   const voiceId = useTtsStore((s) => s.voiceId);
   const defaultVoice = useTtsStore((s) => s.defaultVoice);
@@ -25,7 +28,7 @@ export function AssistantVoicePicker({ theme = "embedded", className = "" }: Pro
   const setVoiceId = useTtsStore((s) => s.setVoiceId);
   const previewRef = useRef<HTMLAudioElement | null>(null);
 
-  const groups = voiceGroups.length > 0 ? voiceGroups : DEEPGRAM_VOICE_GROUPS;
+  const groups = voiceGroups.length > 0 ? voiceGroups : FALLBACK_GROUPS;
   const loaded = voicesLoaded || groups.length > 0;
 
   const playPreview = useCallback(
@@ -61,7 +64,8 @@ export function AssistantVoicePicker({ theme = "embedded", className = "" }: Pro
     );
   }
 
-  const effectiveVoiceId = voiceId ?? defaultVoice ?? groups[0]?.voices[0]?.id ?? DEEPGRAM_DEFAULT_VOICE;
+  const effectiveVoiceId =
+    voiceId ?? defaultVoice ?? groups[0]?.voices[0]?.id ?? FALLBACK_DEFAULT;
 
   const previewBtnClass = embedded
     ? "w-8 h-8 flex items-center justify-center rounded text-[#7d838a] hover:bg-[#f2f4f7] hover:text-[#107f8c]"

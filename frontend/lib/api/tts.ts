@@ -5,6 +5,7 @@ export interface TtsStatus {
   enabled: boolean;
   model: string;
   provider: string | null;
+  providers?: string[];
   voice?: string | null;
   voice_selection?: boolean;
 }

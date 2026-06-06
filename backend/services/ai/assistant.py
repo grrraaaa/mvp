@@ -238,9 +238,9 @@ def _looks_like_form_fill(message: str) -> bool:
     msg = message.lower()
     triggers = [
         r"заполни", r"заполн", r"введи", r"укажи", r"поставь", r"сумм",
-        r"назначени", r"получател", r"номер документ", r"дата документ",
+        r"назначени", r"получател", r"контрагент", r"номер документ", r"дата документ",
         URGENCY_WORD_RE, r"бик", r"сч[её]т", r"платежк", r"поручени",
-        r"оплат[аы]\s", r"документ", r"получател",
+        r"оплат[аы]\s", r"документ",
     ]
     return any(re.search(p, msg) for p in triggers)
 
@@ -490,6 +490,18 @@ async def _enrich_counterparty_from_db(
     row = await lookup_counterparty(db, org_id, recipient_value)
     if not row:
         return actions
+
+    c_field = fields.get("CONTRAGENT_ID")
+    if c_field and row.name:
+        for i, a in enumerate(actions):
+            if a.field == c_field["name"]:
+                actions[i] = FormFieldAction(
+                    field=a.field,
+                    value=row.name,
+                    label=a.label or c_field.get("label"),
+                )
+                filled[a.field] = row.name
+                break
 
     for key, attr in (("CONTRAGENT_UNP", "unp"), ("CONTRAGENT_ACCOUNT", "account")):
         fld = fields.get(key)
@@ -824,6 +836,11 @@ class AssistantService:
         if page_ui:
             return page_ui
 
+        if form_type:
+            form_reply = await self._handle_payment_form_chat(message, form_type, session_id, effective_org)
+            if form_reply is not None:
+                return form_reply
+
         banking_reply = await self._maybe_banking_query(message, session_id, effective_org)
         if banking_reply:
             return banking_reply
@@ -840,11 +857,6 @@ class AssistantService:
         service_reply = await self._maybe_service_consultation(message, session_id)
         if service_reply:
             return service_reply
-
-        if form_type:
-            form_reply = await self._handle_payment_form_chat(message, form_type, session_id, effective_org)
-            if form_reply is not None:
-                return form_reply
 
         insurance_reply = self._maybe_insurance_reply(message, session_id)
         if insurance_reply:

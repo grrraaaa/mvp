@@ -2,6 +2,7 @@
 
 import { useCallback, useEffect } from "react";
 import { fetchAssistantSpeech } from "@/lib/api/tts";
+import { isBrowserSpeechAvailable, speakWithBrowserSpeech } from "@/lib/tts/browserSpeech";
 import { playTtsBlob, stopTtsPlayback } from "@/lib/tts/playback";
 import { useTtsStore } from "@/store/ttsStore";
 
@@ -37,6 +38,12 @@ export function useAssistantSpeech() {
         await playTtsBlob(blob);
       } catch {
         useTtsStore.setState({ serverTts: false });
+        if (!isTtsEnabled() || !isBrowserSpeechAvailable()) return;
+        try {
+          await speakWithBrowserSpeech(trimmed, voiceId);
+        } catch {
+          /* server + browser TTS unavailable */
+        }
       }
     },
     [voiceId],

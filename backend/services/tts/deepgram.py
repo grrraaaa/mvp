@@ -44,7 +44,7 @@ async def synthesize_speech(text: str, voice_id: str | None = None) -> bytes:
         raise TtsProviderError("Пустой текст для озвучки", 400)
 
     model = resolve_deepgram_model(voice_id)
-    fallback = resolve_deepgram_model(settings.DEEPGRAM_TTS_VOICE or "alexei")
+    fallback = resolve_deepgram_model(settings.DEEPGRAM_TTS_VOICE or "arcas")
 
     try:
         return await _synthesize_once(payload_text, model)

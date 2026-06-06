@@ -1,44 +1,37 @@
-# Озвучка ассистента (Deepgram Aura)
+# Озвучка ассистента
 
-Озвучка ответов AI идёт **только через Deepgram Aura**.
+В UI доступны голоса **Google** и **Deepgram** (если заданы ключи). Выбор голоса маршрутизируется автоматически.
 
-## Переменные окружения
-
-```env
-DEEPGRAM_API_KEY=ваш-ключ
-DEEPGRAM_TTS_VOICE=alexei
-DEEPGRAM_TTS_MODEL=aura-2-arcas-en
-```
-
-Ключ: https://console.deepgram.com/
-
-## Как сменить голос
-
-### 1. В интерфейсе чата
-В шапке AI-консультанта откройте выпадающий список голосов (рядом с кнопкой 🔊) и выберите нужный. Выбор сохраняется в `localStorage`.
-
-### 2. Голос по умолчанию на сервере
-В `.env` или Vercel Environment Variables:
+## Ключи
 
 ```env
-DEEPGRAM_TTS_VOICE=alexei
+GOOGLE_TTS_API_KEY=...          # Google Cloud Text-to-Speech
+DEEPGRAM_API_KEY=...            # Deepgram Aura-2
+TTS_DEFAULT_VOICE=ru-RU-Neural2-B
 ```
 
-Доступные id: `alexei`, `arcas`, `odysseus`, `apollo`, `mars`, `thalia`, `aurora`, `helena`, `luna` и др. — полный список: `GET /api/tts/voices`.
+Без ключей — fallback на gTTS / Edge (см. `gtts_tts.py`).
 
-> **Alexei** — алиас для мужского голоса `aura-2-arcas-en` (в каталоге Deepgram нет отдельной модели `alexei`).
+## Google (русский, Neural2)
 
-### 3. Полное имя модели Deepgram
-Можно указать полный model id, например `aura-2-odysseus-en`, в `DEEPGRAM_TTS_VOICE`.
+| id | Пол |
+|----|-----|
+| `ru-RU-Neural2-B` | мужской (по умолчанию) |
+| `ru-RU-Neural2-A` | женский |
+| `ru-RU-Wavenet-B` | мужской (Wavenet) |
+| `ru-RU-Wavenet-A` | женский (Wavenet) |
 
-## API
+## Deepgram (лучшие для русского текста на EN-модели)
 
-| Метод | Путь | Описание |
-|-------|------|----------|
-| GET | `/api/tts/status` | Статус TTS |
-| GET | `/api/tts/voices` | Список голосов для UI |
-| POST | `/api/tts/speak` | `{ "text": "...", "voice_id": "alexei" }` → audio/mpeg |
+| id | Пол | Модель |
+|----|-----|--------|
+| `arcas` | мужской | aura-2-arcas-en |
+| `orpheus` | мужской (уверенный) | aura-2-orpheus-en |
+| `thalia` | женский | aura-2-thalia-en |
+| `helena` | женский (дружелюбный) | aura-2-helena-en |
 
-## Vercel
+> У Deepgram Aura нет отдельной ru-модели; выбранные EN-голоса лучше всего читают кириллицу.
 
-Добавьте `DEEPGRAM_API_KEY` и `DEEPGRAM_TTS_VOICE=alexei`, удалите старые `SPEECHIFY_*` / `SONIOX_*`, сделайте Redeploy.
+## Смена голоса
+
+Выпадающий список в шапке чата — две группы: **Google** и **Deepgram**.

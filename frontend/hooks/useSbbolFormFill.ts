@@ -137,8 +137,39 @@ function queryFieldIn(root: ParentNode, fieldName: string): FillableElement | nu
   return null;
 }
 
+const COUNTERPARTY_PLACEHOLDERS = [
+  "Наименование контрагента или номер счета",
+  "Наименование контрагента",
+];
+
+function findFieldByPlaceholder(root: ParentNode, placeholders: string[]): FillableElement | null {
+  for (const ph of placeholders) {
+    const el = root.querySelector(`input[placeholder="${ph}"], textarea[placeholder="${ph}"]`);
+    if (el instanceof HTMLInputElement || el instanceof HTMLTextAreaElement) {
+      return el;
+    }
+  }
+
+  for (const el of root.querySelectorAll("input[placeholder], textarea[placeholder]")) {
+    if (!(el instanceof HTMLInputElement || el instanceof HTMLTextAreaElement)) continue;
+    const placeholder = el.getAttribute("placeholder") ?? "";
+    if (placeholders.some((ph) => placeholder.includes(ph))) {
+      return el;
+    }
+  }
+
+  return null;
+}
+
 function findFieldElement(root: HTMLElement, fieldName: string): FillableElement | null {
-  return queryFieldIn(root, fieldName);
+  const direct = queryFieldIn(root, fieldName);
+  if (direct) return direct;
+
+  if (fieldName.includes("CONTRAGENT_ID")) {
+    return findFieldByPlaceholder(root, COUNTERPARTY_PLACEHOLDERS);
+  }
+
+  return null;
 }
 
 function isUrgencyField(el: FillableElement): boolean {

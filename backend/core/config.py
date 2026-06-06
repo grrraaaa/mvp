@@ -36,10 +36,30 @@ class Settings(BaseSettings):
     IMAGETOTEXT_API_KEY: str = ""
     IMAGETOTEXT_API_SECRET: str = ""
 
-    # Deepgram Aura TTS (озвучка ассистента)
+    # Google Cloud TTS (озвучка ассистента — приоритет над Deepgram)
+    # Вариант 1: API key (удобно для Vercel) — включите Cloud Text-to-Speech API в GCP
+    GOOGLE_TTS_API_KEY: str = ""
+    # Вариант 2: путь к JSON сервисного аккаунта (локальная разработка)
+    GOOGLE_APPLICATION_CREDENTIALS: str = ""
+    # Вариант 3: JSON сервисного аккаунта целиком в env (Vercel / serverless)
+    GOOGLE_SERVICE_ACCOUNT_JSON: str = ""
+    GOOGLE_TTS_VOICE: str = "ru-RU-Neural2-B"
+    GOOGLE_TTS_SPEAKING_RATE: float = 1.0
+    GOOGLE_TTS_PITCH: float = 0.0
+
+    # Deepgram Aura TTS (fallback, если Google не настроен)
     DEEPGRAM_API_KEY: str = ""
-    DEEPGRAM_TTS_VOICE: str = "alexei"
+    DEEPGRAM_TTS_VOICE: str = "arcas"
     DEEPGRAM_TTS_MODEL: str = "aura-2-arcas-en"
+
+    # Голос по умолчанию в UI (id из Google или Deepgram каталога)
+    TTS_DEFAULT_VOICE: str = "ru-RU-Neural2-B"
+
+    # gTTS — fallback без API-ключей
+    GTTS_VOICE: str = "ru-male"
+
+    # Microsoft Edge TTS через edge-tts (fallback для мужского голоса gTTS)
+    EDGE_TTS_VOICE: str = "ru-RU-DmitryNeural"
     ALLOWED_ORIGINS: str = "http://localhost:3000,http://127.0.0.1:3000"
     JWT_ALGORITHM: str = "HS256"
     ACCESS_TOKEN_EXPIRE_MINUTES: int = 60
