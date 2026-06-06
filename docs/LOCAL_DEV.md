@@ -38,19 +38,31 @@ SPEECHIFY_TTS_VOICE=george
 NEXT_PUBLIC_API_URL=http://127.0.0.1:8000
 ```
 
-### Опционально: Postgres
+### База данных (PostgreSQL)
+
+**Рекомендуется — Neon (облако, те же данные что на Vercel):**
+
+1. Vercel → Storage → Neon → Connect to project
+2. Локально: `vercel env pull .env.development.local` или скопируйте в `mvp/.env`:
+
+```env
+POSTGRES_URL=postgresql://...@...-pooler....neon.tech/neondb?sslmode=require
+POSTGRES_URL_NON_POOLING=postgresql://...@....neon.tech/neondb?sslmode=require
+```
+
+При старте бэкенда выполняется `init_db()` (таблицы + демо-логины).
+
+**Альтернатива — локальный Docker:**
 
 ```powershell
 docker compose up -d postgres
 ```
 
-В `.env`:
-
 ```env
 DATABASE_URL=postgresql+asyncpg://sber:sber@127.0.0.1:5432/sber
 ```
 
-`DATABASE_URL` обязателен (только PostgreSQL).
+`POSTGRES_URL` или `DATABASE_URL` обязателен (только PostgreSQL).
 
 ### Опционально: камера 3D
 

@@ -18,8 +18,8 @@ if _ENV_FILE.is_file():
         if key and key not in os.environ:
             os.environ[key] = val
 
-# asyncpg не понимает channel_binding из Neon/Vercel шаблона
-_STRIP_QUERY_KEYS = frozenset({"channel_binding", "connect_timeout"})
+# asyncpg не понимает эти query-параметры — передаём SSL через connect_args
+_STRIP_QUERY_KEYS = frozenset({"channel_binding", "connect_timeout", "sslmode", "ssl"})
 
 
 def _pick_raw_url(*, prefer_direct: bool = False) -> str:
@@ -86,3 +86,20 @@ def resolve_database_url(*, prefer_direct: bool = False) -> str:
 def resolve_init_database_url() -> str:
     """DDL + сиды — прямое подключение Neon без pooler."""
     return resolve_database_url(prefer_direct=True)
+
+
+def _ssl_required(raw_url: str) -> bool:
+    if "neon.tech" in raw_url or "supabase.co" in raw_url:
+        return True
+    if "?" not in raw_url:
+        return False
+    _, _, query = raw_url.partition("?")
+    params = parse_qs(query, keep_blank_values=True)
+    mode = (params.get("sslmode") or params.get("ssl") or [""])[0].lower()
+    return mode in {"require", "verify-ca", "verify-full", "true", "1"}
+
+
+def engine_connect_args(*, prefer_direct: bool = False) -> dict:
+    """asyncpg: SSL для Neon/Vercel (sslmode=require в URL не поддерживается)."""
+    raw = _pick_raw_url(prefer_direct=prefer_direct)
+    return {"ssl": True} if raw and _ssl_required(raw) else {}

@@ -6,11 +6,15 @@ from sqlalchemy.ext.asyncio import AsyncSession, async_sessionmaker, create_asyn
 from sqlalchemy.orm import DeclarativeBase
 from sqlalchemy.pool import NullPool
 
-from core.db_url import resolve_database_url, resolve_init_database_url
+from core.db_url import engine_connect_args, resolve_database_url, resolve_init_database_url
 
 DATABASE_URL = resolve_database_url()
 
-_engine_kwargs: dict = {"echo": False, "pool_pre_ping": True}
+_engine_kwargs: dict = {
+    "echo": False,
+    "pool_pre_ping": True,
+    "connect_args": engine_connect_args(),
+}
 if os.getenv("VERCEL") == "1":
     # Serverless: без долгоживущего пула
     _engine_kwargs["poolclass"] = NullPool
@@ -32,7 +36,11 @@ async def init_db():
 
     init_url = resolve_init_database_url()
     init_engine = (
-        create_async_engine(init_url, poolclass=NullPool)
+        create_async_engine(
+            init_url,
+            poolclass=NullPool,
+            connect_args=engine_connect_args(prefer_direct=True),
+        )
         if init_url != DATABASE_URL
         else engine
     )
