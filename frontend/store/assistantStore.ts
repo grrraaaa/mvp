@@ -13,6 +13,7 @@ export interface BankProduct {
   rate?: number;
   description?: string;
   url: string;
+  match_score?: number;
 }
 
 export interface ActionButton {
@@ -34,6 +35,7 @@ export interface SourceRef {
   kind?: string;
   id?: string;
   url?: string;
+  highlight_fields?: string[];
 }
 
 export interface ChartSpec {
@@ -54,6 +56,7 @@ export interface ChatMessage {
   formFillStatus?: string;
   sources?: SourceRef[];
   charts?: ChartSpec[];
+  streaming?: boolean;
 }
 
 interface AssistantState {
@@ -62,13 +65,21 @@ interface AssistantState {
   sessionId: string | null;
   navigationPath: NavigationStep[] | null;
   formActions: FormFieldAction[] | null;
-  // actions
+  suggestedChips: string[];
+  lastEmotion: string | null;
+  useStreaming: boolean;
+  historyLoaded: boolean;
   addMessage: (msg: ChatMessage) => void;
+  updateLastAssistant: (patch: Partial<ChatMessage>) => void;
   setLoading: (v: boolean) => void;
   setNavigationPath: (path: NavigationStep[] | null) => void;
   applyFormActions: (actions: FormFieldAction[]) => void;
   clearFormActions: () => void;
   setSessionId: (id: string) => void;
+  setSuggestedChips: (chips: string[]) => void;
+  setLastEmotion: (e: string | null) => void;
+  setUseStreaming: (v: boolean) => void;
+  loadMessages: (msgs: ChatMessage[]) => void;
   clearSession: () => void;
 }
 
@@ -78,9 +89,25 @@ export const useAssistantStore = create<AssistantState>((set) => ({
   sessionId: null,
   navigationPath: null,
   formActions: null,
+  suggestedChips: [],
+  lastEmotion: null,
+  useStreaming: true,
+  historyLoaded: false,
 
   addMessage: (msg) =>
     set((state) => ({ messages: [...state.messages, msg] })),
+
+  updateLastAssistant: (patch) =>
+    set((state) => {
+      const msgs = [...state.messages];
+      for (let i = msgs.length - 1; i >= 0; i--) {
+        if (msgs[i].role === "assistant") {
+          msgs[i] = { ...msgs[i], ...patch };
+          break;
+        }
+      }
+      return { messages: msgs };
+    }),
 
   setLoading: (v) => set({ isLoading: v }),
 
@@ -92,6 +119,21 @@ export const useAssistantStore = create<AssistantState>((set) => ({
 
   setSessionId: (id) => set({ sessionId: id }),
 
+  setSuggestedChips: (chips) => set({ suggestedChips: chips }),
+
+  setLastEmotion: (e) => set({ lastEmotion: e }),
+
+  setUseStreaming: (v) => set({ useStreaming: v }),
+
+  loadMessages: (msgs) => set({ messages: msgs, historyLoaded: true }),
+
   clearSession: () =>
-    set({ messages: [], sessionId: null, navigationPath: null, formActions: null }),
+    set({
+      messages: [],
+      sessionId: null,
+      navigationPath: null,
+      formActions: null,
+      suggestedChips: [],
+      historyLoaded: false,
+    }),
 }));

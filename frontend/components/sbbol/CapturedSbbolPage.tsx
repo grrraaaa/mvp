@@ -4,6 +4,8 @@ import { useEffect, useRef } from "react";
 import { useSbbolOrigPageInteractions } from "@/hooks/useSbbolOrigPageInteractions";
 import { useSbbolAccountPicker } from "@/hooks/useSbbolAccountPicker";
 import { useSbbolFormFill } from "@/hooks/useSbbolFormFill";
+import { highlightOcrFields, submitPaymentFormFromDom, useSbbolPaymentValidation } from "@/hooks/useSbbolPaymentValidation";
+import { showStubToast } from "@/lib/sbbol/stubToast";
 import type { OrigPageInteractionConfig } from "@/lib/sbbol/origPageRoutes";
 
 interface Props {
@@ -24,26 +26,35 @@ export function CapturedSbbolPage({ html, interactions }: Props) {
   useSbbolOrigPageInteractions(rootRef, interactions, [html, interactions]);
   useSbbolAccountPicker(rootRef, [html]);
   useSbbolFormFill(rootRef);
+  useSbbolPaymentValidation(rootRef);
 
   useEffect(() => {
     const root = rootRef.current;
     if (!root) return;
 
-    const blockSubmit = (event: Event) => {
+    const onSubmit = async (event: Event) => {
       event.preventDefault();
       event.stopImmediatePropagation();
+      const isPaymentForm = Boolean(root.querySelector("[name*='forms.PAYDOC'], [name*='forms.INSTANT']"));
+      if (isPaymentForm) {
+        highlightOcrFields(root);
+        const result = await submitPaymentFormFromDom(root);
+        showStubToast(result.message);
+        return;
+      }
+      showStubToast("Форма сохранена (демо-режим)");
     };
 
-    root.addEventListener("submit", blockSubmit, true);
+    root.addEventListener("submit", onSubmit, true);
     const forms = Array.from(root.querySelectorAll("form"));
     forms.forEach((form) => {
       form.setAttribute("novalidate", "novalidate");
-      form.addEventListener("submit", blockSubmit, true);
+      form.addEventListener("submit", onSubmit, true);
     });
 
     return () => {
-      root.removeEventListener("submit", blockSubmit, true);
-      forms.forEach((form) => form.removeEventListener("submit", blockSubmit, true));
+      root.removeEventListener("submit", onSubmit, true);
+      forms.forEach((form) => form.removeEventListener("submit", onSubmit, true));
     };
   }, [html]);
 

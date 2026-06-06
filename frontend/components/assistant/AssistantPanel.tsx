@@ -21,6 +21,8 @@ import { useAssistantSpeech } from "@/hooks/useAssistantSpeech";
 import { SourceChips } from "./SourceChips";
 import { NotificationBanner } from "./NotificationBanner";
 import { fetchNotifications, fetchOrgProfile, type SmartNotification } from "@/lib/api/banking";
+import { fetchChatHistory, streamChatMessage } from "@/lib/api/chat";
+import { useCharacterBehaviorStore } from "@/store/characterBehaviorStore";
 import type { SourceRef } from "@/store/assistantStore";
 
 interface Props {
@@ -34,6 +36,7 @@ interface Props {
 export function AssistantPanel({ variant = "default", compactMobile = false, onRegisterReset }: Props) {
   const [input, setInput] = useState("");
   const [orgName, setOrgName] = useState<string | null>(null);
+  const [userRole, setUserRole] = useState<string | null>(null);
   const [notifications, setNotifications] = useState<SmartNotification[]>([]);
   const scrollRef = useRef<HTMLDivElement>(null);
   const bottomRef = useRef<HTMLDivElement>(null);
@@ -50,16 +53,25 @@ export function AssistantPanel({ variant = "default", compactMobile = false, onR
     messages,
     isLoading,
     sessionId,
+    suggestedChips,
+    useStreaming,
+    historyLoaded,
     addMessage,
+    updateLastAssistant,
     setLoading,
     setNavigationPath,
     applyFormActions,
     setSessionId,
+    setSuggestedChips,
+    setLastEmotion,
+    loadMessages,
   } = useAssistantStore();
   const orgId = useAuthStore((s) => s.user?.org_id);
   const { config, setSettingsOpen } = useCharacterStore();
   const { speak, stop: stopSpeech } = useAssistantSpeech();
+  const { setEmotion } = useCharacterBehaviorStore();
   const lastSpokenCountRef = useRef(0);
+  const lastToneRef = useRef<string | undefined>(undefined);
 
   const lastAssistantText = useMemo(() => {
     for (let i = messages.length - 1; i >= 0; i--) {
@@ -83,15 +95,42 @@ export function AssistantPanel({ variant = "default", compactMobile = false, onR
     }
 
     lastSpokenCountRef.current = messages.length;
-    void speak(last.content);
+    void speak(last.content, { tone: lastToneRef.current, emotion: undefined });
   }, [messages, isLoading, speak]);
+
+  useEffect(() => {
+    if (!sessionId) {
+      setSessionId(crypto.randomUUID());
+    }
+  }, [sessionId, setSessionId]);
+
+  useEffect(() => {
+    if (historyLoaded || !sessionId) return;
+    void fetchChatHistory(sessionId).then((msgs) => {
+      if (msgs.length > 0) loadMessages(msgs);
+    });
+  }, [sessionId, historyLoaded, loadMessages]);
+
+  const mergedChips = useMemo(() => {
+    const dynamic = suggestedChips ?? [];
+    const staticChips = quickChips.filter((c) => !dynamic.includes(c));
+    return [...dynamic, ...staticChips].slice(0, inputCompact ? 5 : 8);
+  }, [suggestedChips, quickChips, inputCompact]);
+
+  const hideSuggestions = messages.length > 0 && suggestedChips.length === 0 && !input.trim();
 
   useEffect(() => () => stopSpeech(), [stopSpeech]);
 
   useEffect(() => {
     void fetchOrgProfile()
-      .then((org) => setOrgName(org.org_name))
-      .catch(() => setOrgName(null));
+      .then((org) => {
+        setOrgName(org.org_name);
+        setUserRole(org.user_role);
+      })
+      .catch(() => {
+        setOrgName(null);
+        setUserRole(null);
+      });
     void fetchNotifications(true)
       .then(setNotifications)
       .catch(() => setNotifications([]));
@@ -103,6 +142,38 @@ export function AssistantPanel({ variant = "default", compactMobile = false, onR
     });
   }, [onRegisterReset]);
 
+  const applyAssistantPayload = useCallback(
+    (data: Record<string, unknown>) => {
+      if (data.navigation_path) {
+        setNavigationPath(data.navigation_path as never);
+        const target = (data.navigation_path as { url: string }[])[
+          (data.navigation_path as unknown[]).length - 1
+        ]?.url;
+        if (target?.startsWith("/")) router.push(target);
+      }
+      if (data.session_id) setSessionId(data.session_id as string);
+      if (data.form_actions && (data.form_actions as unknown[]).length) {
+        applyFormActions(data.form_actions as never);
+      }
+      if (data.ui_actions && (data.ui_actions as unknown[]).length) {
+        for (const a of data.ui_actions as { type: string; target: string }[]) {
+          if (a.type === "navigate" && a.target?.startsWith("/")) {
+            router.push(a.target);
+          } else {
+            executeUiActions([a]);
+          }
+        }
+      }
+      if (data.suggested_chips) setSuggestedChips(data.suggested_chips as string[]);
+      if (data.character_emotion) {
+        setLastEmotion(data.character_emotion as string);
+        setEmotion(data.character_emotion as string);
+      }
+      lastToneRef.current = data.response_tone as string | undefined;
+    },
+    [applyFormActions, router, setEmotion, setLastEmotion, setNavigationPath, setSessionId, setSuggestedChips],
+  );
+
   const sendMessage = useCallback(
     async (text: string) => {
       if (!text.trim() || isLoading) return;
@@ -111,83 +182,97 @@ export function AssistantPanel({ variant = "default", compactMobile = false, onR
       addMessage({ role: "user", content: trimmed });
       setLoading(true);
 
+      const body = {
+        message: trimmed,
+        session_id: sessionId,
+        page_route: pageContext.page_route,
+        form_type: pageContext.form_type,
+        org_id: orgId,
+      };
+
       try {
-        const chatPath = authHeaders().Authorization ? "/api/chat" : "/api/chat/guest";
-        const res = await fetch(apiUrl(chatPath), {
-          method: "POST",
-          credentials: "same-origin",
-          headers: { "Content-Type": "application/json", ...authHeaders() },
-          body: JSON.stringify({
-            message: trimmed,
-            session_id: sessionId,
-            page_route: pageContext.page_route,
-            form_type: pageContext.form_type,
-            org_id: orgId,
-          }),
-        });
-        if (!res.ok) throw new Error(`HTTP ${res.status}`);
-        const data = await res.json();
-
-        if (data.navigation_path) {
-          setNavigationPath(data.navigation_path);
-          const target = data.navigation_path[data.navigation_path.length - 1]?.url;
-          if (target?.startsWith("/")) {
-            router.push(target);
-          }
+        if (useStreaming) {
+          addMessage({ role: "assistant", content: "", streaming: true });
+          const data = await streamChatMessage(body, (partial) => {
+            updateLastAssistant({ content: partial });
+          });
+          applyAssistantPayload(data);
+          updateLastAssistant({
+            content: (data.message as string) || "",
+            streaming: false,
+            products: data.products as never,
+            actionButtons: data.action_buttons as never,
+            navigationPath: data.navigation_path as never,
+            pendingFormFields: data.pending_form_fields as never,
+            formFillStatus: data.form_fill_status as never,
+            sources: data.sources as never,
+            charts: data.charts as never,
+          });
+        } else {
+          const chatPath = authHeaders().Authorization ? "/api/chat" : "/api/chat/guest";
+          const res = await fetch(apiUrl(chatPath), {
+            method: "POST",
+            credentials: "same-origin",
+            headers: { "Content-Type": "application/json", ...authHeaders() },
+            body: JSON.stringify(body),
+          });
+          if (!res.ok) throw new Error(`HTTP ${res.status}`);
+          const data = await res.json();
+          applyAssistantPayload(data);
+          addMessage({
+            role: "assistant",
+            content: data.message,
+            products: data.products,
+            actionButtons: data.action_buttons,
+            navigationPath: data.navigation_path,
+            pendingFormFields: data.pending_form_fields,
+            formFillStatus: data.form_fill_status,
+            sources: data.sources,
+            charts: data.charts,
+          });
         }
-        if (data.session_id) setSessionId(data.session_id);
-        if (data.form_actions?.length) applyFormActions(data.form_actions);
-        if (data.ui_actions?.length) {
-          for (const a of data.ui_actions) {
-            if (a.type === "navigate" && a.target?.startsWith("/")) {
-              router.push(a.target);
-            } else {
-              executeUiActions([a]);
-            }
-          }
-        }
-
-        addMessage({
-          role: "assistant",
-          content: data.message,
-          products: data.products,
-          actionButtons: data.action_buttons,
-          navigationPath: data.navigation_path,
-          pendingFormFields: data.pending_form_fields,
-          formFillStatus: data.form_fill_status,
-          sources: data.sources,
-          charts: data.charts,
-        });
       } catch (err) {
         console.error("[AssistantPanel] fetch error:", err);
         const msg = err instanceof Error ? err.message : String(err);
-        addMessage({
-          role: "assistant",
+        updateLastAssistant({
           content: `Не удалось связаться с сервером.\nРазделы СберБизнес доступны в меню слева.\n\n${msg}`,
+          streaming: false,
         });
+        if (!useStreaming) {
+          addMessage({
+            role: "assistant",
+            content: `Не удалось связаться с сервером.\nРазделы СберБизнес доступны в меню слева.\n\n${msg}`,
+          });
+        }
       } finally {
         setLoading(false);
       }
     },
     [
       addMessage,
-      applyFormActions,
+      applyAssistantPayload,
       isLoading,
+      orgId,
       pageContext,
-      router,
       sessionId,
       setLoading,
-      setNavigationPath,
-      setSessionId,
-      orgId,
-    ]
+      updateLastAssistant,
+      useStreaming,
+    ],
   );
 
   const handleShowSource = useCallback(
     (source: SourceRef) => {
+      if (source.url?.startsWith("/")) {
+        const url = source.highlight_fields?.length
+          ? `${source.url}${source.url.includes("?") ? "&" : "?"}hl=${source.highlight_fields.join(",")}`
+          : source.url;
+        router.push(url);
+        return;
+      }
       void sendMessage(`Покажи источник №${source.index}`);
     },
-    [sendMessage],
+    [router, sendMessage],
   );
 
   const fieldChipPrefix: Record<string, string> = {
@@ -334,6 +419,11 @@ export function AssistantPanel({ variant = "default", compactMobile = false, onR
                 Помогу с платежами, выписками и разделами банка.
               </p>
             )}
+            {userRole && !inputCompact && (
+              <p className="text-[10px] text-sber-muted mt-2">
+                Роль: {userRole === "accountant" ? "Бухгалтер" : userRole === "ip" ? "ИП" : "Бизнес"} · данные изолированы по организации
+              </p>
+            )}
             {!orgName && messages.length === 0 && (
               <div className="mt-3 flex flex-wrap gap-2 justify-center">
                 <button
@@ -420,8 +510,10 @@ export function AssistantPanel({ variant = "default", compactMobile = false, onR
           onSuggestionSelect={sendMessage}
           onPhotoSelect={handlePhotoOcr}
           showPhotoButton
-          suggestions={quickChips}
-          hideSuggestions={false}
+          suggestions={mergedChips}
+          hideSuggestions={hideSuggestions}
+          highlightVoice={inputCompact}
+          highlightCamera={inputCompact && Boolean(pageContext.form_type)}
           disabled={isLoading}
           compact={inputCompact}
           onVoiceComplete={sendMessage}

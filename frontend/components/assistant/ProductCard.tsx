@@ -36,6 +36,11 @@ function ProductLink({ product }: { product: BankProduct }) {
           <p className="text-sm font-medium text-white group-hover:text-sber-green-light transition-colors truncate mt-1">
             {product.name}
           </p>
+          {product.match_score != null && (
+            <span className="inline-flex items-center gap-1 text-[10px] mt-1 px-2 py-0.5 rounded-full bg-sber-gold/15 text-sber-gold border border-sber-gold/30">
+              Совпадение {product.match_score}%
+            </span>
+          )}
           {product.description && (
             <p className="text-xs text-sber-muted mt-0.5 line-clamp-2">{product.description}</p>
           )}

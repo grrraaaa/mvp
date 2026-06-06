@@ -22,6 +22,11 @@ const ROUTE_BY_ACTION: Record<string, string> = {
   "open-deposits": "/products/deposits",
   "open-cards": "/products/cards",
   "open-info-requests": "/other/info-requests",
+  "open-onec-import": "/services/onec",
+  "run-payroll": "/salary",
+  "statement-month": "/statement/account",
+  "create-info-request": "/other/info-requests",
+  "create-corpo-transfer": "/products/corpo-card-transfers",
   ...PRODUCT_ROUTES,
 };
 
@@ -37,6 +42,16 @@ export function AssistantUiBridge() {
 
       if (action === "open-doc-modal" || action === "create-document") {
         openDocumentModal();
+        return;
+      }
+
+      if (action === "run-payroll") {
+        router.push("/salary");
+        return;
+      }
+
+      if (action === "open-onec-import") {
+        router.push("/services/onec");
         return;
       }
 

@@ -13,9 +13,12 @@ interface CharacterBehaviorState {
   lipTimeline: number[];
   talkStartedAt: number | null;
   rareWalkSession: boolean;
+  emotion: string;
+  lipOpenOverride: number | null;
 
   setAction: (action: CharacterAction) => void;
   setSpeech: (text: string | null) => void;
+  setEmotion: (emotion: string) => void;
   startTalk: (text: string, durationMs: number) => void;
   beginRareApproach: (text: string, durationMs: number) => void;
   onWalkComplete: () => void;
@@ -31,9 +34,12 @@ export const useCharacterBehaviorStore = create<CharacterBehaviorState>((set, ge
   lipTimeline: [],
   talkStartedAt: null,
   rareWalkSession: false,
+  emotion: "idle",
+  lipOpenOverride: null,
 
   setAction: (action) => set({ action }),
   setSpeech: (speechText) => set({ speechText }),
+  setEmotion: (emotion) => set({ emotion }),
 
   startTalk: (text, durationMs) =>
     set({

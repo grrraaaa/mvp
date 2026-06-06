@@ -3,6 +3,7 @@
 import { useEffect, type RefObject } from "react";
 import { fillCustomerAccountField } from "@/hooks/useSbbolAccountPicker";
 import { useAssistantStore, type FormFieldAction } from "@/store/assistantStore";
+import { highlightOcrFields } from "@/hooks/useSbbolPaymentValidation";
 import { showStubToast } from "@/lib/sbbol/stubToast";
 import { useBankingStore } from "@/store/bankingStore";
 
@@ -294,6 +295,7 @@ export function useSbbolFormFill(rootRef: RefObject<HTMLElement | null>) {
     }
 
     if (filled.length) {
+      highlightOcrFields(root);
       showStubToast(`Заполнено: ${filled.join(", ")}`);
     }
     if (failed.length) {

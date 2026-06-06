@@ -23,6 +23,8 @@ const EVENT_ONLY_ACTIONS = new Set([
   "open-statement-cert",
   "open-salary-project",
   "open-employees",
+  "open-onec-import",
+  "statement-month",
   "open-credits",
   "open-deposits",
   "open-cards",

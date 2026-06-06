@@ -7,6 +7,7 @@ import { DocumentTypeSelectionModal } from "@/components/sbbol/DocumentTypeSelec
 import { SbbolUiContext } from "@/components/layout/SbbolUiContext";
 import { AssistantUiBridge } from "@/components/assistant/AssistantUiBridge";
 import { TtsBootstrap } from "@/components/assistant/TtsBootstrap";
+import { GatewayStatusBanner } from "@/components/banking/GatewayStatusBanner";
 import { useAuthStore } from "@/store/authStore";
 
 interface Props {
@@ -58,6 +59,7 @@ function AppProvidersInner({ children, documentModalHtml }: Props) {
           <TtsBootstrap />
           <AssistantUiBridge />
           <AssistantFloatingChat open={chatOpen} onOpenChange={setChatOpen} />
+          <GatewayStatusBanner />
         </>
       )}
       {showBankingExtras && docModalOpen && documentModalHtml ? (

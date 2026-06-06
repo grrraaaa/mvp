@@ -8,6 +8,8 @@ export const metadata: Metadata = {
   title: "СберБизнес — интернет-банк",
   description: "Демо СберБизнес с AI-консультантом и картой разделов интернет-банка",
   icons: { icon: "/favicon-sbbol.ico" },
+  manifest: "/manifest.json",
+  appleWebApp: { capable: true, title: "SberBiz" },
 };
 
 export default function RootLayout({ children }: { children: React.ReactNode }) {

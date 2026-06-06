@@ -145,7 +145,7 @@ export function GlbCharacter3D({
   const { actions, mixer } = useAnimations(animations, modelRef);
   const hasAnimations = animations.length > 0;
 
-  const { action, speechText, lipTimeline, talkStartedAt } =
+  const { action, speechText, lipTimeline, talkStartedAt, lipOpenOverride, emotion } =
     useCharacterBehaviorStore();
   useCharacterLocomotion(rootRef, {
     enabled: hasAnimations && !headPortraitMode,
@@ -212,8 +212,16 @@ export function GlbCharacter3D({
 
     const t = state.clock.elapsedTime;
     const openness =
-      action === "talk" ? lipOpennessAt(lipTimeline, talkStartedAt ?? 0) : 0;
+      action === "talk"
+        ? lipOpenOverride ?? lipOpennessAt(lipTimeline, talkStartedAt ?? 0)
+        : 0;
     lipOpenRef.current = openness;
+
+    if (emotion === "concern" || emotion === "apologetic") {
+      group.rotation.z = Math.sin(t * 2) * 0.015;
+    } else if (emotion === "smile") {
+      group.rotation.z = 0;
+    }
 
     if (!hasAnimations) {
       group.position.y =

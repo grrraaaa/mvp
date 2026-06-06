@@ -14,9 +14,9 @@ interface Props {
   disabled?: boolean;
   compact?: boolean;
   suggestions?: string[];
-  /** Hide quick prompts (e.g. when chat already has messages) */
   hideSuggestions?: boolean;
-  /** After voice recognition ends — send without Enter */
+  highlightVoice?: boolean;
+  highlightCamera?: boolean;
   onVoiceComplete?: (text: string) => void;
 }
 
@@ -31,6 +31,8 @@ export function ChatInput({
   suggestions = [],
   compact = false,
   hideSuggestions = false,
+  highlightVoice = false,
+  highlightCamera = false,
   onVoiceComplete,
 }: Props) {
   const [mounted, setMounted] = useState(false);
@@ -137,7 +139,7 @@ export function ChatInput({
         <input
           ref={fileInputRef}
           type="file"
-          accept="image/*"
+          accept="image/*,application/pdf"
           capture="environment"
           className="hidden"
           onChange={handleFileChange}
@@ -150,7 +152,9 @@ export function ChatInput({
             type="button"
             onClick={handlePhotoClick}
             disabled={disabled}
-            className={`${btnSize} rounded-xl border border-sbbol-border bg-white text-sbbol-secondary hover:border-sbbol-primary hover:text-sbbol-primary hover:bg-[#e5fcf7] flex items-center justify-center flex-shrink-0 transition-colors disabled:opacity-40 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-sbbol-primary/35`}
+            className={`${btnSize} rounded-xl border border-sbbol-border bg-white text-sbbol-secondary hover:border-sbbol-primary hover:text-sbbol-primary hover:bg-[#e5fcf7] flex items-center justify-center flex-shrink-0 transition-colors disabled:opacity-40 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-sbbol-primary/35 ${
+              highlightCamera ? "border-sbbol-primary ring-2 ring-sbbol-primary/25 bg-[#e5fcf7]/50" : ""
+            }`}
             aria-label="Фото или файл"
             title="Сфотографировать или загрузить изображение"
           >
@@ -184,7 +188,9 @@ export function ChatInput({
             className={`${btnSize} rounded-xl border flex items-center justify-center flex-shrink-0 transition-colors disabled:opacity-40 disabled:cursor-not-allowed focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-sbbol-primary/35 ${
               isListening
                 ? "border-sbbol-primary bg-[#e5fcf7] text-sbbol-primary animate-pulse"
-                : "border-sbbol-border bg-white text-sbbol-secondary hover:border-sbbol-primary hover:text-sbbol-primary hover:bg-[#e5fcf7]"
+                : highlightVoice
+                  ? "border-sbbol-primary bg-[#e5fcf7]/60 text-sbbol-primary shadow-sm ring-2 ring-sbbol-primary/20"
+                  : "border-sbbol-border bg-white text-sbbol-secondary hover:border-sbbol-primary hover:text-sbbol-primary hover:bg-[#e5fcf7]"
             }`}
             aria-label={isListening ? "Остановить запись" : "Голосовой ввод"}
             aria-pressed={isListening}
