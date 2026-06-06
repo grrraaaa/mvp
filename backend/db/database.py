@@ -59,6 +59,8 @@ async def init_db():
     from db.seed_onec import seed_onec
     from db.seed_rich import seed_rich
     from db.seed_comprehensive import seed_comprehensive
+    from db.seed_corpo_cards import seed_corpo_cards
+    from db.seed_info_requests import seed_info_requests
 
     await run_migrations()
     await seed_products()
@@ -68,6 +70,8 @@ async def init_db():
     await seed_onec()
     await seed_rich()
     await seed_comprehensive()
+    await seed_corpo_cards()
+    await seed_info_requests()
 
 
 async def get_db():

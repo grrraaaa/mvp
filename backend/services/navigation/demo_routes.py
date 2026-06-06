@@ -26,11 +26,13 @@ DEMO_ROUTE_LABELS: dict[str, str] = {
     "/products": "Продукты и услуги",
     "/products/credits": "Кредиты",
     "/products/cards": "Корпоративные карты",
+    "/products/corpo-card-transfers": "Переводы на корпоративные карты",
     "/products/deposits": "Депозиты",
     "/products/ved": "ВЭД",
     "/services": "Сервисы",
     "/services/analytics": "Бизнес-аналитика",
     "/services/exchange-rates": "Курсы валют",
+    "/other/info-requests": "Запросы выписки, информации",
     "/other/documents/signing": "На подписании",
     "/settings": "Настройки",
 }
@@ -172,6 +174,16 @@ _ROUTE_RULES: list[tuple[str, list[str]]] = [
         [r"/salary/pension", r"пенси", r"pension"],
     ),
     (
+        "/products/corpo-card-transfers",
+        [
+            r"/products/corpo-card-transfers",
+            r"pay_doc_corpo_card",
+            r"document/pay_doc_corpo_card",
+            r"перевод\w*\s+на\s+корпоративн",
+            r"пополнени\w*\s+карточн",
+        ],
+    ),
+    (
         "/products/credits",
         [r"/products/credits", r"кредит", r"овердрафт"],
     ),
@@ -181,7 +193,7 @@ _ROUTE_RULES: list[tuple[str, list[str]]] = [
     ),
     (
         "/products/cards",
-        [r"/products/cards", r"корпоративн\w*\s+карт"],
+        [r"/products/cards", r"управлени\w*\s+карт", r"реестр\s+карт"],
     ),
     (
         "/products/ved",
@@ -206,6 +218,18 @@ _ROUTE_RULES: list[tuple[str, list[str]]] = [
     (
         "/services",
         [r"/services\b", r"сервис"],
+    ),
+    (
+        "/other/info-requests",
+        [
+            r"/other/info-requests",
+            r"запрос\w*\s+выписк",
+            r"запрос\w*\s+информац",
+            r"информац\w*\s+по\s+счет",
+            r"остаток\s+по\s+счет",
+            r"забронированн\w*\s+средств",
+            r"неисполненн\w*\s+обязательств",
+        ],
     ),
     (
         "/other/documents/signing",

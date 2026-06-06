@@ -1,6 +1,6 @@
 ﻿"use client";
 
-import { useState, type FormEvent } from "react";
+import { useState, type FormEvent, type ReactNode } from "react";
 import Link from "next/link";
 import {
   CreditCard,
@@ -20,7 +20,31 @@ import {
 } from "lucide-react";
 import type { BankAccount } from "@/lib/banking/types";
 import { runBankingAction } from "@/lib/banking/actionRegistry";
+import { productHref } from "@/lib/banking/productCatalog";
 import { useBankingStore } from "@/store/bankingStore";
+
+function ProductLink({
+  slug,
+  action,
+  children,
+  className = "w-full text-left flex items-center justify-between text-sky-700 hover:underline font-semibold",
+}: {
+  slug: string;
+  action?: string;
+  children: ReactNode;
+  className?: string;
+}) {
+  return (
+    <Link
+      href={productHref(slug)}
+      data-assistant-action={action}
+      className={className}
+    >
+      <span>{children}</span>
+      <ChevronRight className="w-3.5 h-3.5 text-gray-300" />
+    </Link>
+  );
+}
 
 export default function ProductsView() {
   const accounts = useBankingStore((s) => s.accounts);
@@ -127,22 +151,16 @@ export default function ProductsView() {
             </div>
 
             <div className="space-y-3.5 text-xs">
-              <button onClick={() => alert('Переводы выполняются на вкладке «Деньги и события» со счетов.')} className="w-full text-left flex items-center justify-between text-sky-700 hover:underline font-semibold">
-                <span>Переводы на корпоративные карты</span>
-                <ChevronRight className="w-3.5 h-3.5 text-gray-300" />
-              </button>
-              
-              <button onClick={() => alert('Запрос на новую карту Visa / MasterCard Business отправлен в операционный центр ОАО «Сбер Банк» Belarus.')} className="w-full text-left flex items-center justify-between text-sky-700 hover:underline font-semibold">
-                <span>Получение корпоративной карты / бизнес-карты</span>
-                <ChevronRight className="w-3.5 h-3.5 text-gray-300" />
-              </button>
-
-              <button onClick={() => alert('Выписка доверенности на сотрудников для получения пластиковых карт в кассах Сбера.')} className="w-full text-left flex items-center justify-between text-sky-700 hover:underline font-semibold">
-                <span>Доверенность на получение / возврат карт</span>
-                <ChevronRight className="w-3.5 h-3.5 text-gray-300" />
-              </button>
-
-              <button onClick={() => setActiveTool('card_mgmt')} className="w-full text-left flex items-center justify-between text-sky-700 hover:underline font-semibold">
+              <ProductLink slug="corpo-card-transfers" action="open-corpo-card-transfers">
+                Переводы на корпоративные карты
+              </ProductLink>
+              <ProductLink slug="card-order" action="open-card-order">
+                Получение корпоративной карты / бизнес-карты
+              </ProductLink>
+              <ProductLink slug="card-proxy" action="open-card-proxy">
+                Доверенность на получение / возврат карт
+              </ProductLink>
+              <button onClick={() => setActiveTool('card_mgmt')} className="w-full text-left flex items-center justify-between text-sky-700 hover:underline font-semibold" data-assistant-action="open-cards">
                 <span className="flex items-center gap-1">Управление картами <span className="bg-emerald-550 text-white text-[9px] font-bold px-1 rounded animate-pulse bg-emerald-600">Настройки</span></span>
                 <ChevronRight className="w-3.5 h-3.5 text-gray-300 animate-bounce" />
               </button>
@@ -164,15 +182,12 @@ export default function ProductsView() {
             </div>
 
             <div className="space-y-3.5 text-xs">
-              <button onClick={() => alert('Открытие краткосрочных депозитных счетов в BYN / CNY. Пожалуйста, воспользуйтесь Калькулятором сначала.')} className="w-full text-left flex items-center justify-between text-sky-700 hover:underline font-semibold">
-                <span>Открытие депозита</span>
-                <ChevronRight className="w-3.5 h-3.5 text-gray-300" />
-              </button>
-              
-              <button onClick={() => alert('Условия досрочного пополнения депозитного тела.')} className="w-full text-left flex items-center justify-between text-sky-700 hover:underline font-semibold">
-                <span>Пополнение / возврат депозита (процентов)</span>
-                <ChevronRight className="w-3.5 h-3.5 text-gray-300" />
-              </button>
+              <ProductLink slug="deposit-open" action="open-deposit-open">
+                Открытие депозита
+              </ProductLink>
+              <ProductLink slug="deposit-refill" action="open-deposit-refill">
+                Пополнение / возврат депозита (процентов)
+              </ProductLink>
 
               <button onClick={() => setActiveTool('calculator')} className="w-full text-left flex items-center justify-between text-sky-700 hover:underline font-semibold">
                 <span className="flex items-center gap-1.5 text-teal-800 font-bold bg-teal-50 px-2 py-0.5 rounded border border-teal-150">
@@ -209,10 +224,9 @@ export default function ProductsView() {
                 <ChevronRight className="w-3.5 h-3.5 text-gray-300" />
               </button>
 
-              <button onClick={() => alert('Заказ выписки по счетам юрлица для предоставления инвесторам или аудиторам.')} className="w-full text-left flex items-center justify-between text-sky-700 hover:underline font-semibold">
-                <span>Запрос справки счета</span>
-                <ChevronRight className="w-3.5 h-3.5 text-gray-300" />
-              </button>
+              <ProductLink slug="account-certificate" action="open-account-certificate">
+                Запрос справки счета
+              </ProductLink>
             </div>
           </div>
         </div>
@@ -231,15 +245,12 @@ export default function ProductsView() {
             </div>
 
             <div className="space-y-3.5 text-xs">
-              <button onClick={() => alert('Заявка на подключение брокерских или доверительных услуг.')} className="w-full text-left flex items-center justify-between text-sky-700 hover:underline font-semibold">
-                <span>Заявка на предоставление продукта</span>
-                <ChevronRight className="w-3.5 h-3.5 text-gray-300" />
-              </button>
-              
-              <button onClick={() => alert('Выдача токенов самоинкассации для вноса наличности в банкоматы Сбера без захода в банк.')} className="w-full text-left flex items-center justify-between text-sky-700 hover:underline font-semibold">
-                <span>Доступ к услуге "Самоинкассация"</span>
-                <ChevronRight className="w-3.5 h-3.5 text-gray-300" />
-              </button>
+              <ProductLink slug="product-request" action="open-product-request">
+                Заявка на предоставление продукта
+              </ProductLink>
+              <ProductLink slug="self-collection" action="open-self-collection">
+                Доступ к услуге &quot;Самоинкассация&quot;
+              </ProductLink>
             </div>
           </div>
         </div>
@@ -258,10 +269,10 @@ export default function ProductsView() {
             </div>
 
             <div className="space-y-3.5 text-xs">
-              <button onClick={() => alert('Программа кредитования «Развитие»: субсидируемая ставка Сбера от 7% годовых в BYN. Ваша демо компания предварительно одобрена!')} className="w-full text-left flex items-center justify-between text-sky-700 hover:underline font-semibold">
+              <Link href="/products/credits" data-assistant-action="open-credits" className="w-full text-left flex items-center justify-between text-sky-700 hover:underline font-semibold text-xs">
                 <span>Кредиты бизнеса</span>
                 <ChevronRight className="w-3.5 h-3.5 text-gray-300" />
-              </button>
+              </Link>
             </div>
           </div>
         </div>
@@ -280,20 +291,15 @@ export default function ProductsView() {
             </div>
 
             <div className="space-y-3.5 text-xs">
-              <button onClick={() => alert('Заказ терминалов в точки продаж компании.')} className="w-full text-left flex items-center justify-between text-sky-700 hover:underline font-semibold">
-                <span>Регистрация пункта обслуживания и терминалов</span>
-                <ChevronRight className="w-3.5 h-3.5 text-gray-300" />
-              </button>
-              
-              <button onClick={() => alert('Изменение реквизитов зачисления эквайринга.')} className="w-full text-left flex items-center justify-between text-sky-700 hover:underline font-semibold">
-                <span>Внесение изменений по эквайрингу</span>
-                <ChevronRight className="w-3.5 h-3.5 text-gray-300" />
-              </button>
-
-              <button onClick={() => alert('Таблица активных торговых точек и POS терминалов.')} className="w-full text-left flex items-center justify-between text-sky-700 hover:underline font-semibold">
-                <span>Пункты обслуживания и терминалы</span>
-                <ChevronRight className="w-3.5 h-3.5 text-gray-300" />
-              </button>
+              <ProductLink slug="acquiring-register" action="open-acquiring-register">
+                Регистрация пункта обслуживания и терминалов
+              </ProductLink>
+              <ProductLink slug="acquiring-changes" action="open-acquiring-changes">
+                Внесение изменений по эквайрингу
+              </ProductLink>
+              <ProductLink slug="acquiring-points" action="open-acquiring-points">
+                Пункты обслуживания и терминалы
+              </ProductLink>
             </div>
           </div>
         </div>
@@ -312,10 +318,9 @@ export default function ProductsView() {
             </div>
 
             <div className="space-y-3.5 text-xs">
-              <button onClick={() => alert('Загрузка интернет дилера Сбер Торги на ПК...')} className="w-full text-left flex items-center justify-between text-sky-700 hover:underline font-semibold">
-                <span>Вход на торговую площадку (веб-версия)</span>
-                <ChevronRight className="w-3.5 h-3.5 text-gray-300" />
-              </button>
+              <ProductLink slug="marketplace" action="open-marketplace">
+                Вход на торговую площадку (веб-версия)
+              </ProductLink>
             </div>
           </div>
         </div>

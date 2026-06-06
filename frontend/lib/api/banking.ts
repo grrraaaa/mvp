@@ -35,8 +35,17 @@ export function fetchAccounts(): Promise<BankAccount[]> {
   return fetchJson<BankAccount[]>("/api/banking/accounts");
 }
 
-export function fetchDocuments(): Promise<BankDocument[]> {
-  return fetchJson<BankDocument[]>("/api/banking/documents");
+export function fetchDocuments(params?: {
+  docType?: string;
+  docPrefix?: string;
+  status?: string;
+}): Promise<BankDocument[]> {
+  const q = new URLSearchParams();
+  if (params?.docType) q.set("doc_type", params.docType);
+  if (params?.docPrefix) q.set("doc_prefix", params.docPrefix);
+  if (params?.status) q.set("status", params.status);
+  const suffix = q.toString() ? `?${q}` : "";
+  return fetchJson<BankDocument[]>(`/api/banking/documents${suffix}`);
 }
 
 export function fetchEmployees(): Promise<EmployeeSalary[]> {
@@ -96,6 +105,7 @@ export function createDocument(doc: {
   amount: number;
   currency: string;
   purpose: string;
+  status?: string;
 }): Promise<BankDocument> {
   return postJson<BankDocument>("/api/banking/documents", doc);
 }

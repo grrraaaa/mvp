@@ -226,6 +226,7 @@ class CreateDocumentRequest(BaseModel):
     amount: float
     currency: str = "BYN"
     purpose: str = ""
+    status: str | None = None
 
 
 class OneCConnectRequest(BaseModel):

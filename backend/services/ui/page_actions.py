@@ -40,10 +40,26 @@ PAGE_REGISTRY: dict[str, list[dict]] = {
         {"target": "open-employees", "labels": ["сотрудник", "реестр"], "navigate": "/salary/employees"},
     ],
     "/services": [],
+    "/other": [
+        {"target": "open-info-requests", "labels": ["запрос выписк", "запрос информац", "выписк информац"], "navigate": "/other/info-requests"},
+        {"target": "open-documents", "labels": ["документ"], "navigate": "/other/documents"},
+    ],
+    "/other/info-requests": [
+        {"target": "create-info-request", "labels": ["создать документ", "новый запрос", "создать запрос"]},
+    ],
     "/products": [
+        {"target": "open-corpo-card-transfers", "labels": ["перевод на корпоративн", "переводы на корпоративн", "пополнение карточного"], "navigate": "/products/corpo-card-transfers"},
         {"target": "open-credits", "labels": ["кредит"], "navigate": "/products/credits"},
         {"target": "open-deposits", "labels": ["депозит", "вклад"], "navigate": "/products/deposits"},
-        {"target": "open-cards", "labels": ["карт"], "navigate": "/products/cards"},
+        {"target": "open-cards", "labels": ["управление карт", "корпоративн карт"], "navigate": "/products/cards"},
+        {"target": "open-card-order", "labels": ["получение карт", "бизнес-карт"], "navigate": "/products/card-order"},
+        {"target": "open-deposit-open", "labels": ["открытие депозит"], "navigate": "/products/deposit-open"},
+        {"target": "open-self-collection", "labels": ["самоинкассац"], "navigate": "/products/self-collection"},
+        {"target": "open-marketplace", "labels": ["торговая площадка"], "navigate": "/products/marketplace"},
+    ],
+    "/products/corpo-card-transfers": [
+        {"target": "create-corpo-transfer", "labels": ["создать документ", "новый перевод", "создать перевод"]},
+        {"target": "import-corpo-transfer", "labels": ["импорт"]},
     ],
 }
 

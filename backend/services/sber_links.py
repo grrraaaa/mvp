@@ -18,12 +18,14 @@ SECTION_PATHS: dict[str, str] = {
     "credits": "/products/credits",
     "deposits": "/products/deposits",
     "cards": "/products/cards",
+    "corpo_card_transfers": "/products/corpo-card-transfers",
     "ved": "/products/ved",
     "counterparties": "/payments/counterparties",
     "analytics": "/services/analytics",
     "counterparty_check": "/services/counterparty",
     "exchange_rates": "/services/exchange-rates",
     "documents_signing": "/other/documents/signing",
+    "info_requests": "/other/info-requests",
 }
 
 SECTION_URLS = SECTION_PATHS
@@ -35,6 +37,8 @@ INTENT_SECTION: dict[str, str] = {
     "credit": "credits",
     "deposit": "deposits",
     "cards": "cards",
+    "corpo_card_transfers": "corpo_card_transfers",
+    "info_requests": "info_requests",
     "ved": "ved",
     "counterparty": "counterparties",
     "services": "services",
@@ -49,6 +53,7 @@ PRODUCT_PATHS: dict[str, str] = {
     "deposit_standard": "/products/deposits",
     "deposit_flexible": "/products/deposits",
     "corp_card": "/products/cards",
+    "corpo_card_transfer": "/products/corpo-card-transfers",
     "payment_order": "/payments/paydocbyn",
     "counterparty": "/payments/counterparties",
 }

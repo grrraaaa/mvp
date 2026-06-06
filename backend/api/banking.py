@@ -88,9 +88,19 @@ async def list_accounts(
 async def list_documents(
     db: AsyncSession = Depends(get_db),
     current_user: User = Depends(get_current_user),
+    doc_type: str | None = Query(None, alias="doc_type"),
+    doc_prefix: str | None = Query(None, alias="doc_prefix"),
+    status: str | None = Query(None),
 ):
     org_id = user_org_id(current_user)
-    result = await db.execute(_org_filter(BankDocument, org_id))
+    stmt = _org_filter(BankDocument, org_id)
+    if doc_prefix:
+        stmt = stmt.where(BankDocument.doc_type.startswith(doc_prefix))
+    elif doc_type:
+        stmt = stmt.where(BankDocument.doc_type == doc_type)
+    if status:
+        stmt = stmt.where(BankDocument.status == status)
+    result = await db.execute(stmt)
     rows = result.scalars().all()
     return [
         BankDocumentOut(
@@ -248,7 +258,7 @@ async def create_document(
         counterparty=body.counterparty,
         amount=body.amount,
         currency=body.currency,
-        status="На подписи",
+        status=body.status or "На подписи",
         purpose=body.purpose,
     )
     db.add(row)

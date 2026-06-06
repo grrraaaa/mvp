@@ -83,8 +83,18 @@ INTENTS = [
         "product_type": "deposit",
     },
     {
+        "intent": "corpo_card_transfers",
+        "patterns": [
+            r"перевод\w*\s+на\s+корпоративн",
+            r"пополнени\w*\s+карточн",
+            r"pay_doc_corpo",
+        ],
+        "section": "corpo_card_transfers",
+        "product_type": None,
+    },
+    {
         "intent": "cards",
-        "patterns": [r"корпоративн\w*\s+карт", r"business\s+card", r"visa\s+business"],
+        "patterns": [r"корпоративн\w*\s+карт", r"business\s+card", r"visa\s+business", r"управлени\w*\s+карт"],
         "section": "cards",
         "product_type": None,
     },
@@ -122,6 +132,17 @@ INTENTS = [
         "intent": "products",
         "patterns": [r"продукт", r"услуг\w*\s+для\s+бизнес", r"юрлиц", r"организац"],
         "section": "products",
+        "product_type": None,
+    },
+    {
+        "intent": "info_requests",
+        "patterns": [
+            r"запрос\w*\s+выписк",
+            r"запрос\w*\s+информац",
+            r"информац\w*\s+по\s+счет",
+            r"остаток\s+по\s+счет",
+        ],
+        "section": "info_requests",
         "product_type": None,
     },
 ]

@@ -72,6 +72,7 @@ export const SUB_NAV: Record<NavId, SubNavItem[]> = {
     { label: "Обучение и помощь", href: "/services/help" },
   ],
   other: [
+    { label: "Запросы информации", href: "/other/info-requests" },
     { label: "Документы", href: "/other/documents" },
     { label: "Справочники", href: "/other/directories" },
     { label: "Дополнительное меню", href: "/other/more" },

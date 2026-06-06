@@ -82,6 +82,11 @@ export const PAGE_META: Record<string, PageMeta> = {
     description: "Корпоративные платёжные карты.",
     navId: "productsAndServices",
   },
+  "/products/corpo-card-transfers": {
+    title: "Переводы на корпоративные карты",
+    description: "Пополнение карточных счетов корпоративных карт.",
+    navId: "productsAndServices",
+  },
   "/products/deposits": {
     title: "Депозиты",
     description: "Депозитные продукты.",
@@ -116,6 +121,11 @@ export const PAGE_META: Record<string, PageMeta> = {
     title: "Курсы валют",
     description: "Актуальные курсы валют банка.",
     navId: "partner-services",
+  },
+  "/other/info-requests": {
+    title: "Запросы выписки, информации",
+    description: "Запросы выписки и справочной информации по счетам и операциям.",
+    navId: "other",
   },
   "/other/documents": {
     title: "Документы",

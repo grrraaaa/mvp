@@ -4,6 +4,7 @@ import { useEffect } from "react";
 import { useRouter } from "next/navigation";
 import { ASSISTANT_ACTION_EVENT, type AssistantActionDetail } from "@/lib/assistant/uiBridge";
 import { useSbbolUi } from "@/components/layout/SbbolUiContext";
+import { PRODUCT_ROUTES } from "@/lib/banking/productCatalog";
 
 const ROUTE_BY_ACTION: Record<string, string> = {
   "open-payments": "/payments",
@@ -20,6 +21,8 @@ const ROUTE_BY_ACTION: Record<string, string> = {
   "open-credits": "/products/credits",
   "open-deposits": "/products/deposits",
   "open-cards": "/products/cards",
+  "open-info-requests": "/other/info-requests",
+  ...PRODUCT_ROUTES,
 };
 
 /** Слушает custom events от ассистента и открывает модалки / навигацию. */

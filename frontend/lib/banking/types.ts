@@ -7,7 +7,14 @@ export interface BankAccount {
   hidden?: boolean;
 }
 
-export type DocumentStatus = "Проведен" | "Черновик" | "На подписи";
+export type DocumentStatus =
+  | "Проведен"
+  | "Черновик"
+  | "На подписи"
+  | "Подписан"
+  | "В обработке"
+  | "Отказан"
+  | "Удален";
 
 export interface BankDocument {
   id: string;
