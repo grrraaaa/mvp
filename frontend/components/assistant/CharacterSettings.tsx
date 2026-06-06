@@ -50,7 +50,7 @@ export function CharacterSettings() {
             <p className="text-xs text-gray-500 uppercase tracking-wide mb-2">Голос озвучки</p>
             <AssistantVoicePicker theme="dark" className="flex-wrap gap-2" />
             <p className="text-[11px] text-gray-500 mt-2 leading-relaxed">
-              Голоса Google (Neural2, русский) и Deepgram (Aura-2). Выберите в списке в шапке чата — мужской или женский.
+              Qwen (русский, Model Studio) и Microsoft Edge (без ключа). Выберите в списке в шапке чата.
             </p>
           </section>
         ) : null}

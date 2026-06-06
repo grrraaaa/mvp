@@ -1,33 +1,20 @@
-"""Русские голоса Google Cloud TTS (Neural2 — лучшее качество для ru-RU)."""
+"""Русские голоса Google Cloud TTS."""
 from __future__ import annotations
 
 from core.config import settings
 
+# Wavenet — стабильнее на API key; Neural2 пробуем в google_tts как upgrade.
 VOICE_CATALOG: list[dict[str, str]] = [
     {
-        "id": "ru-RU-Neural2-B",
-        "name": "Мужской",
-        "gender": "male",
-        "google_name": "ru-RU-Neural2-B",
-        "language_code": "ru-RU",
-    },
-    {
-        "id": "ru-RU-Neural2-A",
-        "name": "Женский",
-        "gender": "female",
-        "google_name": "ru-RU-Neural2-A",
-        "language_code": "ru-RU",
-    },
-    {
         "id": "ru-RU-Wavenet-B",
-        "name": "Мужской (Wavenet)",
+        "name": "Мужской",
         "gender": "male",
         "google_name": "ru-RU-Wavenet-B",
         "language_code": "ru-RU",
     },
     {
         "id": "ru-RU-Wavenet-A",
-        "name": "Женский (Wavenet)",
+        "name": "Женский",
         "gender": "female",
         "google_name": "ru-RU-Wavenet-A",
         "language_code": "ru-RU",
@@ -36,7 +23,13 @@ VOICE_CATALOG: list[dict[str, str]] = [
 
 GOOGLE_VOICE_IDS = {v["id"] for v in VOICE_CATALOG}
 _BY_ID = {v["id"]: v for v in VOICE_CATALOG}
-_DEFAULT_VOICE = "ru-RU-Neural2-B"
+_DEFAULT_VOICE = "ru-RU-Wavenet-B"
+
+# Цепочка fallback при синтезе (Neural2 → Wavenet → Standard)
+GOOGLE_SYNTH_FALLBACK_CHAIN: dict[str, list[str]] = {
+    "ru-RU-Wavenet-B": ["ru-RU-Neural2-B", "ru-RU-Wavenet-B", "ru-RU-Standard-B"],
+    "ru-RU-Wavenet-A": ["ru-RU-Neural2-A", "ru-RU-Wavenet-A", "ru-RU-Standard-A"],
+}
 
 
 def resolve_google_voice(voice_id: str | None = None) -> tuple[str, str]:
@@ -49,6 +42,15 @@ def resolve_google_voice(voice_id: str | None = None) -> tuple[str, str]:
         return "ru-RU", raw
     fallback = _BY_ID[_DEFAULT_VOICE]
     return fallback["language_code"], fallback["google_name"]
+
+
+def google_voice_chain(voice_id: str | None = None) -> list[str]:
+    """Имена голосов Google для перебора при ошибке API."""
+    _, primary = resolve_google_voice(voice_id)
+    chain = GOOGLE_SYNTH_FALLBACK_CHAIN.get(primary)
+    if chain:
+        return chain
+    return [primary]
 
 
 def list_assistant_voices() -> dict:
@@ -72,7 +74,7 @@ def list_assistant_voices() -> dict:
         "groups": [
             {
                 "id": "google",
-                "label": "Google",
+                "label": "Google (русский)",
                 "voices": voices,
             }
         ],

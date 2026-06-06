@@ -23,10 +23,9 @@ function pickRussianVoice(gender: "male" | "female"): SpeechSynthesisVoice | nul
 function voiceGenderFromId(voiceId: string | null | undefined): "male" | "female" {
   if (voiceId === EDGE_FEMALE) return "female";
   if (
-    voiceId?.includes("Neural2-A") ||
+    voiceId === "qwen-female" ||
     voiceId?.includes("Wavenet-A") ||
-    voiceId === "thalia" ||
-    voiceId === "helena"
+    voiceId?.includes("Svetlana")
   ) {
     return "female";
   }

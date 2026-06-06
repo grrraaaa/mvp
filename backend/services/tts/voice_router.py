@@ -1,109 +1,90 @@
-"""Маршрутизация озвучки по voice_id между Google Cloud и Deepgram."""
+"""Маршрутизация: Qwen TTS (русский) + Edge TTS (fallback без ключа)."""
 from __future__ import annotations
 
 from core.config import settings
-from services.tts.deepgram_voices import DEEPGRAM_VOICE_IDS
-from services.tts.google_voices import GOOGLE_VOICE_IDS
-from services.tts.deepgram_voices import list_assistant_voices as list_deepgram_voices
-from services.tts.google_voices import list_assistant_voices as list_google_voices
+from services.tts.edge_voices import EDGE_VOICE_IDS, list_assistant_voices as list_edge_voices
+from services.tts.qwen_voices import QWEN_VOICE_IDS, list_assistant_voices as list_qwen_voices
 from services.tts.gtts_voices import list_assistant_voices as list_gtts_voices
 
 
-def _google_configured() -> bool:
-    return bool(
-        settings.GOOGLE_TTS_API_KEY
-        or settings.GOOGLE_APPLICATION_CREDENTIALS
-        or settings.GOOGLE_SERVICE_ACCOUNT_JSON
-    )
-
-
-def _deepgram_configured() -> bool:
-    return bool(settings.DEEPGRAM_API_KEY)
+def _qwen_configured() -> bool:
+    return bool(settings.QWEN_TTS_API_KEY.strip() and settings.QWEN_TTS_BASE_URL.strip())
 
 
 def configured_providers() -> list[str]:
-    providers: list[str] = []
-    if _google_configured():
-        providers.append("google")
-    if _deepgram_configured():
-        providers.append("deepgram")
+    providers = ["edge"]
+    if _qwen_configured():
+        providers.insert(0, "qwen")
     return providers
 
 
+def _edge_voice_for_gender(gender: str) -> str:
+    if gender == "female":
+        return "ru-RU-SvetlanaNeural"
+    return "ru-RU-DmitryNeural"
+
+
+def _qwen_gender(voice_id: str) -> str:
+    if voice_id in ("qwen-female", "Serena"):
+        return "female"
+    return "male"
+
+
 def resolve_synthesis_route(voice_id: str | None = None) -> tuple[str, str | None]:
-    """Возвращает (provider, voice_id) для synthesize."""
     raw = (voice_id or settings.TTS_DEFAULT_VOICE or "").strip()
 
-    if raw in GOOGLE_VOICE_IDS or raw.startswith("ru-RU-"):
-        if _google_configured():
-            return "google", raw
-        if _deepgram_configured():
-            return "deepgram", (settings.DEEPGRAM_TTS_VOICE or "arcas").strip()
-    if raw in DEEPGRAM_VOICE_IDS or raw.startswith("aura-"):
-        if _deepgram_configured():
-            return "deepgram", raw
-        if _google_configured():
-            return "google", (settings.GOOGLE_TTS_VOICE or "ru-RU-Neural2-B").strip()
-    if raw == "alexei" and _deepgram_configured():
-        return "deepgram", "arcas"
+    if raw in EDGE_VOICE_IDS or (raw.startswith("ru-RU-") and raw.endswith("Neural")):
+        return "edge", raw
 
-    if _google_configured():
-        default = (settings.GOOGLE_TTS_VOICE or "ru-RU-Neural2-B").strip()
-        return "google", default
-    if _deepgram_configured():
-        default = (settings.DEEPGRAM_TTS_VOICE or "arcas").strip()
-        return "deepgram", default
-    return "gtts", (settings.GTTS_VOICE or "ru-male").strip()
+    if raw in QWEN_VOICE_IDS or raw in ("Alek", "Serena"):
+        if _qwen_configured():
+            return "qwen", raw
+        return "edge", _edge_voice_for_gender(_qwen_gender(raw))
+
+    if _qwen_configured():
+        default = (settings.QWEN_TTS_VOICE or "qwen-male").strip()
+        return "qwen", default
+
+    default = (settings.EDGE_TTS_VOICE or "ru-RU-DmitryNeural").strip()
+    return "edge", default
 
 
 def list_all_assistant_voices() -> dict:
     groups: list[dict] = []
-    if _google_configured():
-        groups.extend(list_google_voices()["groups"])
-    if _deepgram_configured():
-        groups.extend(list_deepgram_voices()["groups"])
+    groups.extend(list_qwen_voices()["groups"])
+    groups.extend(list_edge_voices()["groups"])
 
-    if groups:
-        default = (settings.TTS_DEFAULT_VOICE or "").strip()
-        all_ids = {v["id"] for g in groups for v in g["voices"]}
-        if default not in all_ids:
-            if _google_configured():
-                default = (settings.GOOGLE_TTS_VOICE or "ru-RU-Neural2-B").strip()
-            elif _deepgram_configured():
-                default = (settings.DEEPGRAM_TTS_VOICE or "arcas").strip()
-            else:
-                default = groups[0]["voices"][0]["id"]
-        return {
-            "default_voice": default,
-            "model": "multi",
-            "language": "ru-RU",
-            "groups": groups,
-        }
+    default = (settings.TTS_DEFAULT_VOICE or "").strip()
+    all_ids = {v["id"] for g in groups for v in g["voices"]}
+    if default not in all_ids:
+        if _qwen_configured():
+            default = (settings.QWEN_TTS_VOICE or "qwen-male").strip()
+        else:
+            default = (settings.EDGE_TTS_VOICE or "ru-RU-DmitryNeural").strip()
+    if default not in all_ids:
+        default = "ru-RU-DmitryNeural"
 
-    return list_gtts_voices()
+    return {
+        "default_voice": default,
+        "model": "qwen+edge" if _qwen_configured() else "edge-tts",
+        "language": "ru-RU",
+        "groups": groups,
+        "qwen_available": _qwen_configured(),
+    }
 
 
 def tts_status_payload() -> dict:
+    qwen_ok = _qwen_configured()
     providers = configured_providers()
-    if len(providers) >= 2:
-        provider = "multi"
-        model = "google+deepgram"
-    elif providers:
-        provider = providers[0]
-        model = "google-cloud-tts" if provider == "google" else "deepgram-aura-2"
-    else:
-        provider = "gtts"
-        model = "gtts"
-
-    route_provider, voice = resolve_synthesis_route(None)
-    if providers and route_provider not in providers:
-        route_provider, voice = resolve_synthesis_route(voice)
+    provider = "multi" if qwen_ok else "edge"
+    _, voice = resolve_synthesis_route(None)
 
     return {
         "enabled": True,
-        "model": model,
+        "model": "qwen+edge" if qwen_ok else "edge-tts",
         "provider": provider,
-        "providers": providers or ["gtts"],
+        "providers": providers,
+        "qwen_available": qwen_ok,
         "language": "ru-RU",
         "voice": voice,
         "voice_selection": True,

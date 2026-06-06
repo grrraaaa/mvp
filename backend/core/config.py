@@ -36,14 +36,17 @@ class Settings(BaseSettings):
     IMAGETOTEXT_API_KEY: str = ""
     IMAGETOTEXT_API_SECRET: str = ""
 
-    # Google Cloud TTS (озвучка ассистента — приоритет над Deepgram)
-    # Вариант 1: API key (удобно для Vercel) — включите Cloud Text-to-Speech API в GCP
+    # Qwen / CosyVoice TTS (Alibaba Model Studio, Frankfurt EU)
+    QWEN_TTS_API_KEY: str = ""
+    QWEN_TTS_BASE_URL: str = ""
+    QWEN_TTS_VOICE: str = "qwen-male"
+    QWEN_TTS_MODEL: str = "qwen3-tts-flash,cosyvoice-v3-flash"
+
+    # Google Cloud TTS (legacy, не используется в UI)
     GOOGLE_TTS_API_KEY: str = ""
-    # Вариант 2: путь к JSON сервисного аккаунта (локальная разработка)
     GOOGLE_APPLICATION_CREDENTIALS: str = ""
-    # Вариант 3: JSON сервисного аккаунта целиком в env (Vercel / serverless)
     GOOGLE_SERVICE_ACCOUNT_JSON: str = ""
-    GOOGLE_TTS_VOICE: str = "ru-RU-Neural2-B"
+    GOOGLE_TTS_VOICE: str = "ru-RU-Wavenet-B"
     GOOGLE_TTS_SPEAKING_RATE: float = 1.0
     GOOGLE_TTS_PITCH: float = 0.0
 
@@ -53,7 +56,7 @@ class Settings(BaseSettings):
     DEEPGRAM_TTS_MODEL: str = "aura-2-arcas-en"
 
     # Голос по умолчанию в UI (id из Google или Deepgram каталога)
-    TTS_DEFAULT_VOICE: str = "ru-RU-Neural2-B"
+    TTS_DEFAULT_VOICE: str = "ru-RU-DmitryNeural"
 
     # gTTS — fallback без API-ключей
     GTTS_VOICE: str = "ru-male"

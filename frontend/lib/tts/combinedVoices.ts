@@ -1,12 +1,12 @@
 import type { TtsVoiceGroup } from "@/store/ttsStore";
-import { DEEPGRAM_DEFAULT_VOICE, DEEPGRAM_VOICE_GROUPS } from "@/lib/tts/deepgramVoices";
-import { GOOGLE_DEFAULT_VOICE, GOOGLE_VOICE_GROUPS } from "@/lib/tts/googleVoices";
+import { EDGE_DEFAULT_VOICE, EDGE_VOICE_GROUPS } from "@/lib/tts/edgeVoices";
+import { QWEN_DEFAULT_VOICE, QWEN_VOICE_GROUPS } from "@/lib/tts/qwenVoices";
 
-export const COMBINED_DEFAULT_VOICE = GOOGLE_DEFAULT_VOICE;
+export const COMBINED_DEFAULT_VOICE = EDGE_DEFAULT_VOICE;
 
 export const COMBINED_VOICE_GROUPS: TtsVoiceGroup[] = [
-  ...GOOGLE_VOICE_GROUPS,
-  ...DEEPGRAM_VOICE_GROUPS,
+  ...QWEN_VOICE_GROUPS,
+  ...EDGE_VOICE_GROUPS,
 ];
 
 export function combinedFallback(defaultVoice?: string | null) {
@@ -17,19 +17,10 @@ export function combinedFallback(defaultVoice?: string | null) {
 }
 
 export function fallbackForProvider(provider: string | null | undefined, defaultVoice?: string | null) {
-  if (provider === "multi") {
-    return combinedFallback(defaultVoice);
-  }
-  if (provider === "google") {
+  if (provider === "edge") {
     return {
-      groups: GOOGLE_VOICE_GROUPS,
-      defaultVoice: defaultVoice ?? GOOGLE_DEFAULT_VOICE,
-    };
-  }
-  if (provider === "deepgram") {
-    return {
-      groups: DEEPGRAM_VOICE_GROUPS,
-      defaultVoice: defaultVoice ?? DEEPGRAM_DEFAULT_VOICE,
+      groups: EDGE_VOICE_GROUPS,
+      defaultVoice: defaultVoice ?? EDGE_DEFAULT_VOICE,
     };
   }
   return combinedFallback(defaultVoice);

@@ -34,10 +34,22 @@ export function useAssistantSpeech() {
       try {
         const blob = await fetchAssistantSpeech(trimmed, voiceId);
         if (!isTtsEnabled()) return;
-        useTtsStore.setState({ serverTts: true });
         await playTtsBlob(blob);
       } catch {
-        useTtsStore.setState({ serverTts: false });
+        const edgeVoice =
+          voiceId === "qwen-female" ||
+          voiceId?.includes("Svetlana") ||
+          voiceId?.includes("Wavenet-A")
+            ? "ru-RU-SvetlanaNeural"
+            : "ru-RU-DmitryNeural";
+        try {
+          const blob = await fetchAssistantSpeech(trimmed, edgeVoice);
+          if (!isTtsEnabled()) return;
+          await playTtsBlob(blob);
+          return;
+        } catch {
+          /* try browser */
+        }
         if (!isTtsEnabled() || !isBrowserSpeechAvailable()) return;
         try {
           await speakWithBrowserSpeech(trimmed, voiceId);

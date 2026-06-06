@@ -1,11 +1,9 @@
-"""TTS — Google Cloud + Deepgram (выбор в UI), gTTS/Edge как fallback без ключей."""
+"""TTS — Qwen (DashScope) + Edge TTS (fallback)."""
 from __future__ import annotations
 
-from services.tts.deepgram import synthesize_speech as deepgram_synthesize
 from services.tts.edge_tts import synthesize_speech as edge_synthesize
 from services.tts.errors import TtsNotConfiguredError, TtsProviderError
-from services.tts.google_tts import synthesize_speech as google_synthesize
-from services.tts.gtts_tts import synthesize_speech as gtts_synthesize
+from services.tts.qwen_tts import synthesize_speech as qwen_synthesize
 from services.tts.text import clean_text_for_tts
 from services.tts.voice_router import (
     configured_providers,
@@ -28,19 +26,20 @@ __all__ = [
 
 def get_tts_provider() -> str:
     providers = configured_providers()
-    if len(providers) >= 2:
-        return "multi"
-    if providers:
-        return providers[0]
-    return "gtts"
+    return "multi" if len(providers) > 1 else providers[0]
+
+
+def _edge_fallback(qwen_voice_id: str | None) -> str:
+    if qwen_voice_id in ("qwen-female", "Serena"):
+        return "ru-RU-SvetlanaNeural"
+    return "ru-RU-DmitryNeural"
 
 
 async def synthesize_speech(text: str, voice_id: str | None = None) -> bytes:
     provider, resolved_voice = resolve_synthesis_route(voice_id)
-    if provider == "google":
-        return await google_synthesize(text, voice_id=resolved_voice)
-    if provider == "deepgram":
-        return await deepgram_synthesize(text, voice_id=resolved_voice)
-    if provider == "gtts":
-        return await gtts_synthesize(text, voice_id=resolved_voice)
+    if provider == "qwen":
+        try:
+            return await qwen_synthesize(text, voice_id=resolved_voice)
+        except (TtsProviderError, TtsNotConfiguredError):
+            return await edge_synthesize(text, voice_id=_edge_fallback(resolved_voice))
     return await edge_synthesize(text, voice_id=resolved_voice)

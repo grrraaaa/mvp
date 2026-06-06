@@ -10,7 +10,7 @@ import httpx
 
 from core.config import settings
 from services.tts.errors import TtsNotConfiguredError, TtsProviderError
-from services.tts.google_voices import resolve_google_voice
+from services.tts.google_voices import google_voice_chain, resolve_google_voice
 from services.tts.text import clean_text_for_tts
 
 _SYNTHESIZE_URL = "https://texttospeech.googleapis.com/v1/text:synthesize"
@@ -139,19 +139,22 @@ async def synthesize_speech(text: str, voice_id: str | None = None) -> bytes:
     if not payload_text:
         raise TtsProviderError("Пустой текст для озвучки", 400)
 
-    language_code, voice_name = resolve_google_voice(voice_id)
-    payload = _build_synthesis_payload(payload_text, language_code, voice_name)
-    fallback_lang, fallback_voice = resolve_google_voice(settings.GOOGLE_TTS_VOICE or "ru-RU-Neural2-B")
+    chain = google_voice_chain(voice_id)
+    last_error: TtsProviderError | None = None
 
-    async def _run(lang: str, name: str) -> bytes:
-        req = _build_synthesis_payload(payload_text, lang, name)
+    async def _run(name: str) -> bytes:
+        req = _build_synthesis_payload(payload_text, "ru-RU", name)
         if settings.GOOGLE_TTS_API_KEY:
             return await _synthesize_via_api_key(req)
         return await _synthesize_via_client(req)
 
-    try:
-        return await _run(language_code, voice_name)
-    except TtsProviderError:
-        if voice_name != fallback_voice:
-            return await _run(fallback_lang, fallback_voice)
-        raise
+    for voice_name in chain:
+        try:
+            return await _run(voice_name)
+        except TtsProviderError as exc:
+            last_error = exc
+            continue
+
+    if last_error:
+        raise last_error
+    raise TtsProviderError("Google TTS: не удалось синтезировать", 502)

@@ -21,6 +21,7 @@ VOICE_CATALOG: list[dict[str, str]] = [
     },
 ]
 
+EDGE_VOICE_IDS = {v["id"] for v in VOICE_CATALOG}
 _BY_ID = {v["id"]: v for v in VOICE_CATALOG}
 _DEFAULT_VOICE = "ru-RU-DmitryNeural"
 
@@ -59,7 +60,7 @@ def list_assistant_voices() -> dict:
         "groups": [
             {
                 "id": "edge",
-                "label": "Microsoft Edge TTS",
+                "label": "Microsoft (русский)",
                 "voices": voices,
             }
         ],
