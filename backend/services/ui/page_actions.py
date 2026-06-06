@@ -5,20 +5,29 @@ import re
 from typing import Optional
 
 from models.schemas import ActionButton, AssistantResponse, UiAction
+from services.navigation.demo_routes import (
+    DEMO_ROUTE_LABELS,
+    is_specific_demo_route,
+    match_demo_route,
+    resolve_navigation_route,
+)
 
 # target = data-assistant-action на фронте или navigate URL
 PAGE_REGISTRY: dict[str, list[dict]] = {
     "/": [
-        {"target": "create-document", "labels": ["создать документ", "новый документ", "создать платёж"]},
+        {"target": "open-payment-instant", "labels": ["мгновенный платеж", "мгновенн платеж", "создай мгновенн", "создать мгновенн"], "navigate": "/payments/instant"},
+        {"target": "open-payment-byn", "labels": ["платёжное поручение", "поручение byn", "создай поручен", "создать поручен"], "navigate": "/payments/paydocbyn"},
+        {"target": "open-payment-cur", "labels": ["перевод в инвалюте", "валютный перевод", "инвалют"], "navigate": "/payments/paydoccur"},
+        {"target": "create-document", "labels": ["создать документ", "новый документ"]},
         {"target": "open-payments", "labels": ["расчёты", "платежи", "перейди в расчёты"], "navigate": "/payments"},
         {"target": "open-statement", "labels": ["выписка", "выписку"], "navigate": "/statement"},
         {"target": "open-salary", "labels": ["зарплат", "ведомост"], "navigate": "/salary"},
         {"target": "open-services", "labels": ["сервис", "вспомогательн"], "navigate": "/services"},
     ],
     "/payments": [
-        {"target": "open-payment-byn", "labels": ["платёжное поручение", "поручение byn", "создать платёж", "перевод в byn"], "navigate": "/payments/paydocbyn"},
-        {"target": "open-payment-instant", "labels": ["мгновенн", "instant"], "navigate": "/payments/instant"},
-        {"target": "open-payment-cur", "labels": ["инвалют", "валютн", "paydoccur"], "navigate": "/payments/paydoccur"},
+        {"target": "open-payment-instant", "labels": ["мгновенный платеж", "мгновенн платеж", "создай мгновенн", "создать мгновенн", "instant"], "navigate": "/payments/instant"},
+        {"target": "open-payment-byn", "labels": ["платёжное поручение", "поручение byn", "перевод в byn", "создай поручен"], "navigate": "/payments/paydocbyn"},
+        {"target": "open-payment-cur", "labels": ["перевод в инвалюте", "инвалют", "валютн", "paydoccur"], "navigate": "/payments/paydoccur"},
         {"target": "open-doc-modal", "labels": ["создать документ", "тип документа", "новый документ"]},
     ],
     "/payments/paydocbyn": [
@@ -74,12 +83,16 @@ CLICK_PATTERNS = [
     r"нажать\b",
     r"открой\b",
     r"открыть\b",
+    r"открыва\b",
     r"перейди\b",
     r"перейти\b",
     r"покажи\b",
+    r"показать\b",
     r"запусти\b",
     r"создай\b",
     r"создать\b",
+    r"оформи\b",
+    r"оформить\b",
     r"импорт",
     r"синхрониз",
     r"подключ",
@@ -101,6 +114,15 @@ def _match_action(message: str, page_route: Optional[str]) -> Optional[dict]:
     if not any(re.search(p, msg) for p in CLICK_PATTERNS):
         return None
 
+    # Точный маршрут из реестра навигации (мгновенный платёж → /payments/instant)
+    nav_route = resolve_navigation_route(message)
+    if nav_route and is_specific_demo_route(nav_route):
+        return {
+            "target": f"nav-{nav_route}",
+            "labels": [nav_route],
+            "navigate": nav_route,
+        }
+
     route = _normalize_route(page_route)
     candidates = PAGE_REGISTRY.get(route, []) + GLOBAL_ACTIONS
 
@@ -119,8 +141,17 @@ def _match_action(message: str, page_route: Optional[str]) -> Optional[dict]:
     # Fallback: ключевые слова по маршруту
     if re.search(r"создать документ|новый документ", msg):
         return {"target": "open-doc-modal", "labels": ["документ"]}
+    if re.search(r"мгновенн|instant|срочн\w*\s+платеж", msg):
+        return {"target": "open-payment-instant", "labels": ["мгновенн"], "navigate": "/payments/instant"}
+    if re.search(r"инвалют|валютн\w*\s+перевод|paydoccur", msg):
+        return {"target": "open-payment-cur", "labels": ["инвалют"], "navigate": "/payments/paydoccur"}
+    if re.search(r"платежн\w*\s+поручен|поручени\w*\s+byn|paydocby", msg):
+        return {"target": "open-payment-byn", "labels": ["поручен"], "navigate": "/payments/paydocbyn"}
     if re.search(r"платёж|платеж|поручен", msg) and route in ("/", "/payments"):
-        return {"target": "open-payment-byn", "labels": ["платёж"], "navigate": "/payments/paydocbyn"}
+        hub = match_demo_route(message)
+        if hub and is_specific_demo_route(hub):
+            return {"target": f"nav-{hub}", "navigate": hub}
+        return {"target": "open-doc-modal", "labels": ["документ"]}
 
     return None
 
@@ -141,11 +172,12 @@ def handle_page_ui_action(
 
     if navigate:
         ui_actions.append(UiAction(type="navigate", target=navigate))
+        label = DEMO_ROUTE_LABELS.get(navigate, navigate)
         return AssistantResponse(
-            message=f"Открываю раздел: {navigate}",
+            message=f"Открываю «{label}».",
             session_id=session_id,
             ui_actions=ui_actions,
-            action_buttons=[ActionButton(label="Перейти", url=navigate, variant="primary")],
+            action_buttons=[ActionButton(label=f"Перейти: {label}", url=navigate, variant="primary")],
         )
 
     if target == "fill-form-help":

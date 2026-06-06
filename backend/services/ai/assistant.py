@@ -815,6 +815,11 @@ class AssistantService:
         if _is_greeting_or_empty(message):
             return await self._build_welcome(session_id, effective_org, page_route)
 
+        if is_navigation_message(message):
+            demo_nav = self._maybe_demo_navigation(message, session_id)
+            if demo_nav:
+                return demo_nav
+
         page_ui = handle_page_ui_action(message, session_id, page_route)
         if page_ui:
             return page_ui
@@ -835,11 +840,6 @@ class AssistantService:
         service_reply = await self._maybe_service_consultation(message, session_id)
         if service_reply:
             return service_reply
-
-        if is_navigation_message(message):
-            demo_nav = self._maybe_demo_navigation(message, session_id)
-            if demo_nav:
-                return demo_nav
 
         if form_type:
             form_reply = await self._handle_payment_form_chat(message, form_type, session_id, effective_org)
@@ -1145,21 +1145,29 @@ class AssistantService:
         if page_hint:
             msg += f"\n\n{page_hint}"
         if notifs:
-            msg += "\n\n**Напоминания:**"
-            for n in notifs:
-                icon = "⚠" if n.severity in ("warn", "critical") else "ℹ"
-                msg += f"\n{icon} {n.title}: {n.body}"
+            msg += f"\n\nУ вас {len(notifs)} активных напоминаний — смотрите карточку выше в чате."
 
-        role_chips = {
-            "businessman": ("Проверить остаток", "Создать платёж"),
-            "accountant": ("Выписка по счёту", "Обязательства ФСЗН"),
-            "ip": ("Сколько на счёте", "Мгновенный платёж"),
+        role_chips: dict[str, tuple[str, str, str | None, str | None]] = {
+            "businessman": ("Проверить остаток", "Платёжное поручение", None, "/payments/paydocbyn"),
+            "accountant": ("Выписка по счёту", "Обязательства ФСЗН", "/statement/account", "/salary/obligations"),
+            "ip": ("Сколько на счёте", "Мгновенный платёж", None, "/payments/instant"),
         }
-        primary_msg, secondary_msg = role_chips.get(org.user_role, role_chips["businessman"])
+        primary_msg, secondary_msg, primary_url, secondary_url = role_chips.get(
+            org.user_role, role_chips["businessman"]
+        )
 
         buttons = [
-            ActionButton(label=primary_msg, message="Сколько на счёте?", variant="primary"),
-            ActionButton(label=secondary_msg, url="/payments/paydocbyn", variant="secondary"),
+            ActionButton(
+                label=primary_msg,
+                message=None if primary_url else "Сколько на счёте?",
+                url=primary_url,
+                variant="primary",
+            ),
+            ActionButton(
+                label=secondary_msg,
+                url=secondary_url or "/payments/paydocbyn",
+                variant="secondary",
+            ),
             ActionButton(label="Умный поиск", message="Найди платежи Иванова за март", variant="secondary"),
         ]
         buttons.extend(get_page_quick_actions(page_route)[:2])

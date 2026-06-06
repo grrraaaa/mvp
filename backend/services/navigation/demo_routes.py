@@ -37,8 +37,21 @@ DEMO_ROUTE_LABELS: dict[str, str] = {
     "/settings": "Настройки",
 }
 
-# Ordered: more specific routes first
+# Ordered: more specific routes first (instant/currency before generic paydocbyn)
 _ROUTE_RULES: list[tuple[str, list[str]]] = [
+    (
+        "/payments/instant",
+        [
+            r"/payments/instant",
+            r"instant_payment",
+            r"instant_payment_order",
+            r"мгновенн\w*\s+платеж",
+            r"срочн\w*\s+платеж",
+            r"создай\s+мгновенн",
+            r"создать\s+мгновенн",
+            r"оформи\s+мгновенн",
+        ],
+    ),
     (
         "/payments/paydocbyn",
         [
@@ -46,21 +59,12 @@ _ROUTE_RULES: list[tuple[str, list[str]]] = [
             r"paydocby\b",
             r"payorderby",
             r"payment_order_by",
-            r"document/payment",
             r"платежн\w*\s+поручен",
             r"поручени\w*\s+byn",
             r"поручени\w*\s+бел",
             r"поручени\w*\s+внутри",
-        ],
-    ),
-    (
-        "/payments/instant",
-        [
-            r"/payments/instant",
-            r"instant_payment",
-            r"payment_order\b",
-            r"мгновенн\w*\s+платеж",
-            r"срочн\w*\s+платеж",
+            r"создай\s+платежн\w*\s+поручен",
+            r"создать\s+платежн\w*\s+поручен",
         ],
     ),
     (
@@ -148,6 +152,19 @@ _ROUTE_RULES: list[tuple[str, list[str]]] = [
         ],
     ),
     (
+        "/other/info-requests",
+        [
+            r"/other/info-requests",
+            r"запрос\w*\s+выписк",
+            r"запросы\s+выписк",
+            r"запрос\w*\s+информац",
+            r"информац\w*\s+по\s+счет",
+            r"остаток\s+по\s+счет",
+            r"забронированн\w*\s+средств",
+            r"неисполненн\w*\s+обязательств",
+        ],
+    ),
+    (
         "/statement",
         [
             r"/statement\b",
@@ -218,18 +235,6 @@ _ROUTE_RULES: list[tuple[str, list[str]]] = [
     (
         "/services",
         [r"/services\b", r"сервис"],
-    ),
-    (
-        "/other/info-requests",
-        [
-            r"/other/info-requests",
-            r"запрос\w*\s+выписк",
-            r"запрос\w*\s+информац",
-            r"информац\w*\s+по\s+счет",
-            r"остаток\s+по\s+счет",
-            r"забронированн\w*\s+средств",
-            r"неисполненн\w*\s+обязательств",
-        ],
     ),
     (
         "/other/documents/signing",
@@ -314,6 +319,23 @@ def match_demo_route(message: str) -> Optional[str]:
 
 def is_create_document_request(message: str) -> bool:
     return bool(_CREATE_DOC.search(message))
+
+
+def is_specific_demo_route(route: str) -> bool:
+    """Leaf pages (forms, product lists) — prefer over generic section hubs."""
+    if not route or route == "/":
+        return False
+    return route.count("/") >= 2
+
+
+def resolve_navigation_route(message: str) -> Optional[str]:
+    """Best route for «создай / открой …» — specific pages win over hubs."""
+    route = match_demo_route(message)
+    if not route:
+        return None
+    if is_specific_demo_route(route):
+        return route
+    return route
 
 
 def build_demo_nav_path(route: str) -> List[NavigationStep]:

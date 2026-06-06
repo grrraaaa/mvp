@@ -296,7 +296,7 @@ export function AssistantPanel({ variant = "default", compactMobile = false }: P
               </div>
             )}
             <p
-              className={`font-medium mb-0.5 ${inputCompact ? "text-xs text-gray-800" : embedded ? "text-gray-900" : "text-white"}`}
+              className={`font-semibold mb-1 ${inputCompact ? "text-sm text-gray-900" : embedded ? "text-base text-gray-900" : "text-lg text-white"}`}
             >
               {orgName
                 ? `Здравствуйте, ${orgName}!`
@@ -305,12 +305,19 @@ export function AssistantPanel({ variant = "default", compactMobile = false }: P
                   : `Здравствуйте! Я ${config.name}.`}
             </p>
             {!inputCompact && (
-              <p className="text-sm">
-                {orgName ? `Я ${config.name}, ваш консультант по СберБизнес.` : config.subtitle}
+              <p className={`leading-relaxed ${embedded ? "text-sm text-gray-600" : "text-sm text-white/85"}`}>
+                {orgName
+                  ? `Я ${config.name}, ваш консультант по СберБизнес.`
+                  : config.subtitle}
+              </p>
+            )}
+            {inputCompact && (
+              <p className="text-xs text-gray-500 mt-0.5 leading-relaxed">
+                Помогу с платежами, выписками и разделами банка.
               </p>
             )}
             {notifications.length > 0 && (
-              <div className="mt-3 text-left">
+              <div className={`text-left w-full max-w-md mx-auto ${inputCompact ? "mt-3" : "mt-4"}`}>
                 <NotificationBanner notifications={notifications} compact={inputCompact} />
               </div>
             )}
