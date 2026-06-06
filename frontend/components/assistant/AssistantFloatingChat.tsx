@@ -4,8 +4,8 @@ import { useEffect, useRef, useState } from "react";
 import { AssistantPanel } from "./AssistantPanel";
 import { IconChat, IconClose } from "@/components/sbbol/SbbolIcons";
 import { useIsMobile } from "@/hooks/useIsMobile";
-import { useAssistantSpeech } from "@/hooks/useAssistantSpeech";
 import { AssistantVoicePicker } from "./AssistantVoicePicker";
+import { useTtsStore } from "@/store/ttsStore";
 
 interface Props {
   open: boolean;
@@ -15,7 +15,8 @@ interface Props {
 /** Плавающий AI-чат в стиле «Чат с банком» на демо СберБизнес */
 export function AssistantFloatingChat({ open, onOpenChange }: Props) {
   const isMobile = useIsMobile();
-  const { enabled: ttsEnabled, toggleEnabled: toggleTts } = useAssistantSpeech();
+  const ttsEnabled = useTtsStore((s) => s.enabled);
+  const toggleTts = useTtsStore((s) => s.toggleEnabled);
   const [dragPos, setDragPos] = useState<{ x: number; y: number } | null>(null);
   const dragRef = useRef<{ startX: number; startY: number; origX: number; origY: number } | null>(null);
 

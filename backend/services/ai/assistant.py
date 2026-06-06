@@ -1124,17 +1124,8 @@ class AssistantService:
     async def _build_welcome(
         self, session_id: str, org_id: str = "demo", page_route: Optional[str] = None
     ) -> AssistantResponse:
-        from sqlalchemy import select
-        from db.models import SmartNotification
-
         async with AsyncSessionLocal() as session:
             org = await get_org_profile(session, org_id)
-            notif_result = await session.execute(
-                select(SmartNotification)
-                .where(SmartNotification.org_id == org_id, SmartNotification.is_read == False)
-                .limit(3)
-            )
-            notifs = notif_result.scalars().all()
 
         page_hint = get_page_help(page_route) if page_route else ""
         msg = (
@@ -1144,8 +1135,6 @@ class AssistantService:
         )
         if page_hint:
             msg += f"\n\n{page_hint}"
-        if notifs:
-            msg += f"\n\nУ вас {len(notifs)} активных напоминаний — смотрите карточку выше в чате."
 
         role_chips: dict[str, tuple[str, str, str | None, str | None]] = {
             "businessman": ("Проверить остаток", "Платёжное поручение", None, "/payments/paydocbyn"),

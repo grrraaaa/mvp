@@ -1,4 +1,5 @@
 import { create } from "zustand";
+import { stopTtsPlayback } from "@/lib/tts/playback";
 
 const ENABLED_KEY = "sber-assistant-tts";
 const VOICE_KEY = "sber-assistant-tts-voice";
@@ -39,11 +40,13 @@ interface TtsState {
   enabled: boolean;
   serverTts: boolean;
   voiceSelection: boolean;
+  defaultVoice: string | null;
   voiceId: string | null;
   voiceGroups: TtsVoiceGroup[];
   voicesLoaded: boolean;
   setServerTts: (v: boolean, opts?: { voiceSelection?: boolean; defaultVoice?: string }) => void;
   setVoiceGroups: (groups: TtsVoiceGroup[], defaultVoice: string) => void;
+  setVoiceGroupsFallback: (defaultVoice: string) => void;
   setVoiceId: (id: string) => void;
   toggleEnabled: () => void;
   setEnabled: (v: boolean) => void;
@@ -53,6 +56,7 @@ export const useTtsStore = create<TtsState>((set, get) => ({
   enabled: true,
   serverTts: false,
   voiceSelection: false,
+  defaultVoice: null,
   voiceId: null,
   voiceGroups: [],
   voicesLoaded: false,
@@ -61,9 +65,10 @@ export const useTtsStore = create<TtsState>((set, get) => ({
     if (opts?.voiceSelection !== undefined) {
       patch.voiceSelection = opts.voiceSelection;
     }
-    if (v && opts?.defaultVoice) {
-      const saved = readVoiceId();
-      if (!saved) {
+    if (opts?.defaultVoice) {
+      patch.defaultVoice = opts.defaultVoice;
+      const current = get().voiceId ?? readVoiceId();
+      if (!current) {
         patch.voiceId = opts.defaultVoice;
         try {
           localStorage.setItem(VOICE_KEY, opts.defaultVoice);
@@ -86,7 +91,23 @@ export const useTtsStore = create<TtsState>((set, get) => ({
     } catch {
       /* ignore */
     }
-    set({ voiceGroups: groups, voiceId, voicesLoaded: true });
+    set({ voiceGroups: groups, voiceId, defaultVoice, voicesLoaded: true });
+  },
+  setVoiceGroupsFallback: (defaultVoice) => {
+    const groups: TtsVoiceGroup[] = [
+      {
+        id: "default",
+        label: "Голос",
+        voices: [{ id: defaultVoice, name: "По умолчанию" }],
+      },
+    ];
+    const voiceId = get().voiceId ?? readVoiceId() ?? defaultVoice;
+    try {
+      localStorage.setItem(VOICE_KEY, voiceId);
+    } catch {
+      /* ignore */
+    }
+    set({ voiceGroups: groups, voiceId, defaultVoice, voicesLoaded: true });
   },
   setVoiceId: (id) => {
     try {
@@ -97,6 +118,7 @@ export const useTtsStore = create<TtsState>((set, get) => ({
     set({ voiceId: id });
   },
   setEnabled: (v) => {
+    if (!v) stopTtsPlayback();
     try {
       localStorage.setItem(ENABLED_KEY, v ? "1" : "0");
     } catch {

@@ -92,7 +92,7 @@ export function AssistantPanel({ variant = "default", compactMobile = false }: P
     void fetchNotifications(true)
       .then(setNotifications)
       .catch(() => setNotifications([]));
-  }, []);
+  }, [orgId]);
 
   const sendMessage = useCallback(
     async (text: string) => {
@@ -280,6 +280,11 @@ export function AssistantPanel({ variant = "default", compactMobile = false }: P
       </div>
 
       <div className={`flex-1 overflow-y-auto ${compactMobile ? "p-2" : "p-4"}`}>
+        {notifications.length > 0 && (
+          <div className={`text-left w-full max-w-md mx-auto ${inputCompact ? "mb-2" : "mb-4"}`}>
+            <NotificationBanner notifications={notifications} compact={inputCompact} />
+          </div>
+        )}
         {messages.length === 0 && (
           <div
             className={`text-center px-2 ${inputCompact ? "mt-1 mb-2" : embedded ? "mt-4 px-4 text-gray-500" : "text-sber-muted mt-6 px-4"}`}
@@ -315,11 +320,6 @@ export function AssistantPanel({ variant = "default", compactMobile = false }: P
               <p className="text-xs text-gray-500 mt-0.5 leading-relaxed">
                 Помогу с платежами, выписками и разделами банка.
               </p>
-            )}
-            {notifications.length > 0 && (
-              <div className={`text-left w-full max-w-md mx-auto ${inputCompact ? "mt-3" : "mt-4"}`}>
-                <NotificationBanner notifications={notifications} compact={inputCompact} />
-              </div>
             )}
             {!orgName && messages.length === 0 && (
               <div className="mt-3 flex flex-wrap gap-2 justify-center">
