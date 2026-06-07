@@ -15,7 +15,9 @@ export interface DemoTableColumn {
 }
 
 export interface DemoTableRow {
-  [key: string]: string;
+  /** Optional deep-link: clicking the row navigates here (e.g. counterparty card). */
+  _href?: string;
+  [key: string]: string | undefined;
 }
 
 export interface DemoFormField {
@@ -576,9 +578,10 @@ export function hydrateSyntheticPageBody(
   if (path === "/payments/counterparties" && hydrated.table) {
     hydrated.table.rows = ctx.counterparties.map((c) => ({
       name: c.name,
-      unp: c.unp,
-      account: c.account,
-      bank: c.bank_name,
+      unp: c.unp || "—",
+      account: c.account || "—",
+      bank: c.bank_name || "—",
+      _href: `/services/counterparty?cp=${encodeURIComponent(c.id)}`,
     }));
   }
 
@@ -589,6 +592,7 @@ export function hydrateSyntheticPageBody(
       recipient: d.counterparty,
       amount: fmtAmount(d.amount, d.currency),
       status: docStatusLabel(d.status),
+      _href: `/other/documents/view?doc=${encodeURIComponent(d.id)}`,
     }));
   }
 

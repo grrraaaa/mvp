@@ -1,6 +1,7 @@
 "use client";
 
 import Image from "next/image";
+import { useRouter } from "next/navigation";
 import type { SyntheticPageBody as PageBody } from "@/lib/sbbol/syntheticPageContent";
 import { showStubToast } from "@/lib/sbbol/stubToast";
 
@@ -9,6 +10,7 @@ interface Props {
 }
 
 export function SyntheticPageBody({ body }: Props) {
+  const router = useRouter();
   const toolbar = body.toolbar;
   const form = body.type === "form" ? body.form : undefined;
 
@@ -83,18 +85,43 @@ export function SyntheticPageBody({ body }: Props) {
                 </tr>
               </thead>
               <tbody>
-                {body.table.rows.map((row, ri) => (
-                  <tr key={ri} className="border-b border-[#e4e8eb] last:border-b-0 hover:bg-[#f8f9fb] transition-colors">
-                    {body.table!.columns.map((col) => (
-                      <td
-                        key={col.key}
-                        className={`px-5 py-3.5 text-[#1f1f22] ${col.align === "right" ? "text-right font-medium" : ""}`}
-                      >
-                        {row[col.key] || "—"}
-                      </td>
-                    ))}
-                  </tr>
-                ))}
+                {body.table.rows.map((row, ri) => {
+                  const href = row._href;
+                  return (
+                    <tr
+                      key={ri}
+                      className={`border-b border-[#e4e8eb] last:border-b-0 hover:bg-[#f8f9fb] transition-colors ${
+                        href ? "cursor-pointer" : ""
+                      }`}
+                      onClick={href ? () => router.push(href) : undefined}
+                      tabIndex={href ? 0 : undefined}
+                      role={href ? "link" : undefined}
+                      onKeyDown={
+                        href
+                          ? (e) => {
+                              if (e.key === "Enter" || e.key === " ") {
+                                e.preventDefault();
+                                router.push(href);
+                              }
+                            }
+                          : undefined
+                      }
+                    >
+                      {body.table!.columns.map((col, ci) => (
+                        <td
+                          key={col.key}
+                          className={`px-5 py-3.5 ${
+                            href && ci === 0
+                              ? "text-[#107f8c] font-medium"
+                              : "text-[#1f1f22]"
+                          } ${col.align === "right" ? "text-right font-medium" : ""}`}
+                        >
+                          {row[col.key] || "—"}
+                        </td>
+                      ))}
+                    </tr>
+                  );
+                })}
               </tbody>
             </table>
           </div>
