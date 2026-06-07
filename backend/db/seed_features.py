@@ -49,7 +49,23 @@ COUNTERPARTY_RISK = {
     'ООО "Поставщик Плюс"': (44.0, "medium", "Крупные суммы — рекомендуется доп. проверка."),
     'ООО "Логистик BY"': (38.0, "high", "Новый контрагент, ограниченная история операций."),
     'ООО "СтройМат"': (65.0, "medium", "ИП-контрагент, средний риск по отрасли."),
+    "ИП Петров П.П.": (76.0, "low", "Постоянный клиент, расчёты без просрочек."),
 }
+
+EXTRA_COUNTERPARTIES = [
+    {
+        "name": "ИП Петров П.П.",
+        "unp": "193456789",
+        "account": "BY27 BPSB 3012 3333 3333 2933 0000",
+        "bank_name": "ОАО Сбер Банк",
+    },
+    {
+        "name": "ООО Бета",
+        "unp": "193987654",
+        "account": "BY64 BPSB 3012 4444 4444 2933 1111",
+        "bank_name": "ОАО Сбер Банк",
+    },
+]
 
 
 async def seed_features():
@@ -68,6 +84,17 @@ async def seed_features():
         for row in EXTRA_SERVICES:
             if not await session.get(BankService, row["id"]):
                 session.add(BankService(**row))
+
+        for org_id in ("demo", "ip_ivanov", "buh_plus"):
+            for row in EXTRA_COUNTERPARTIES:
+                exists = await session.execute(
+                    select(Counterparty).where(
+                        Counterparty.org_id == org_id,
+                        Counterparty.name == row["name"],
+                    )
+                )
+                if not exists.scalar_one_or_none():
+                    session.add(Counterparty(id=str(uuid.uuid4()), org_id=org_id, **row))
 
         result = await session.execute(select(Counterparty))
         for cp in result.scalars().all():

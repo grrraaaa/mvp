@@ -2,6 +2,7 @@
 from __future__ import annotations
 
 import re
+from urllib.parse import quote
 
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
@@ -85,6 +86,100 @@ def is_search_query(message: str) -> bool:
     )
 
 
+def _statement_period_from_text(message: str) -> tuple[str, str]:
+    low = message.lower()
+    if re.search(r"квартал|q[1-4]|отч[её]тн\w*\s+кварт", low):
+        return "quarter", "отчётный квартал"
+    if re.search(r"\bгод\b|годов", low):
+        return "year", "год"
+    if re.search(r"сегодня|текущ\w*\s+день", low):
+        return "today", "сегодня"
+    if re.search(r"вчера", low):
+        return "yesterday", "вчера"
+    if re.search(r"5\s*дн|пять\s+дн", low):
+        return "5days", "последние 5 дней"
+    months = {
+        "январ": ("01", "январь"),
+        "феврал": ("02", "февраль"),
+        "март": ("03", "март"),
+        "апрел": ("04", "апрель"),
+        "май": ("05", "май"),
+        "июн": ("06", "июнь"),
+        "июл": ("07", "июль"),
+        "август": ("08", "август"),
+        "сентябр": ("09", "сентябрь"),
+        "октябр": ("10", "октябрь"),
+        "ноябр": ("11", "ноябрь"),
+        "декабр": ("12", "декабрь"),
+    }
+    year_m = re.search(r"(20\d{2})", low)
+    year = year_m.group(1) if year_m else "2026"
+    for key, (month, label) in months.items():
+        if key in low:
+            return f"{year}-{month}", f"{label} {year}"
+    return "month", "месяц"
+
+
+async def _match_statement_account(
+    session: AsyncSession, org_id: str, message: str
+) -> BankAccount | None:
+    low = message.lower()
+    result = await session.execute(
+        select(BankAccount).where(BankAccount.org_id == org_id, BankAccount.hidden == False)
+    )
+    accounts = result.scalars().all()
+    for account in accounts:
+        iban = account.iban.lower()
+        compact_iban = re.sub(r"\s+", "", iban)
+        if iban in low or compact_iban in re.sub(r"\s+", "", low):
+            return account
+        tail = re.sub(r"\D", "", account.iban)[-4:]
+        if tail and re.search(rf"(?:сч[её]т|номер|№)\D*{re.escape(tail)}\b", low):
+            return account
+        label = (account.label or "").strip().lower()
+        note = (account.note or "").strip().lower()
+        if label and label in low:
+            return account
+        if note and note in low:
+            return account
+    return None
+
+
+async def _statement_reply(
+    session: AsyncSession, message: str, org_id: str
+) -> dict | None:
+    low = message.lower()
+    if not re.search(r"выписк|операци\w*\s+по\s+сч[её]т|оборот\w*\s+по\s+сч[её]т", low):
+        return None
+    period, period_label = _statement_period_from_text(message)
+    account = await _match_statement_account(session, org_id, message)
+    url = f"/statement?period={period}"
+    account_text = "по всем счетам"
+    if account:
+        url += f"&account={quote(account.iban)}"
+        account_text = f"по счёту {account.iban} ({account.label or account.currency})"
+    return {
+        "message": (
+            f"Открываю выписку за **{period_label}** {account_text}. "
+            "На странице сразу применю фильтры и сформирую список операций."
+        ),
+        "sources": [
+            {
+                "index": 1,
+                "label": f"Источник 1: Выписка за {period_label}",
+                "kind": "account",
+                "url": url,
+            }
+        ],
+        "ui_actions": [{"type": "navigate", "target": url}],
+        "action_buttons": [
+            {"label": "Открыть выписку", "url": url, "variant": "primary"},
+            {"label": "За квартал", "message": "Покажи выписку за отчётный квартал", "variant": "secondary"},
+            {"label": "За год", "message": "Покажи выписку за год", "variant": "secondary"},
+        ],
+    }
+
+
 async def handle_banking_query(
     session: AsyncSession, message: str, org_id: str = "demo", session_id: str | None = None
 ) -> dict | None:
@@ -94,6 +189,10 @@ async def handle_banking_query(
     import uuid as _uuid
 
     low = message.lower()
+
+    statement_reply = await _statement_reply(session, message, org_id)
+    if statement_reply:
+        return statement_reply
 
     if re.search(r"подпиш\w+.*шлюз|отправ\w+.*шлюз|подписать\s+и\s+отправ", low):
         from services.banking.gateway_sim import sign_latest_and_submit
@@ -276,6 +375,180 @@ async def handle_banking_query(
             return notif_reply
 
     low = message.lower()
+
+    if re.search(r"последн\w*\s+документ|последн\w*\s+плат[её]ж", low):
+        result = await session.execute(
+            select(BankDocument)
+            .where(BankDocument.org_id == org_id)
+            .order_by(BankDocument.doc_date.desc())
+            .limit(5)
+        )
+        docs = result.scalars().all()
+        if docs:
+            lines = [
+                f"{i}. {d.doc_number} — {d.counterparty} — {d.amount:,.2f} {d.currency} ({d.status})"
+                for i, d in enumerate(docs, 1)
+            ]
+            return {
+                "message": "Последние документы:\n" + "\n".join(lines),
+                "sources": [
+                    {
+                        "index": i,
+                        "label": f"Источник {i}: {d.doc_number} — {d.counterparty}",
+                        "kind": "document",
+                        "id": d.id,
+                        "url": document_view_url(d.id),
+                    }
+                    for i, d in enumerate(docs, 1)
+                ],
+                "action_buttons": [
+                    {"label": "Все документы", "url": "/other/documents", "variant": "primary"},
+                    {"label": "Выписка", "url": "/statement", "variant": "secondary"},
+                ],
+            }
+
+    if re.search(r"реквизит", low):
+        query = re.sub(r"реквизит\w*|покажи|контрагент\w*|клиент\w*", "", message, flags=re.I).strip()
+        cp = await lookup_counterparty(session, org_id, query)
+        if cp:
+            return {
+                "message": (
+                    f"Реквизиты **{cp.name}**:\n"
+                    f"УНП: **{cp.unp or 'не указан'}**\n"
+                    f"Счёт: **{cp.account or 'не указан'}**\n"
+                    f"Банк: {cp.bank_name or 'не указан'}"
+                ),
+                "sources": [
+                    {
+                        "index": 1,
+                        "label": f"Источник 1: {cp.name}",
+                        "kind": "counterparty",
+                        "id": cp.id,
+                        "url": f"/services/counterparty?cp={cp.id}",
+                    }
+                ],
+                "action_buttons": [
+                    {"label": "Карточка контрагента", "url": f"/services/counterparty?cp={cp.id}", "variant": "primary"},
+                    {"label": "Создать платёж", "message": f"Создай платёжку для {cp.name}", "variant": "secondary"},
+                ],
+            }
+        return {
+            "message": "Контрагент не найден. Уточните название или УНП, например: «Реквизиты ООО АльфаИнвест».",
+            "suggested_chips": ["Реквизиты ООО АльфаИнвест", "Реквизиты ООО Ромашка"],
+        }
+
+    if re.search(r"заплат\w*\s+аренд|оплат\w*\s+аренд", low):
+        cp = await lookup_counterparty(session, org_id, "АльфаИнвест")
+        return {
+            "message": (
+                "Подготовлю платёж по аренде. Открываю форму платежа в BYN; "
+                "получателя и назначение можно заполнить одной командой."
+            ),
+            "ui_actions": [{"type": "navigate", "target": "/payments/paydocbyn"}],
+            "action_buttons": [
+                {
+                    "label": "Заполнить аренду",
+                    "message": f"Получатель {cp.name if cp else 'ООО АльфаИнвест'}, сумма 8900, назначение аренда офиса за текущий месяц",
+                    "variant": "primary",
+                },
+                {"label": "Открыть форму", "url": "/payments/paydocbyn", "variant": "secondary"},
+            ],
+        }
+
+    if re.search(r"созда\w*\s+сч[её]т\s+для", low):
+        name = re.sub(r".*созда\w*\s+сч[её]т\s+для", "", message, flags=re.I).strip(" .")
+        cp = await lookup_counterparty(session, org_id, name) if name else None
+        target = cp.name if cp else (name or "контрагента")
+        return {
+            "message": (
+                f"Подготовлю счёт для **{target}**. В демо открою раздел документов; "
+                "далее можно создать платёжное требование или счёт на оплату."
+            ),
+            "action_buttons": [
+                {"label": "Открыть документы", "url": "/other/documents", "variant": "primary"},
+                {"label": "Реквизиты контрагента", "message": f"Реквизиты {target}", "variant": "secondary"},
+            ],
+        }
+
+    create_payment_match = re.search(
+        r"созда\w*\s+плат[её]жк?\w*(?:\s+на\s+([\d\s.,]+)\s*(byn|руб|бел\.?\s*руб\.?)?)?(?:\s+для\s+(.+))?",
+        message,
+        re.I,
+    )
+    if create_payment_match:
+        amount = (create_payment_match.group(1) or "").strip()
+        name = (create_payment_match.group(3) or "").strip(" .")
+        cp = await lookup_counterparty(session, org_id, name) if name else None
+        fill_parts = []
+        if cp:
+            fill_parts.append(f"Получатель {cp.name}")
+        elif name:
+            fill_parts.append(f"Получатель {name}")
+        if amount:
+            fill_parts.append(f"сумма {amount}")
+        fill_hint = ", ".join(fill_parts) or "Помоги заполнить форму"
+        return {
+            "message": "Открываю платёжное поручение в BYN. После открытия формы продолжу заполнение из чата.",
+            "ui_actions": [{"type": "navigate", "target": "/payments/paydocbyn"}],
+            "action_buttons": [
+                {"label": "Заполнить поля", "message": fill_hint, "variant": "primary"},
+                {"label": "Открыть форму", "url": "/payments/paydocbyn", "variant": "secondary"},
+            ],
+        }
+
+    if re.search(r"отложенн\w*\s+плат[её]ж|плат[её]ж\s+на\s+\d{1,2}\s+[а-я]+", low):
+        date_m = re.search(r"(\d{1,2}\s+[а-яё]+)", low)
+        date_text = date_m.group(1) if date_m else "указанную дату"
+        return {
+            "message": f"Создам отложенный платёж на **{date_text}**. Открываю форму, дату исполнения нужно проверить перед отправкой.",
+            "ui_actions": [{"type": "navigate", "target": "/payments/paydocbyn"}],
+            "action_buttons": [
+                {"label": "Открыть форму", "url": "/payments/paydocbyn", "variant": "primary"},
+                {"label": "Показать календарь платежей", "url": "/statement", "variant": "secondary"},
+            ],
+        }
+
+    if re.search(r"что\s+надо\s+заплат|что\s+нужно\s+заплат|обязательн\w*\s+плат[её]ж", low):
+        return {
+            "message": (
+                "В этом месяце в демо-данных важны: НДС/подоходный налог, ФСЗН, аренда офиса "
+                "и документы «На подписи». Откройте календарь обязательств или список напоминаний."
+            ),
+            "action_buttons": [
+                {"label": "Налоговый календарь", "message": "Налоговый календарь", "variant": "primary"},
+                {"label": "Что на подписи?", "message": "Что на подписи?", "variant": "secondary"},
+                {"label": "Создать платёж", "url": "/payments/paydocbyn", "variant": "secondary"},
+            ],
+        }
+
+    if re.search(r"итог\w*\s+(?:прошл\w*\s+недел|недел|месяц)", low):
+        data = await cash_gap_forecast(session, org_id)
+        return {
+            "message": (
+                "Краткие итоги периода (демо):\n"
+                f"• Текущий остаток: **{data['current_balance']:,.2f} BYN**\n"
+                f"• Средний месячный отток: {data['avg_monthly_outflow']:,.2f} BYN\n"
+                f"• Риск кассового разрыва: примерно через {data['days_to_gap']} дн."
+            ),
+            "charts": [to_chart_line("Прогноз остатка", data["forecast"])],
+            "action_buttons": [
+                {"label": "Расходы за март", "message": "Расходы за 2026-03", "variant": "primary"},
+                {"label": "Выписка за месяц", "url": "/statement?period=month", "variant": "secondary"},
+            ],
+        }
+
+    if re.search(r"кто\s+из\s+контрагент\w*\s+не\s+заплат", low):
+        return {
+            "message": (
+                "В демо-данных нет отдельного реестра дебиторской задолженности. "
+                "По истории операций можно проверить задержки постоянных контрагентов: "
+                "откройте выписку за период и карточки контрагентов."
+            ),
+            "action_buttons": [
+                {"label": "Выписка за апрель", "url": "/statement?period=month", "variant": "primary"},
+                {"label": "Контрагенты", "url": "/services/counterparty", "variant": "secondary"},
+            ],
+        }
 
     if re.search(r"расход|покажи\s+расход|структур\w*\s+расход", low):
         month_m = re.search(r"(20\d{2}-\d{2})", message)

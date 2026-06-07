@@ -11,6 +11,40 @@ from db.models import BankDocument, Counterparty
 
 INFO_PREFIX = "INFO:"
 
+STOPWORDS = {
+    "найди",
+    "найти",
+    "покажи",
+    "поиск",
+    "где",
+    "платеж",
+    "платёж",
+    "платежи",
+    "платежи",
+    "документ",
+    "документы",
+    "счет",
+    "счёт",
+    "счета",
+    "клиент",
+    "клиента",
+    "карточку",
+    "карточка",
+    "контрагент",
+    "контрагента",
+    "руб",
+    "byn",
+    "бел",
+    "за",
+    "от",
+    "для",
+    "и",
+    "а",
+    "в",
+    "ооо",
+    "ип",
+}
+
 
 @dataclass
 class SearchHit:
@@ -29,7 +63,10 @@ def _parse_amount(text: str) -> float | None:
     if not m:
         return None
     val = float(m.group(1).replace(",", "."))
-    if "тыс" in text.lower() or "000" in text:
+    low = text.lower()
+    if 2000 <= val <= 2099 and not re.search(r"руб|byn|сумм|на\s+\d", low):
+        return None
+    if "тыс" in low or "000" in text:
         if val < 1000:
             val *= 1000
     return val
@@ -67,6 +104,27 @@ def is_report_query(query: str) -> bool:
     return bool(re.search(r"отчёт|отчет|report|выписк", low)) and bool(
         re.search(r"найди|найти|покажи|поиск|где", low)
     )
+
+
+def is_counterparty_query(query: str) -> bool:
+    return bool(
+        re.search(
+            r"карточк\w*\s+(?:клиент|контрагент)|покажи\s+клиент|"
+            r"покажи\s+контрагент|реквизит\w*\s+",
+            query.lower(),
+        )
+    )
+
+
+def _search_terms(text: str) -> list[str]:
+    cleaned = re.sub(r"\d+|[.,:;!?()«»\"']|руб|byn|бел|тыс|000", " ", text.lower(), flags=re.I)
+    terms: list[str] = []
+    for token in cleaned.split():
+        token = token.strip("-—")
+        if len(token) < 3 or token in STOPWORDS:
+            continue
+        terms.append(token)
+    return terms
 
 
 async def search_reports(
@@ -144,11 +202,11 @@ async def smart_search(
     doc_filters = []
     if amount is not None:
         doc_filters.append(BankDocument.amount == amount)
-    name_part = re.sub(r"\d+|[.,]|руб|byn|бел|тыс|000", "", low, flags=re.I).strip()
-    for token in name_part.split():
-        if len(token) >= 3:
-            doc_filters.append(BankDocument.counterparty.ilike(f"%{token}%"))
-            doc_filters.append(BankDocument.purpose.ilike(f"%{token}%"))
+    terms = _search_terms(low)
+    for token in terms:
+        doc_filters.append(BankDocument.counterparty.ilike(f"%{token}%"))
+        doc_filters.append(BankDocument.purpose.ilike(f"%{token}%"))
+        doc_filters.append(BankDocument.doc_type.ilike(f"%{token}%"))
 
     stmt = select(BankDocument).where(BankDocument.org_id == org_id)
     if doc_filters:
@@ -160,6 +218,20 @@ async def smart_search(
         docs = [d for d in docs if d.doc_date and f".{month}." in d.doc_date]
     if year:
         docs = [d for d in docs if d.doc_date and year in d.doc_date]
+    if re.search(r"сч[её]т", low) and not re.search(r"выписк|остаток|баланс", low):
+        docs = [
+            d
+            for d in docs
+            if re.search(r"сч[её]т", f"{d.doc_type} {d.purpose}".lower())
+        ]
+    if re.search(r"плат[её]ж", low):
+        payment_docs = [
+            d
+            for d in docs
+            if re.search(r"плат[её]ж|перевод", f"{d.doc_type} {d.purpose}".lower())
+        ]
+        if payment_docs:
+            docs = payment_docs
 
     hits: list[SearchHit] = [
         SearchHit(
@@ -177,10 +249,9 @@ async def smart_search(
 
     cp_stmt = select(Counterparty).where(Counterparty.org_id == org_id)
     cp_filters = []
-    for token in name_part.split():
-        if len(token) >= 3:
-            cp_filters.append(Counterparty.name.ilike(f"%{token}%"))
-            cp_filters.append(Counterparty.unp.ilike(f"%{token}%"))
+    for token in terms:
+        cp_filters.append(Counterparty.name.ilike(f"%{token}%"))
+        cp_filters.append(Counterparty.unp.ilike(f"%{token}%"))
     if cp_filters:
         cp_result = await session.execute(cp_stmt.where(or_(*cp_filters)).limit(5))
         for c in cp_result.scalars().all():
@@ -193,7 +264,7 @@ async def smart_search(
                     amount=None,
                     currency=None,
                     status=None,
-                    url="/payments/counterparties",
+                    url=f"/services/counterparty?cp={c.id}",
                 )
             )
 
@@ -217,6 +288,7 @@ def format_search_response(query: str, hits: list[SearchHit]) -> tuple[str, list
 
     report_hits = [h for h in hits if h.kind == "report"]
     payment_hits = [h for h in hits if h.kind == "payment"]
+    counterparty_hits = [h for h in hits if h.kind == "counterparty"]
 
     if report_hits and (len(report_hits) >= len(payment_hits) or is_report_query(query)):
         hits = report_hits
@@ -228,6 +300,19 @@ def format_search_response(query: str, hits: list[SearchHit]) -> tuple[str, list
         h = hits[0]
         return (
             f"**Отчёт:** {h.title}\n{h.subtitle}\nСтатус: {h.status}",
+            [_hit_source(h, 1)],
+        )
+
+    if counterparty_hits and (is_counterparty_query(query) or not payment_hits):
+        hits = counterparty_hits
+        if len(hits) > 1:
+            lines = [f"Нашёл {len(hits)} контрагентов. Выберите карточку:"]
+            for i, h in enumerate(hits[:5], 1):
+                lines.append(f"{i}. {h.title} — {h.subtitle}")
+            return "\n".join(lines), [_hit_source(h, i) for i, h in enumerate(hits[:5], 1)]
+        h = hits[0]
+        return (
+            f"Карточка контрагента: **{h.title}**. {h.subtitle}",
             [_hit_source(h, 1)],
         )
 

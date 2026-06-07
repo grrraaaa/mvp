@@ -2,6 +2,7 @@
 from __future__ import annotations
 import asyncio
 import json
+import re
 
 from fastapi import APIRouter, Depends
 from fastapi.responses import StreamingResponse
@@ -134,13 +135,13 @@ async def _stream_response(request: ChatRequest, user_id: str, org_id: str | Non
     )
 
     async def event_stream():
-        words = response.message.split()
         accumulated = ""
-        for word in words:
-            accumulated += word + " "
-            payload = json.dumps({"token": word + " ", "partial": accumulated.strip()}, ensure_ascii=False)
+        chunks = re.findall(r"\S+\s*|\n+", response.message)
+        for chunk in chunks:
+            accumulated += chunk
+            payload = json.dumps({"token": chunk, "partial": accumulated}, ensure_ascii=False)
             yield f"data: {payload}\n\n"
-            await asyncio.sleep(0.025)
+            await asyncio.sleep(0.018 if len(chunk) <= 4 else 0.03)
         done = json.dumps({"done": True, **response.model_dump()}, ensure_ascii=False, default=str)
         yield f"data: {done}\n\n"
 

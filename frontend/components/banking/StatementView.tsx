@@ -2,6 +2,7 @@
 
 import { useCallback, useEffect, useRef, useState } from "react";
 import Link from "next/link";
+import { useSearchParams } from "next/navigation";
 import {
   FileText,
   Printer,
@@ -37,7 +38,32 @@ function periodToApiKey(period: StatementPeriod): string {
   }
 }
 
+function apiKeyToPeriod(value: string | null): StatementPeriod {
+  switch ((value ?? "").toLowerCase()) {
+    case "today":
+    case "сегодня":
+      return "Сегодня";
+    case "yesterday":
+    case "вчера":
+      return "Вчера";
+    case "5days":
+    case "5дней":
+      return "5дней";
+    case "quarter":
+    case "квартал":
+      return "квартал";
+    case "year":
+    case "год":
+      return "год";
+    case "month":
+    case "месяц":
+    default:
+      return "месяц";
+  }
+}
+
 export default function StatementView() {
+  const searchParams = useSearchParams();
   const accounts = useBankingStore((s) => s.accounts);
   const loadAll = useBankingStore((s) => s.loadAll);
   const bankingLoaded = useBankingStore((s) => s.loaded);
@@ -52,6 +78,7 @@ export default function StatementView() {
   // Filters State
   const [selectedAccount, setSelectedAccount] = useState<string>('all');
   const [selectedPeriod, setSelectedPeriod] = useState<StatementPeriod>("месяц");
+  const [apiPeriodOverride, setApiPeriodOverride] = useState<string | null>(null);
   const [showZeroTurnover, setShowZeroTurnover] = useState(false);
   const [showDaily, setShowDaily] = useState(true);
   const [showRevaluation, setShowRevaluation] = useState(false);
@@ -70,11 +97,14 @@ export default function StatementView() {
     transactionsCount: number;
   } | null>(null);
   const [loadError, setLoadError] = useState<string | null>(null);
+  const [queryReady, setQueryReady] = useState(false);
   const autoLoadedRef = useRef(false);
+  const initialQueryAppliedRef = useRef(false);
 
   const resetFilters = () => {
     setSelectedAccount('all');
     setSelectedPeriod('месяц');
+    setApiPeriodOverride(null);
     setShowZeroTurnover(false);
     setShowDaily(true);
     setShowRevaluation(false);
@@ -91,7 +121,7 @@ export default function StatementView() {
     setReportGenerated(false);
     setLoadError(null);
     const accId = selectedAccount !== "all" ? selectedAccount : undefined;
-    const periodKey = periodToApiKey(selectedPeriod);
+    const periodKey = apiPeriodOverride ?? periodToApiKey(selectedPeriod);
     void fetchStatement(accId, periodKey)
       .then((lines) => {
         setStatementLines(lines);
@@ -139,14 +169,28 @@ export default function StatementView() {
         setReportGenerated(true);
       })
       .finally(() => setIsLoading(false));
-  }, [authToken, selectedAccount, selectedPeriod, accounts]);
+  }, [authToken, selectedAccount, selectedPeriod, apiPeriodOverride, accounts]);
 
   useEffect(() => {
-    if (authToken && bankingLoaded && !autoLoadedRef.current) {
+    if (!bankingLoaded || initialQueryAppliedRef.current) return;
+    initialQueryAppliedRef.current = true;
+    const rawPeriod = searchParams.get("period");
+    const period = apiKeyToPeriod(rawPeriod);
+    const account = searchParams.get("account") ?? searchParams.get("account_id");
+    setSelectedPeriod(period);
+    setApiPeriodOverride(/^20\d{2}-(0[1-9]|1[0-2])$/.test(rawPeriod ?? "") ? rawPeriod : null);
+    if (account && accounts.some((a) => a.id === account)) {
+      setSelectedAccount(account);
+    }
+    setQueryReady(true);
+  }, [accounts, bankingLoaded, searchParams]);
+
+  useEffect(() => {
+    if (authToken && bankingLoaded && queryReady && !autoLoadedRef.current) {
       autoLoadedRef.current = true;
       handleGenerateStatement();
     }
-  }, [authToken, bankingLoaded, handleGenerateStatement]);
+  }, [authToken, bankingLoaded, handleGenerateStatement, queryReady]);
 
   const triggerPrint = () => {
     window.print();
@@ -247,7 +291,10 @@ export default function StatementView() {
                     <label className="block text-xs font-bold text-gray-700 mb-1.5 uppercase tracking-wide">Временной интервал</label>
                     <select
                       value={selectedPeriod}
-                      onChange={(e) => setSelectedPeriod(e.target.value as StatementPeriod)}
+                      onChange={(e) => {
+                        setSelectedPeriod(e.target.value as StatementPeriod);
+                        setApiPeriodOverride(null);
+                      }}
                       className="w-full border border-gray-300 rounded-lg p-2.5 text-xs font-semibold bg-white text-gray-750 focus:ring-[#138d8a] focus:ring-1 focus:border-[#138d8a]"
                     >
                       <option value="Сегодня">Сегодня</option>

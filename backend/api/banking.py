@@ -3,6 +3,7 @@ from __future__ import annotations
 
 from collections import defaultdict
 
+import re
 import uuid
 from datetime import datetime
 
@@ -421,6 +422,12 @@ def _filter_statement_period(rows: list, period: str) -> list:
     if p in ("week", "5days", "5дней"):
         cut = anchor - timedelta(days=5)
         return [r for r, dt in parsed if dt >= cut]
+
+    ym = re.match(r"^(20\d{2})-(0[1-9]|1[0-2])$", p)
+    if ym:
+        year = int(ym.group(1))
+        month = int(ym.group(2))
+        return [r for r, dt in parsed if dt.year == year and dt.month == month]
 
     if p in ("month", "месяц"):
         return [r for r, dt in parsed if dt.year == anchor.year and dt.month == anchor.month]

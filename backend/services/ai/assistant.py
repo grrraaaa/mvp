@@ -1216,11 +1216,25 @@ class AssistantService:
                 url=secondary_url or "/payments/paydocbyn",
                 variant="secondary",
             ),
-            ActionButton(label="Умный поиск", message="Найди платежи Иванова за март", variant="secondary"),
+            ActionButton(label="Сформировать выписку", message="Покажи выписку за отчётный квартал", variant="secondary"),
+            ActionButton(label="Найти документ", message="Найди счёт от ООО Ромашка за март 2026", variant="secondary"),
+            ActionButton(label="Что надо заплатить?", message="Что надо заплатить в этом месяце?", variant="secondary"),
         ]
-        buttons.extend(get_page_quick_actions(page_route)[:2])
+        buttons.extend(get_page_quick_actions(page_route)[:1])
 
-        return AssistantResponse(message=msg, session_id=session_id, action_buttons=buttons)
+        welcome_chips = [
+            "Сколько на счёте?",
+            "Покажи последние документы",
+            "Расходы за март по категориям",
+            "Налоговый календарь",
+        ]
+
+        return AssistantResponse(
+            message=msg,
+            session_id=session_id,
+            action_buttons=buttons,
+            suggested_chips=welcome_chips,
+        )
 
     async def _maybe_banking_query(
         self, message: str, session_id: str, org_id: str = "demo"
@@ -1235,7 +1249,9 @@ class AssistantService:
             sources=[SourceRef(**s) for s in result.get("sources", [])],
             action_buttons=[ActionButton(**b) for b in result.get("action_buttons", [])],
             charts=[ChartSpec(**c) for c in result.get("charts", [])] or None,
+            ui_actions=[UiAction(**u) for u in result.get("ui_actions", [])] or None,
             pending_form_fields=result.get("pending_form_fields"),
+            suggested_chips=result.get("suggested_chips"),
         )
 
     def _maybe_tax_salary_chain(
