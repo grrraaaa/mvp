@@ -46,12 +46,16 @@ COUNTERPARTY_RISK = {
     'ООО "Ромашка"': (82.0, "low", "Регулярный контрагент, платежи без просрочек."),
     "ООО БелТелесистемы": (71.0, "low", "Коммунальные услуги, стабильный поставщик."),
     "ООО АльфаИнвест": (58.0, "medium", "Аренда — проверьте актуальность договора."),
+    "ООО БелТорг": (63.0, "medium", "Поставщик товаров, средний объём расчётов."),
+    "ИП Иванов А.С.": (74.0, "low", "Постоянный подрядчик, расчёты без просрочек."),
     'ООО "Поставщик Плюс"': (44.0, "medium", "Крупные суммы — рекомендуется доп. проверка."),
     'ООО "Логистик BY"': (38.0, "high", "Новый контрагент, ограниченная история операций."),
     'ООО "СтройМат"': (65.0, "medium", "ИП-контрагент, средний риск по отрасли."),
     "ИП Петров П.П.": (76.0, "low", "Постоянный клиент, расчёты без просрочек."),
 }
 
+# Контрагенты, на которых ссылаются демо-документы и команды чата
+# (аренда АльфаИнвест, поиск «платёж от Иванова», карточка клиента Петров).
 EXTRA_COUNTERPARTIES = [
     {
         "name": "ИП Петров П.П.",
@@ -65,7 +69,41 @@ EXTRA_COUNTERPARTIES = [
         "account": "BY64 BPSB 3012 4444 4444 2933 1111",
         "bank_name": "ОАО Сбер Банк",
     },
+    {
+        "name": "ООО АльфаИнвест",
+        "unp": "190555777",
+        "account": "BY13 BPSB 3012 8888 8888 8888 0000",
+        "bank_name": 'ОАО "Сбер Банк"',
+    },
+    {
+        "name": "ООО БелТорг",
+        "unp": "190666888",
+        "account": "BY24 ALFA 3012 9999 9999 9999 0000",
+        "bank_name": 'ЗАО "Альфа-Банк"',
+    },
+    {
+        "name": "ИП Иванов А.С.",
+        "unp": "291777999",
+        "account": "BY36 BPSB 3012 1212 1212 1212 0000",
+        "bank_name": 'ОАО "Сбер Банк"',
+    },
 ]
+
+# Демо-документы для воспроизводимого поиска (поиск по сумме/плательщику).
+SEARCH_DEMO_DOCS = {
+    "demo": [
+        {
+            "doc_number": "№ 91",
+            "doc_date": "12.04.2026",
+            "doc_type": "Перевод в BYN",
+            "counterparty": "ИП Иванов А.С.",
+            "amount": 50000.0,
+            "currency": "BYN",
+            "status": "Проведен",
+            "purpose": "Оплата подрядных работ по договору №77 от 01.04.2026",
+        },
+    ],
+}
 
 
 async def seed_features():
@@ -101,6 +139,18 @@ async def seed_features():
             risk = COUNTERPARTY_RISK.get(cp.name)
             if risk:
                 cp.risk_score, cp.risk_level, cp.risk_notes = risk
+
+        for org_id, docs in SEARCH_DEMO_DOCS.items():
+            for row in docs:
+                exists = await session.execute(
+                    select(BankDocument).where(
+                        BankDocument.org_id == org_id,
+                        BankDocument.doc_number == row["doc_number"],
+                    )
+                )
+                if exists.scalar_one_or_none():
+                    continue
+                session.add(BankDocument(id=str(uuid.uuid4()), org_id=org_id, **row))
 
         for org_id in ("demo", "ip_ivanov", "buh_plus"):
             for tpl in MARCH_REPORTS:
