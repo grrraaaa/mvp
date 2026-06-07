@@ -2,6 +2,7 @@
 from __future__ import annotations
 
 import logging
+import re
 
 import httpx
 
@@ -18,6 +19,16 @@ class OcrError(Exception):
         self.status_code = status_code
 
 
+def _clean_base64(image_b64: str) -> str:
+    """Strip data-URL prefix and whitespace from base64 payload."""
+    raw = image_b64.strip()
+    if raw.startswith("data:"):
+        comma = raw.find(",")
+        if comma >= 0:
+            raw = raw[comma + 1 :]
+    return re.sub(r"\s+", "", raw)
+
+
 async def recognize_base64_image(image_b64: str) -> str:
     """Send base64 image to imagetotext.com and return plain text."""
     if not settings.IMAGETOTEXT_API_KEY or not settings.IMAGETOTEXT_API_SECRET:
@@ -28,7 +39,7 @@ async def recognize_base64_image(image_b64: str) -> str:
     payload = {
         "api_key": settings.IMAGETOTEXT_API_KEY,
         "api_secret": settings.IMAGETOTEXT_API_SECRET,
-        "image": image_b64,
+        "image": _clean_base64(image_b64),
     }
 
     async with httpx.AsyncClient(timeout=60.0) as client:

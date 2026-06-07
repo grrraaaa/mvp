@@ -9,6 +9,7 @@ from pydantic import BaseModel, Field
 
 from core.config import settings
 from models.schemas import AssistantResponse, FormFieldAction
+from services.forms.ocr_llm_parser import parse_ocr_text_with_llm
 from services.forms.ocr_text_parser import parse_ocr_text_to_form_actions
 from services.chat.enrichment import enrich_response
 from services.ocr.demo_fallback import demo_ocr_from_image_b64, is_pdf_data_url
@@ -55,19 +56,32 @@ async def ocr_fill_form(request: OcrFillRequest):
 
         demo_mode = False
         demo_note = ""
-        ocr_text = ""
         has_keys = bool(settings.IMAGETOTEXT_API_KEY and settings.IMAGETOTEXT_API_SECRET)
         if has_keys:
             try:
                 ocr_text = await recognize_base64_image(b64)
-            except OcrError:
-                ocr_text, demo_mode = demo_ocr_from_image_b64(b64)
-                demo_note = "\n\n_(OCR API недоступен — использован демо-распознавание. Подтвердите поля.)_"
+            except OcrError as exc:
+                raise HTTPException(
+                    status_code=exc.status_code or 502,
+                    detail=str(exc),
+                ) from exc
         else:
             ocr_text, demo_mode = demo_ocr_from_image_b64(b64)
             demo_note = "\n\n_(Демо OCR без API-ключей — проверьте и подтвердите поля.)_"
 
-    actions: list[FormFieldAction] = parse_ocr_text_to_form_actions(ocr_text, form_type)
+    rule_actions = parse_ocr_text_to_form_actions(ocr_text, form_type)
+    llm_actions = await parse_ocr_text_with_llm(ocr_text, form_type)
+    if llm_actions:
+        merged: dict[str, FormFieldAction] = {a.field: a for a in rule_actions}
+        for action in llm_actions:
+            merged[action.field] = action
+        actions = list(merged.values())
+        llm_note = "\n\n_(Поля извлечены через OpenAI по тексту OCR.)_"
+    else:
+        actions = rule_actions
+        llm_note = ""
+        if settings.OPENAI_API_KEY:
+            llm_note = "\n\n_(OpenAI недоступен — использованы правила распознавания.)_"
 
     if not actions:
         preview = ocr_text[:400] + ("…" if len(ocr_text) > 400 else "")
@@ -76,7 +90,7 @@ async def ocr_fill_form(request: OcrFillRequest):
                 "Текст с фото распознан, но поля формы автоматически не определены.\n\n"
                 f"Распознанный текст:\n{preview}\n\n"
                 "Попробуйте другое фото или укажите данные вручную в чате."
-                f"{demo_note}"
+                f"{demo_note}{llm_note}"
             ),
             session_id=request.session_id or "ocr",
             form_fill_status="partial",
@@ -95,7 +109,7 @@ async def ocr_fill_form(request: OcrFillRequest):
         message=(
             f"Распознано с фото и подготовлено к заполнению: {filled_labels}.\n\n"
             f"Фрагмент текста:\n{preview}"
-            f"{demo_note}"
+            f"{demo_note}{llm_note}"
         ),
         session_id=request.session_id or "ocr",
         form_actions=actions,
