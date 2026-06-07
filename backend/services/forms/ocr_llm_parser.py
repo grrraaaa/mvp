@@ -7,35 +7,14 @@ from typing import List, Optional
 
 from core.config import settings
 from models.schemas import FormFieldAction
-from services.ai.form_schemas import fillable_fields, load_form_schema, schema_field_summary
+from services.ai.form_schemas import fillable_fields, load_form_schema
+from services.forms.field_value_formats import (
+    build_field_format_instructions,
+    build_fill_tool,
+    normalize_field_value,
+)
 
 logger = logging.getLogger(__name__)
-
-FILL_TOOL = {
-    "type": "function",
-    "function": {
-        "name": "fill_payment_form",
-        "description": "Заполнить поля платёжной формы SBBOL по распознанному тексту",
-        "parameters": {
-            "type": "object",
-            "properties": {
-                "fields": {
-                    "type": "array",
-                    "items": {
-                        "type": "object",
-                        "properties": {
-                            "field": {"type": "string", "description": "DOM name атрибут поля"},
-                            "value": {"type": "string"},
-                            "label": {"type": "string"},
-                        },
-                        "required": ["field", "value"],
-                    },
-                },
-            },
-            "required": ["fields"],
-        },
-    },
-}
 
 
 def _llm_client():
@@ -61,17 +40,22 @@ def _validate_actions(actions: List[FormFieldAction], schema: dict) -> List[Form
     validated: List[FormFieldAction] = []
 
     for action in actions:
-        if not action.value or not str(action.value).strip():
-            continue
         field_meta = by_name.get(action.field)
         if not field_meta:
             continue
-        if field_meta.get("type") in ("radio", "checkbox") and not str(action.value).strip().isdigit():
+
+        key = field_meta.get("key", "")
+        normalized = normalize_field_value(key, str(action.value))
+        if not normalized:
             continue
+
+        if field_meta.get("type") in ("radio", "checkbox") and not normalized.isdigit():
+            continue
+
         validated.append(
             FormFieldAction(
                 field=action.field,
-                value=str(action.value).strip(),
+                value=normalized,
                 label=action.label or field_meta.get("label"),
             )
         )
@@ -88,29 +72,23 @@ async def parse_ocr_text_with_llm(text: str, form_type: str) -> Optional[List[Fo
     if not schema:
         return None
 
-    fillable = fillable_fields(schema)
-    field_keys = ", ".join(f["key"] for f in fillable)
+    format_instructions = build_field_format_instructions(schema)
+    fill_tool = build_fill_tool(schema)
+    allowed_names = {f["name"] for f in fillable_fields(schema)}
 
     system = (
-        "Ты помощник банка SBBOL. На входе — сырой текст OCR со счёта, платёжки или счёта на оплату (Беларусь, BYN). "
-        "Извлеки ВСЕ поля формы, которые можно уверенно определить из текста. "
-        "Используй только поля из схемы — атрибут field (name) должен совпадать точно. "
-        "Правила:\n"
-        "- Сумма: число без валюты, точка как десятичный разделитель (2100.00).\n"
-        "- УНП: 9 цифр.\n"
-        "- Счёт получателя: IBAN BY + 26 символов, если есть в тексте.\n"
-        "- Дата документа: DD.MM.YYYY.\n"
-        "- Назначение платежа: полная фраза из документа.\n"
-        "- Получатель: наименование организации или ФИО, не путать с плательщиком.\n"
-        "- Не выдумывай значения — пропускай поле, если его нет в тексте.\n"
-        f"- Заполняй по возможности все ключи: {field_keys}.\n\n"
-        f"{schema_field_summary(schema)}"
+        "Ты извлекаешь реквизиты из OCR-текста белорусского платёжного документа "
+        f"для формы «{schema.get('title', form_type)}».\n\n"
+        "Задача: вернуть fill_payment_form с полями, которые можно уверенно определить из текста.\n"
+        "Получатель — поставщик/бенефициар из счёта, НЕ покупатель/плательщик.\n\n"
+        f"{format_instructions}"
     )
 
     user = (
-        "Распознанный текст с фото платёжного документа:\n\n"
+        "OCR-текст с фото:\n\n"
         f"{text.strip()}\n\n"
-        "Верни fill_payment_form со всеми найденными полями."
+        "Верни fill_payment_form. Для каждого поля value ОБЯЗАН соответствовать формату из инструкции. "
+        f"field — только один из: {', '.join(sorted(allowed_names))}."
     )
 
     try:
@@ -121,9 +99,9 @@ async def parse_ocr_text_with_llm(text: str, form_type: str) -> Optional[List[Fo
                 {"role": "system", "content": system},
                 {"role": "user", "content": user},
             ],
-            tools=[FILL_TOOL],
+            tools=[fill_tool],
             tool_choice={"type": "function", "function": {"name": "fill_payment_form"}},
-            temperature=0.1,
+            temperature=0,
         )
         ai_msg = resp.choices[0].message
         if not ai_msg.tool_calls:
@@ -132,12 +110,12 @@ async def parse_ocr_text_with_llm(text: str, form_type: str) -> Optional[List[Fo
         args = json.loads(ai_msg.tool_calls[0].function.arguments)
         raw = [
             FormFieldAction(
-                field=str(f["field"]),
-                value=str(f["value"]),
-                label=f.get("label"),
+                field=str(item["field"]),
+                value=str(item["value"]),
+                label=item.get("label"),
             )
-            for f in args.get("fields", [])
-            if f.get("field") and f.get("value")
+            for item in args.get("fields", [])
+            if item.get("field") and item.get("value") is not None
         ]
         validated = _validate_actions(raw, schema)
         return validated or None

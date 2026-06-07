@@ -9,6 +9,8 @@ from pydantic import BaseModel, Field
 
 from core.config import settings
 from models.schemas import AssistantResponse, FormFieldAction
+from services.ai.form_schemas import load_form_schema
+from services.forms.field_value_formats import normalize_form_actions
 from services.forms.ocr_llm_parser import parse_ocr_text_with_llm
 from services.forms.ocr_text_parser import parse_ocr_text_to_form_actions
 from services.chat.enrichment import enrich_response
@@ -69,7 +71,11 @@ async def ocr_fill_form(request: OcrFillRequest):
             ocr_text, demo_mode = demo_ocr_from_image_b64(b64)
             demo_note = "\n\n_(Демо OCR без API-ключей — проверьте и подтвердите поля.)_"
 
-    rule_actions = parse_ocr_text_to_form_actions(ocr_text, form_type)
+    schema = load_form_schema(form_type) or {}
+    rule_actions = normalize_form_actions(
+        parse_ocr_text_to_form_actions(ocr_text, form_type),
+        schema,
+    )
     llm_actions = await parse_ocr_text_with_llm(ocr_text, form_type)
     if llm_actions:
         merged: dict[str, FormFieldAction] = {a.field: a for a in rule_actions}
