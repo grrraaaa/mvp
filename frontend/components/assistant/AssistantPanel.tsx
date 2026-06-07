@@ -291,9 +291,25 @@ export function AssistantPanel({ variant = "default", compactMobile = false, onR
         window.open(source.url, "_blank", "noopener,noreferrer");
         return;
       }
-      void sendMessage(`Покажи источник №${source.index}`);
     },
-    [router, sendMessage],
+    [router],
+  );
+
+  const handleSuggestionSelect = useCallback(
+    (text: string) => {
+      const sourceMatch = text.match(/^Покажи источник №(\d+)$/i);
+      if (sourceMatch) {
+        const index = Number.parseInt(sourceMatch[1], 10);
+        const lastAssistant = [...messages].reverse().find((m) => m.role === "assistant");
+        const source = lastAssistant?.sources?.find((s) => s.index === index);
+        if (source) {
+          handleShowSource(source);
+          return;
+        }
+      }
+      void sendMessage(text);
+    },
+    [handleShowSource, messages, sendMessage],
   );
 
   const fieldChipPrefix: Record<string, string> = {
@@ -488,7 +504,7 @@ export function AssistantPanel({ variant = "default", compactMobile = false, onR
                 compact={compactMobile}
               />
             )}
-            {msg.sources && msg.sources.length > 0 && (
+            {msg.sources && msg.sources.length > 0 && !msg.streaming && (
               <SourceChips
                 sources={msg.sources}
                 onShowSource={handleShowSource}
@@ -520,7 +536,7 @@ export function AssistantPanel({ variant = "default", compactMobile = false, onR
           </div>
         ))}
 
-        {isLoading && (
+        {isLoading && !messages.some((m) => m.role === "assistant" && m.streaming) && (
           <div className="mb-3">
             <MessageBubble message={{ role: "assistant", content: "…" }} isTyping />
           </div>
@@ -534,7 +550,7 @@ export function AssistantPanel({ variant = "default", compactMobile = false, onR
           value={input}
           onChange={setInput}
           onSend={handleSend}
-          onSuggestionSelect={sendMessage}
+          onSuggestionSelect={handleSuggestionSelect}
           onPhotoSelect={handlePhotoOcr}
           showPhotoButton
           suggestions={mergedChips}

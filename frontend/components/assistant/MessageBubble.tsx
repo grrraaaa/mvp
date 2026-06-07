@@ -1,50 +1,13 @@
 "use client";
 
-import Link from "next/link";
 import type { ChatMessage } from "@/store/assistantStore";
 import { AssistantChart } from "@/components/assistant/AssistantChart";
-import {
-  normalizeAssistantLinks,
-  sanitizeSbbolUrl,
-} from "@/lib/sbbol/sbbolLinks";
+import { renderAssistantMessageContent } from "@/lib/assistant/renderMessageContent";
 
 interface Props {
   message: ChatMessage;
   isTyping?: boolean;
   compact?: boolean;
-}
-
-const LINK_RE = /((?:https:\/\/sbbol\.bps-sberbank\.by[^\s<]*)|(?:\/[\w\-/]+))/g;
-
-function renderTextWithLinks(text: string) {
-  const normalized = normalizeAssistantLinks(text);
-  const parts = normalized.split(LINK_RE);
-
-  return parts.map((part, i) => {
-    if (part.startsWith("/")) {
-      const href = sanitizeSbbolUrl(part);
-      return (
-        <Link key={i} href={href} className="sber-link break-all">
-          {href}
-        </Link>
-      );
-    }
-    if (part.startsWith("https://")) {
-      const href = sanitizeSbbolUrl(part);
-      return (
-        <a
-          key={i}
-          href={href}
-          target="_blank"
-          rel="noopener noreferrer"
-          className="sber-link break-all"
-        >
-          {href}
-        </a>
-      );
-    }
-    return <span key={i}>{part}</span>;
-  });
 }
 
 export function MessageBubble({ message, isTyping, compact }: Props) {
@@ -79,7 +42,7 @@ export function MessageBubble({ message, isTyping, compact }: Props) {
           </span>
         ) : (
           <>
-            {renderTextWithLinks(message.content)}
+            {renderAssistantMessageContent(message.content)}
             {message.charts?.map((chart, i) => (
               <AssistantChart key={i} chart={chart} compact={compact} />
             ))}

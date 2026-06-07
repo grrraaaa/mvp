@@ -45,4 +45,22 @@ export function sbbolDisplayUrl(url: string): string {
   return "/";
 }
 
+/** Resolve href for assistant message links (internal demo, SBBOL, or external official sites). */
+export function assistantLinkHref(url: string): { href: string; external: boolean; label?: string } {
+  const trimmed = url.trim();
+  if (trimmed.startsWith("/")) {
+    return { href: sanitizeSbbolUrl(trimmed), external: false };
+  }
+  if (/sber-bank\.by/i.test(trimmed)) {
+    return { href: SBBOL_PROD_ORIGIN, external: true };
+  }
+  if (trimmed.startsWith(SBBOL_PROD_ORIGIN)) {
+    return { href: trimmed.replace(/\/$/, ""), external: true };
+  }
+  if (/^https?:\/\//i.test(trimmed)) {
+    return { href: trimmed, external: true };
+  }
+  return { href: "/", external: false };
+}
+
 export { INTERNAL_RE, SBBOL_RE, RETAIL_RE };

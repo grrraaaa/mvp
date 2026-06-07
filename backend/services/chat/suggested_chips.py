@@ -26,6 +26,11 @@ def suggest_chips(
     sources = response.get("sources") or []
     if sources and len(sources) <= 3:
         for s in sources[:2]:
+            kind = s.get("kind") if isinstance(s, dict) else getattr(s, "kind", None)
+            url = s.get("url") if isinstance(s, dict) else getattr(s, "url", None)
+            # Внешние и knowledge-источники открываются по клику на чип, без сообщения в чат
+            if kind == "knowledge" or (url and str(url).startswith("http")):
+                continue
             idx = s.get("index") if isinstance(s, dict) else getattr(s, "index", None)
             if idx:
                 chips.append(f"Покажи источник №{idx}")
