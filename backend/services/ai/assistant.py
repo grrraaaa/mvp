@@ -194,22 +194,42 @@ def _is_greeting_or_empty(message: str) -> bool:
     )
 
 
-def _payment_hints_from_state(filled: Dict[str, str], daily_limit: float = 5000.0) -> str:
+_HINT_MARKER = {"error": "🔴", "warn": "🟡", "ok": "🟢"}
+
+
+def _payment_hints_from_state(
+    filled: Dict[str, str],
+    daily_limit: float = 5000.0,
+    counterparty_name: str = "",
+) -> str:
     unp = filled.get("CONTRAGENT_UNP", "")
     iban = filled.get("CONTRAGENT_ACCOUNT", "")
     purpose = filled.get("PAYMENT_PURPOSE", "")
     amount_raw = filled.get("COMMON_COLUMNS_AMOUNT", "")
+    exec_date = filled.get("COMMON_COLUMNS_DOC_DATE", "")
+    currency = filled.get("COMMON_COLUMNS_CURRENCY", "") or filled.get("PAYMENT_CURRENCY", "") or "BYN"
     amount: float | None = None
     if amount_raw:
         try:
             amount = float(str(amount_raw).replace(",", ".").replace(" ", ""))
         except ValueError:
             pass
-    hints = hints_for_payment(unp=unp, iban=iban, amount=amount, purpose=purpose, daily_limit=daily_limit)
-    lines = [f"• {h.message}" for h in hints if h.level != "ok"]
+    hints = hints_for_payment(
+        unp=unp,
+        iban=iban,
+        amount=amount,
+        purpose=purpose,
+        daily_limit=daily_limit,
+        counterparty_name=counterparty_name,
+        exec_date=exec_date,
+        currency=currency,
+    )
+    lines = [f"{_HINT_MARKER.get(h.level, '•')} {h.message}" for h in hints if h.level != "ok"]
     ok_lines = [h for h in hints if h.level == "ok"]
     if not lines and ok_lines:
-        lines = [f"✓ {h.message}" for h in ok_lines[:2]]
+        lines = [f"{_HINT_MARKER['ok']} {h.message}" for h in ok_lines[:2]]
+    if any(h.level == "error" for h in hints):
+        lines.append("⛔ Отправка заблокирована: исправьте поля с ошибками (🔴).")
     return "\n".join(lines) if lines else ""
 
 
@@ -913,6 +933,29 @@ class AssistantService:
             return None
 
         state = _get_form_session(session_id, form_type)
+
+        if re.search(r"провер\w*\s+реквизит|провер\w*\s+платеж", message.lower()):
+            daily_limit = 5000.0
+            async with AsyncSessionLocal() as _db:
+                org_profile = await get_org_profile(_db, org_id)
+                daily_limit = getattr(org_profile, "daily_payment_limit", 5000.0) or 5000.0
+            hint_block = _payment_hints_from_state(
+                state.filled,
+                daily_limit=daily_limit,
+                counterparty_name=state.filled.get("CONTRAGENT_ID", ""),
+            )
+            if not hint_block:
+                return AssistantResponse(
+                    message="Пока нечего проверять — заполните получателя, сумму и назначение платежа.",
+                    session_id=session_id,
+                )
+            blocked = "🔴" in hint_block
+            return AssistantResponse(
+                message=f"**Проверка реквизитов платежа:**\n{hint_block}",
+                session_id=session_id,
+                form_fill_status="collecting" if blocked else "complete",
+            )
+
         engage = (
             _wants_form_fill_help(message)
             or _looks_like_form_fill(message)
@@ -1041,13 +1084,18 @@ class AssistantService:
             async with AsyncSessionLocal() as _db:
                 org_profile = await get_org_profile(_db, org_id)
                 daily_limit = getattr(org_profile, "daily_payment_limit", 5000.0) or 5000.0
-            hint_block = _payment_hints_from_state(state.filled, daily_limit=daily_limit)
+            hint_block = _payment_hints_from_state(
+                state.filled,
+                daily_limit=daily_limit,
+                counterparty_name=state.filled.get("CONTRAGENT_ID", ""),
+            )
             if hint_block:
                 msg += f"\n\n**Проверки:**\n{hint_block}"
             if any(a.field not in before_fields for a in new_actions):
                 msg += "\n\n_УНП и счёт получателя подставлены из справочника контрагентов (PostgreSQL)._"
             action_btns = None
-            if status == "complete":
+            has_critical = "🔴" in hint_block
+            if status == "complete" and not has_critical:
                 action_btns = [
                     ActionButton(
                         label="Подписать и отправить в шлюз",
@@ -1057,6 +1105,19 @@ class AssistantService:
                     ActionButton(
                         label="Проверить реквизиты",
                         message="Проверь реквизиты платежа",
+                        variant="secondary",
+                    ),
+                ]
+            elif has_critical:
+                action_btns = [
+                    ActionButton(
+                        label="Исправить УНП",
+                        message="Исправь УНП получателя",
+                        variant="secondary",
+                    ),
+                    ActionButton(
+                        label="Исправить счёт",
+                        message="Исправь счёт получателя",
                         variant="secondary",
                     ),
                 ]
