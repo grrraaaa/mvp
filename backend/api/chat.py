@@ -2,9 +2,10 @@
 from __future__ import annotations
 import asyncio
 import json
+import logging
 import re
 
-from fastapi import APIRouter, Depends
+from fastapi import APIRouter, Depends, HTTPException
 from fastapi.responses import StreamingResponse
 
 from models.schemas import ChatRequest, AssistantResponse
@@ -16,6 +17,7 @@ from db.database import AsyncSessionLocal
 from db.models import OrganizationProfile
 
 router = APIRouter()
+logger = logging.getLogger(__name__)
 
 
 async def _user_role(org_id: str | None) -> str:
@@ -116,23 +118,27 @@ async def chat_guest_stream(request: ChatRequest):
 
 
 async def _stream_response(request: ChatRequest, user_id: str, org_id: str | None):
-    assistant = AssistantService()
-    response = await assistant.process(
-        message=request.message,
-        session_id=request.session_id,
-        user_id=user_id,
-        page_route=request.page_route,
-        form_type=request.form_type,
-        org_id=org_id,
-    )
-    response = await _finalize_chat(
-        response,
-        user_message=request.message,
-        user_id=user_id,
-        page_route=request.page_route,
-        form_type=request.form_type,
-        org_id=org_id,
-    )
+    try:
+        assistant = AssistantService()
+        response = await assistant.process(
+            message=request.message,
+            session_id=request.session_id,
+            user_id=user_id,
+            page_route=request.page_route,
+            form_type=request.form_type,
+            org_id=org_id,
+        )
+        response = await _finalize_chat(
+            response,
+            user_message=request.message,
+            user_id=user_id,
+            page_route=request.page_route,
+            form_type=request.form_type,
+            org_id=org_id,
+        )
+    except Exception as exc:
+        logger.exception("chat stream failed: %s", exc)
+        raise HTTPException(status_code=500, detail="Не удалось обработать сообщение чата") from exc
 
     async def event_stream():
         accumulated = ""

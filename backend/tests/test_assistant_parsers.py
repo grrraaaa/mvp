@@ -183,6 +183,15 @@ def test_has_critical_error():
     assert pv.has_critical_error(hints)
 
 
+def test_insurance_reply_handler_is_sync():
+    """Regression: awaiting sync _maybe_insurance_reply caused HTTP 500 on chat."""
+    import inspect
+
+    from services.ai.assistant import AssistantService
+
+    assert not inspect.iscoroutinefunction(AssistantService._maybe_insurance_reply)
+
+
 if __name__ == "__main__":
     failures = 0
     for name, fn in sorted(globals().items()):

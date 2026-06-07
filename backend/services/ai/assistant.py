@@ -912,7 +912,7 @@ class AssistantService:
         if service_reply:
             return service_reply
 
-        insurance_reply = await self._maybe_insurance_reply(message, session_id)
+        insurance_reply = self._maybe_insurance_reply(message, session_id)
         if insurance_reply:
             return insurance_reply
 
