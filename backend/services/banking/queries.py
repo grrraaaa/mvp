@@ -26,10 +26,44 @@ from services.banking.search import (
 )
 
 
+def _build_search_payload(message: str, hits: list, sources: list[dict], text: str) -> dict:
+    """Common envelope for search results: navigation on single hit, chips on empty."""
+    payload: dict = {"message": text, "sources": sources}
+    buttons: list[dict] = []
+    if hits:
+        first_url = sources[0]["url"] if sources else document_view_url(hits[0].id)
+        is_cp = hits[0].kind == "counterparty"
+        label = (
+            "Открыть карточку"
+            if is_cp
+            else ("Открыть отчёт" if hits[0].kind == "report" else "Открыть документ")
+        )
+        buttons.append({"label": label, "url": first_url, "variant": "primary"})
+        # Single hit → navigate straight to it (counterparty card / document view).
+        if len(hits) == 1 and first_url:
+            payload["ui_actions"] = [{"type": "navigate", "target": first_url}]
+        if hits[0].kind == "payment":
+            cp = hits[0].title.split("—")[-1].strip() if "—" in hits[0].title else ""
+            if cp:
+                buttons.append({"label": "Связанные платежи", "message": f"Платежи {cp}", "variant": "secondary"})
+        if len(hits) > 1:
+            buttons.append({"label": "Все документы", "url": "/other/documents", "variant": "secondary"})
+    else:
+        payload["suggested_chips"] = [
+            "Найди платежи Иванова",
+            "Покажи карточку клиента Петров",
+            "Сколько на счёте?",
+        ]
+    payload["action_buttons"] = buttons
+    return payload
+
+
 async def lookup_counterparty(
     session: AsyncSession, org_id: str, name: str
 ) -> Counterparty | None:
-    """Найти контрагента организации в PostgreSQL по имени."""
+    """Найти контрагента организации в PostgreSQL по имени (с учётом падежей)."""
+    from services.banking.search import _match_variants
+
     query = (name or "").strip()
     if len(query) < 2:
         return None
@@ -38,7 +72,26 @@ async def lookup_counterparty(
         .where(Counterparty.org_id == org_id, Counterparty.name.ilike(f"%{query}%"))
         .limit(1)
     )
-    return result.scalar_one_or_none()
+    row = result.scalar_one_or_none()
+    if row:
+        return row
+
+    # Fallback: попробовать по отдельным значимым токенам с нормализацией падежей
+    tokens = [t for t in re.split(r"\s+", query) if len(t) >= 3]
+    for token in tokens:
+        for variant in _match_variants(token.lower()):
+            result = await session.execute(
+                select(Counterparty)
+                .where(
+                    Counterparty.org_id == org_id,
+                    Counterparty.name.ilike(f"%{variant}%"),
+                )
+                .limit(1)
+            )
+            row = result.scalar_one_or_none()
+            if row:
+                return row
+    return None
 
 
 async def get_org_profile(session: AsyncSession, org_id: str = "demo") -> OrganizationProfile:
@@ -79,8 +132,48 @@ def is_search_query(message: str) -> bool:
     low = message.lower()
     return bool(
         re.search(
-            r"найди|найти|покажи|поиск|где\s+(?:платёж|платеж|документ|счёт|счет)|"
-            r"карточк\w*\s+(?:клиент|контрагент)",
+            r"найди|найти|нади|найй|поищи|\bищи\b|покажи|показать|поиск|"
+            r"где\s+(?:платёж|платеж|документ|счёт|счет|оплат)|"
+            r"карточк\w*\s+(?:клиент|контрагент)|"
+            r"откро\w*\s+(?:карточк|контрагент|клиент)",
+            low,
+        )
+    )
+
+
+# «платежи Иванова за март», «переводы ООО Ромашка», «оплаты Петрова»
+_PAYMENTS_BY_NAME_RE = re.compile(
+    r"^(?:покажи\s+|найди\s+|все\s+)?(?:платеж\w*|плат[её]ж\w*|перевод\w*|оплат\w*)\s+(.+)$",
+    re.I,
+)
+
+
+def is_payments_by_name_query(message: str) -> bool:
+    low = message.strip().lower()
+    if re.search(r"посл[ае]дн|создай|созда\w*\s+плат|повтор|отложен|аренд", low):
+        return False
+    m = _PAYMENTS_BY_NAME_RE.match(message.strip())
+    if not m:
+        return False
+    rest = m.group(1).strip()
+    # need an actual name token (letters), not just a period word
+    cleaned = re.sub(
+        r"за\s+|в\s+|на\s+|период\w*|месяц\w*|квартал\w*|год\w*|"
+        r"январ\w*|феврал\w*|март\w*|апрел\w*|ма[йя]\w*|июн\w*|июл\w*|"
+        r"август\w*|сентябр\w*|октябр\w*|ноябр\w*|декабр\w*|20\d{2}|\d+|[«»\"'.,]",
+        " ",
+        rest,
+        flags=re.I,
+    )
+    return len(cleaned.strip()) >= 3
+
+
+def is_open_counterparty_query(message: str) -> bool:
+    low = message.lower()
+    return bool(
+        re.search(
+            r"(?:откро\w*|покажи|показать|открыть)\s+(?:карточк\w*\s+)?(?:контрагент\w*|клиент\w*|поставщик\w*)"
+            r"|карточк\w*\s+(?:контрагент\w*|клиент\w*)",
             low,
         )
     )
@@ -618,6 +711,41 @@ async def handle_banking_query(
             ],
         }
 
+    if is_open_counterparty_query(message):
+        query = re.sub(
+            r"откро\w*|покажи|показать|открыть|карточк\w*|контрагент\w*|клиент\w*|поставщик\w*",
+            "",
+            message,
+            flags=re.I,
+        ).strip(" .«»\"'")
+        cp = await lookup_counterparty(session, org_id, query) if query else None
+        if cp:
+            url = f"/services/counterparty?cp={cp.id}"
+            return {
+                "message": (
+                    f"Открываю карточку контрагента **{cp.name}**.\n"
+                    f"УНП: {cp.unp or '—'} · Счёт: {cp.account or '—'} · Банк: {cp.bank_name or '—'}"
+                ),
+                "sources": [
+                    {"index": 1, "label": f"Источник 1: {cp.name}", "kind": "counterparty", "id": cp.id, "url": url}
+                ],
+                "ui_actions": [{"type": "navigate", "target": url}],
+                "action_buttons": [
+                    {"label": "Открыть карточку", "url": url, "variant": "primary"},
+                    {"label": "Проверить риск", "message": f"Проверь контрагента {cp.name}", "variant": "secondary"},
+                    {"label": "Создать платёж", "message": f"Создай платёжку для {cp.name}", "variant": "secondary"},
+                ],
+            }
+        # fall through to generic search if no exact counterparty matched
+
+    if is_payments_by_name_query(message):
+        m = _PAYMENTS_BY_NAME_RE.match(message.strip())
+        rest = m.group(1).strip() if m else message
+        hits = await smart_search(session, f"платежи {rest}", org_id=org_id)
+        hits = [h for h in hits if h.kind == "payment"] or hits
+        text, sources = format_search_response(f"платежи {rest}", hits)
+        return _build_search_payload(message, hits, sources, text)
+
     if is_report_query(message) or (
         is_search_query(message) and re.search(r"отчёт|отчет|report", low)
     ):
@@ -625,28 +753,12 @@ async def handle_banking_query(
         if not hits and is_search_query(message):
             hits = await smart_search(session, message, org_id=org_id)
         text, sources = format_search_response(message, hits)
-        buttons = []
-        if hits:
-            first_url = sources[0]["url"] if sources else document_view_url(hits[0].id)
-            label = "Открыть отчёт" if hits[0].kind == "report" else "Открыть"
-            buttons.append({"label": label, "url": first_url, "variant": "primary"})
-            buttons.append({"label": "Выписка за период", "url": "/statement/account?period=month", "variant": "secondary"})
-            if len(hits) > 1:
-                buttons.append({"label": "Все документы", "url": "/other/documents", "variant": "secondary"})
-        return {"message": text, "sources": sources, "action_buttons": buttons}
+        return _build_search_payload(message, hits, sources, text)
 
     if is_search_query(message):
         hits = await smart_search(session, message, org_id=org_id)
         text, sources = format_search_response(message, hits)
-        buttons = []
-        if hits:
-            first_url = sources[0]["url"] if sources else document_view_url(hits[0].id)
-            buttons.append({"label": "Открыть", "url": first_url, "variant": "primary"})
-            if hits[0].kind == "payment":
-                cp = hits[0].title.split("—")[-1].strip() if "—" in hits[0].title else ""
-                if cp:
-                    buttons.append({"label": "Связанные платежи", "message": f"Платежи {cp}", "variant": "secondary"})
-        return {"message": text, "sources": sources, "action_buttons": buttons}
+        return _build_search_payload(message, hits, sources, text)
 
     if re.search(r"выписк", low) and re.search(r"сч[её]т|период|за\s+", low):
         missing = []

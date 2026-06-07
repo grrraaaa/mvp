@@ -127,6 +127,21 @@ def _search_terms(text: str) -> list[str]:
     return terms
 
 
+def _match_variants(token: str) -> list[str]:
+    """Лёгкая нормализация падежных окончаний: «Иванова»→«Иванов», «Ромашку»→«Ромашк».
+
+    Возвращает варианты подстрок для ILIKE-поиска (от исходного к более короткому стему).
+    """
+    variants = [token]
+    # отрезаем до 2 последних символов, сохраняя минимально осмысленный стем
+    for cut in (1, 2):
+        if len(token) - cut >= 5:
+            stem = token[:-cut]
+            if stem not in variants:
+                variants.append(stem)
+    return variants
+
+
 async def search_reports(
     session: AsyncSession, query: str, limit: int = 10, org_id: str = "demo"
 ) -> list[SearchHit]:
@@ -204,8 +219,9 @@ async def smart_search(
         doc_filters.append(BankDocument.amount == amount)
     terms = _search_terms(low)
     for token in terms:
-        doc_filters.append(BankDocument.counterparty.ilike(f"%{token}%"))
-        doc_filters.append(BankDocument.purpose.ilike(f"%{token}%"))
+        for variant in _match_variants(token):
+            doc_filters.append(BankDocument.counterparty.ilike(f"%{variant}%"))
+            doc_filters.append(BankDocument.purpose.ilike(f"%{variant}%"))
         doc_filters.append(BankDocument.doc_type.ilike(f"%{token}%"))
 
     stmt = select(BankDocument).where(BankDocument.org_id == org_id)
@@ -250,7 +266,8 @@ async def smart_search(
     cp_stmt = select(Counterparty).where(Counterparty.org_id == org_id)
     cp_filters = []
     for token in terms:
-        cp_filters.append(Counterparty.name.ilike(f"%{token}%"))
+        for variant in _match_variants(token):
+            cp_filters.append(Counterparty.name.ilike(f"%{variant}%"))
         cp_filters.append(Counterparty.unp.ilike(f"%{token}%"))
     if cp_filters:
         cp_result = await session.execute(cp_stmt.where(or_(*cp_filters)).limit(5))
