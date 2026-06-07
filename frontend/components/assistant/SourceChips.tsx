@@ -36,13 +36,20 @@ export function SourceChips({ sources, onShowSource, compact }: Props) {
             </button>
           );
         }
+        const isExternal = Boolean(src.url && /^https?:\/\//i.test(src.url));
         return (
           <button
             key={src.index}
             type="button"
             className={className}
             title={src.label}
-            onClick={() => onShowSource?.(src)}
+            onClick={() => {
+              if (isExternal && src.url) {
+                window.open(src.url, "_blank", "noopener,noreferrer");
+                return;
+              }
+              onShowSource?.(src);
+            }}
           >
             {inner}
           </button>

@@ -287,6 +287,10 @@ export function AssistantPanel({ variant = "default", compactMobile = false, onR
         router.push(url);
         return;
       }
+      if (source.url && /^https?:\/\//i.test(source.url)) {
+        window.open(source.url, "_blank", "noopener,noreferrer");
+        return;
+      }
       void sendMessage(`Покажи источник №${source.index}`);
     },
     [router, sendMessage],

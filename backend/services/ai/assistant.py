@@ -33,6 +33,12 @@ from services.ai.form_schemas import (
     field_by_key,
     field_labels_for_keys,
 )
+from services.ai.knowledge_sources import (
+    CITE_SOURCES_TOOL,
+    default_sources_for_message,
+    is_knowledge_question,
+    sources_from_ids,
+)
 from services.sber_links import (
     SYSTEM_PROMPT,
     catalog_url,
@@ -914,6 +920,14 @@ class AssistantService:
         if product_reply:
             return product_reply
 
+        if self._openai_available and is_knowledge_question(message):
+            try:
+                return await self._process_openai(
+                    message, session_id, form_type=form_type, knowledge_mode=True
+                )
+            except Exception as exc:
+                logger.exception("LLM knowledge Q&A failed, continuing pipeline: %s", exc)
+
         if self._openai_available:
             try:
                 return await self._process_openai(message, session_id, form_type=form_type)
@@ -1530,7 +1544,11 @@ class AssistantService:
         return AsyncOpenAI(**kwargs)
 
     async def _process_openai(
-        self, message: str, session_id: str, form_type: Optional[str] = None
+        self,
+        message: str,
+        session_id: str,
+        form_type: Optional[str] = None,
+        knowledge_mode: bool = False,
     ) -> AssistantResponse:
         client = self._llm_client()
 
@@ -1561,6 +1579,7 @@ class AssistantService:
                     },
                 },
             },
+            CITE_SOURCES_TOOL,
         ]
 
         if form_type:
@@ -1595,6 +1614,12 @@ class AssistantService:
                 )
 
         system_prompt = SYSTEM_PROMPT
+        if knowledge_mode:
+            system_prompt += (
+                "\n\nСейчас пользователь задаёт вопрос по налогам, законодательству, "
+                "ФСЗН или страховым взносам. Дай развёрнутый ответ и обязательно "
+                "вызови cite_knowledge_sources с релевантными source_ids."
+            )
         if form_type:
             schema = load_form_schema(form_type)
             if schema:
@@ -1619,12 +1644,15 @@ class AssistantService:
         products = None
         buttons: List[ActionButton] = []
         form_actions: Optional[List[FormFieldAction]] = None
+        knowledge_sources: Optional[List[SourceRef]] = None
         last_section = "home"
 
         if ai_msg.tool_calls:
             for tc in ai_msg.tool_calls:
                 args = json.loads(tc.function.arguments)
-                if tc.function.name == "find_products":
+                if tc.function.name == "cite_knowledge_sources":
+                    knowledge_sources = sources_from_ids(args.get("source_ids", []))
+                elif tc.function.name == "find_products":
                     raw = await self.products.search(args)
                     products = _external_products(raw[:3])
                     ptype = args.get("product_type")
@@ -1648,10 +1676,13 @@ class AssistantService:
         if form_actions:
             filled = ", ".join(a.label or a.field.split(".")[-1] for a in form_actions)
             text = ai_msg.content or f"Заполняю поля: {filled}."
+        elif knowledge_mode or is_knowledge_question(message):
+            if not knowledge_sources:
+                knowledge_sources = default_sources_for_message(message)
         elif not re.search(r"(^/\w|sbbol\.bps-sberbank)", text):
             text = f"{text}\n\n{format_link_line('Раздел СберБизнес', section_url(last_section))}"
 
-        if not form_actions:
+        if not form_actions and not knowledge_sources:
             buttons.insert(
                 0,
                 ActionButton(
@@ -1668,4 +1699,5 @@ class AssistantService:
             products=products,
             action_buttons=buttons if buttons else None,
             form_actions=form_actions,
+            sources=knowledge_sources or None,
         )
