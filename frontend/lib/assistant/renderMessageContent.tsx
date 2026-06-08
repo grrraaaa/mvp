@@ -8,8 +8,24 @@ type Token =
 const TOKEN_RE =
   /\[([^\]]+)\]\((https?:\/\/[^)\s]+)\)|(https?:\/\/[^\s<)\]]+)|(?<![\w.])(\/[\w\-/]+)/g;
 
+const GOV_URL_FIXES: [RegExp, string][] = [
+  [/https?:\/+\.?nalog\.gov\.by[^\s)\]]*/gi, "https://www.nalog.gov.by/"],
+  [/https?:\/+\.?minfin\.gov\.by[^\s)\]]*/gi, "https://www.minfin.gov.by/"],
+  [/https?:\/+\.?ssf\.gov\.by[^\s)\]]*/gi, "https://www.ssf.gov.by/"],
+  [/https?:\/+\.?bgs\.by[^\s)\]]*/gi, "https://www.bgs.by/"],
+  [/https?:\/+\.?by[^\s)\]]*/gi, "https://pravo.by/"],
+];
+
+function normalizeBrokenGovUrls(text: string): string {
+  let out = text;
+  for (const [pattern, replacement] of GOV_URL_FIXES) {
+    out = out.replace(pattern, replacement);
+  }
+  return out;
+}
+
 export function tokenizeAssistantMessage(text: string): Token[] {
-  const normalized = normalizeAssistantLinks(text);
+  const normalized = normalizeBrokenGovUrls(normalizeAssistantLinks(text));
   const tokens: Token[] = [];
   let last = 0;
 

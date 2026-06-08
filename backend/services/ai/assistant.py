@@ -39,6 +39,7 @@ from services.ai.knowledge_sources import (
     is_knowledge_question,
     sources_from_ids,
 )
+from services.ai.llm_message_format import format_knowledge_answer
 from services.sber_links import (
     SYSTEM_PROMPT,
     catalog_url,
@@ -1614,11 +1615,12 @@ class AssistantService:
                 )
 
         system_prompt = SYSTEM_PROMPT
-        if knowledge_mode:
+        is_knowledge = knowledge_mode or is_knowledge_question(message)
+        if is_knowledge:
             system_prompt += (
-                "\n\nСейчас пользователь задаёт вопрос по налогам, законодательству, "
-                "ФСЗН или страховым взносам. Дай развёрнутый ответ и обязательно "
-                "вызови cite_knowledge_sources с релевантными source_ids."
+                "\n\nСейчас вопрос по налогам/законодательству/ФСЗН. "
+                "Соблюдай СТРОГИЙ ФОРМАТ: только текст ответа, без JSON и блока «Источники». "
+                "Обязательно вызови tool cite_knowledge_sources с id: nalog, minfin, pravo, ssf и/или bgs."
             )
         if form_type:
             schema = load_form_schema(form_type)
@@ -1629,15 +1631,19 @@ class AssistantService:
                     + schema_field_summary(schema)
                 )
 
-        resp = await client.chat.completions.create(
-            model=settings.OPENAI_MODEL,
-            messages=[
+        completion_kwargs: dict = {
+            "model": settings.OPENAI_MODEL,
+            "messages": [
                 {"role": "system", "content": system_prompt},
                 {"role": "user", "content": message},
             ],
-            tools=TOOLS,
-            tool_choice="auto",
-        )
+            "tools": TOOLS,
+            "tool_choice": "auto",
+        }
+        if is_knowledge:
+            completion_kwargs["temperature"] = 0
+
+        resp = await client.chat.completions.create(**completion_kwargs)
 
         ai_msg = resp.choices[0].message
         nav_path = None
@@ -1672,15 +1678,19 @@ class AssistantService:
                         for f in args.get("fields", [])
                     ]
 
-        text = sanitize_message_urls(ai_msg.content or response_message("default"))
+        raw_text = ai_msg.content or ""
         if form_actions:
             filled = ", ".join(a.label or a.field.split(".")[-1] for a in form_actions)
-            text = ai_msg.content or f"Заполняю поля: {filled}."
-        elif knowledge_mode or is_knowledge_question(message):
+            text = raw_text or f"Заполняю поля: {filled}."
+            text = sanitize_message_urls(text)
+        elif is_knowledge:
             if not knowledge_sources:
                 knowledge_sources = default_sources_for_message(message)
-        elif not re.search(r"(^/\w|sbbol\.bps-sberbank)", text):
-            text = f"{text}\n\n{format_link_line('Раздел СберБизнес', section_url(last_section))}"
+            text = format_knowledge_answer(raw_text, knowledge_sources)
+        else:
+            text = sanitize_message_urls(raw_text or response_message("default"))
+            if not re.search(r"(^/\w|sbbol\.bps-sberbank)", text):
+                text = f"{text}\n\n{format_link_line('Раздел СберБизнес', section_url(last_section))}"
 
         if not form_actions and not knowledge_sources:
             buttons.insert(
