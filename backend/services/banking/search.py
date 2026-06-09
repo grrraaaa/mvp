@@ -94,6 +94,34 @@ def _parse_month_year(text: str) -> tuple[str | None, str | None]:
     return month, year
 
 
+def _parse_doc_number(query: str) -> str | None:
+    """Извлечь номер документа из запроса: «покажи отчёт номер 211» → «211».
+
+    Поддерживает:
+    - «№211», «№ 211», «№211/1» (берёт только цифры до слэша/буквы)
+    - «номер 211», «номером 211», «номер №211»
+    - «документ 211», «отчёт 211»
+    """
+    low = query.lower()
+    # Сначала явный «номер» / «№» — это надёжный сигнал, что цифра = номер документа
+    m = re.search(
+        r"(?:номер\w*|№)\s*№?\s*(\d{1,6})",
+        low,
+    )
+    if m:
+        return m.group(1)
+    # Иначе любая цифра, если запрос про документ/отчёт/выписку
+    if re.search(r"документ\w*|отч[её]т\w*|выписк\w*|плат[её]ж\w*|платёж\w*", low):
+        m = re.search(r"(\d{1,6})", low)
+        if m:
+            n = int(m.group(1))
+            # 4-значные 2000–2099 — это годы, не номера; 19xx/20xx — тоже годы
+            if 1900 <= n <= 2099:
+                return None
+            return m.group(1)
+    return None
+
+
 def document_view_url(doc_id: str) -> str:
     """Страница просмотра документа / отчёта в демо-интерфейсе."""
     return f"/other/documents/view?doc={doc_id}"
@@ -147,6 +175,7 @@ async def search_reports(
 ) -> list[SearchHit]:
     """Поиск отчётов и информационных документов (INFO:*, выписки)."""
     month, year = _parse_month_year(query)
+    doc_number = _parse_doc_number(query)
     stmt = select(BankDocument).where(BankDocument.org_id == org_id)
     result = await session.execute(stmt.limit(200))
     rows = result.scalars().all()
@@ -165,6 +194,8 @@ async def search_reports(
                 continue
         if year and d.doc_date and year not in d.doc_date and year not in d.purpose:
             continue
+        if doc_number and doc_number not in (d.doc_number or ""):
+            continue
         kind_label = d.doc_type.replace(INFO_PREFIX, "") if is_info else d.doc_type
         hits.append(
             SearchHit(
@@ -179,11 +210,13 @@ async def search_reports(
             )
         )
 
-    if not hits and (month or year):
+    if not hits and (month or year or doc_number):
         for d in rows:
             if month and d.doc_date and f".{month}." not in d.doc_date:
                 continue
             if year and d.doc_date and year not in d.doc_date:
+                continue
+            if doc_number and doc_number not in (d.doc_number or ""):
                 continue
             if d.amount <= 0 and not d.doc_type.startswith(INFO_PREFIX):
                 continue
@@ -213,10 +246,14 @@ async def smart_search(
     low = q.lower()
     amount = _parse_amount(q)
     month, year = _parse_month_year(q)
+    doc_number = _parse_doc_number(q)
 
     doc_filters = []
     if amount is not None:
         doc_filters.append(BankDocument.amount == amount)
+    if doc_number is not None:
+        # Точное/частичное совпадение по номеру (без префикса «№»)
+        doc_filters.append(BankDocument.doc_number.ilike(f"%{doc_number}%"))
     terms = _search_terms(low)
     for token in terms:
         for variant in _match_variants(token):
@@ -234,6 +271,8 @@ async def smart_search(
         docs = [d for d in docs if d.doc_date and f".{month}." in d.doc_date]
     if year:
         docs = [d for d in docs if d.doc_date and year in d.doc_date]
+    if doc_number:
+        docs = [d for d in docs if doc_number in (d.doc_number or "")]
     if re.search(r"сч[её]т", low) and not re.search(r"выписк|остаток|баланс", low):
         docs = [
             d
@@ -249,19 +288,34 @@ async def smart_search(
         if payment_docs:
             docs = payment_docs
 
-    hits: list[SearchHit] = [
-        SearchHit(
-            kind="payment",
-            id=d.id,
-            title=f"{d.doc_number} — {d.counterparty}",
-            subtitle=d.purpose[:120],
-            amount=d.amount,
-            currency=d.currency,
-            status=d.status,
-            url=document_view_url(d.id),
+    hits: list[SearchHit] = []
+    for d in docs:
+        is_info = d.doc_type.startswith(INFO_PREFIX)
+        # Для информационных документов (INFO:*) у контрагента и суммы обычно
+        # пусто — рендерим как «отчёт», чтобы карточка открывалась корректно,
+        # а в заголовке показываем тип, а не пустую строку.
+        if is_info:
+            kind = "report"
+            kind_label = d.doc_type.replace(INFO_PREFIX, "")[:50]
+            title = f"{d.doc_number} — {kind_label}" if kind_label else d.doc_number
+            subtitle = d.purpose[:120] or d.counterparty[:80]
+        else:
+            kind = "payment"
+            cp = d.counterparty or d.purpose[:80]
+            title = f"{d.doc_number} — {cp}" if cp else d.doc_number
+            subtitle = d.purpose[:120]
+        hits.append(
+            SearchHit(
+                kind=kind,
+                id=d.id,
+                title=title,
+                subtitle=subtitle,
+                amount=d.amount,
+                currency=d.currency,
+                status=d.status,
+                url=document_view_url(d.id),
+            )
         )
-        for d in docs
-    ]
 
     cp_stmt = select(Counterparty).where(Counterparty.org_id == org_id)
     cp_filters = []
