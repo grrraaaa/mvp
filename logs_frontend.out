@@ -1,40 +1,15 @@
-
+PS C:\Users\New\Desktop\sber\mvp\frontend> 
 > sber-ai-frontend@0.1.0 dev
 > next dev
 
    ▲ Next.js 15.5.18
    - Local:        http://localhost:3000
-   - Network:      http://26.245.233.228:3000
+   - Network:      http://10.0.0.2:3000
    - Environments: .env.local
 
  ✓ Starting...
- ✓ Ready in 1633ms
- ✓ Compiled /middleware in 212ms (115 modules)
+ ✓ Ready in 2.8s
+ ✓ Compiled /middleware in 162ms (115 modules)
  ○ Compiling / ...
- ✓ Compiled / in 1957ms (2696 modules)
- GET / 200 in 2589ms
- ○ Compiling /_not-found ...
- ✓ Compiled /_not-found in 2.3s (2310 modules)
- GET /resource 404 in 2531ms
- GET /resource 404 in 33ms
- ✓ Compiled / in 308ms (1422 modules)
- GET / 200 in 545ms
- GET / 200 in 40ms
- ○ Compiling /login ...
- ✓ Compiled /login in 997ms (2758 modules)
- GET /login 200 in 1243ms
- GET /login 200 in 45ms
- GET / 200 in 144ms
- GET /login 200 in 24ms
- GET /resource 404 in 41ms
- GET / 200 in 51ms
- GET /login 200 in 42ms
- ✓ Compiled in 493ms (1314 modules)
- ✓ Compiled in 240ms (1314 modules)
- ✓ Compiled in 296ms (1314 modules)
- ✓ Compiled in 273ms (1314 modules)
- GET /login 200 in 58ms
- GET / 200 in 39ms
- POST / 200 in 42ms
- GET / 200 in 40ms
-[?25h
+ ✓ Compiled / in 1894ms (2696 modules)
+ GET / 200 in 2336ms

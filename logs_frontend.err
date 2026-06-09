@@ -1,2 +1,9 @@
-(node:3900) Warning: `--localstorage-file` was provided without a valid path
+строка:1 знак:43
++ cd C:\Users\New\Desktop\sber\mvp\frontend && npm run dev
++                                           ~~
+Лексема "&&" не является допустимым разделителем операторов в этой версии.
+    + CategoryInfo          : ParserError: (:) [], ParentContainsErrorRecordException
+    + FullyQualifiedErrorId : InvalidEndOfLine
+ 
+(node:628) Warning: `--localstorage-file` was provided without a valid path
 (Use `node --trace-warnings ...` to show where the warning was created)
