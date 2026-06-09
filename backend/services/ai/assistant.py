@@ -66,6 +66,19 @@ INTENTS = [
         "product_type": None,
     },
     {
+        "intent": "info_requests",
+        "patterns": [
+            r"информационн\w*\s+запрос",
+            r"запрос\w*\s+выписк",
+            r"запрос\w*\s+информац",
+            r"запрос\w*\s+остатк",
+            r"информац\w*\s+по\s+счет",
+            r"остаток\s+по\s+счет",
+        ],
+        "section": "info_requests",
+        "product_type": None,
+    },
+    {
         "intent": "statement",
         "patterns": [r"выписк", r"оборот", r"справк", r"остаток\s+на\s+сч"],
         "section": "statement",
@@ -139,17 +152,6 @@ INTENTS = [
         "intent": "products",
         "patterns": [r"продукт", r"услуг\w*\s+для\s+бизнес", r"юрлиц", r"организац"],
         "section": "products",
-        "product_type": None,
-    },
-    {
-        "intent": "info_requests",
-        "patterns": [
-            r"запрос\w*\s+выписк",
-            r"запрос\w*\s+информац",
-            r"информац\w*\s+по\s+счет",
-            r"остаток\s+по\s+счет",
-        ],
-        "section": "info_requests",
         "product_type": None,
     },
 ]

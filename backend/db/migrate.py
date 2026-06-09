@@ -1,9 +1,13 @@
 """Лёгкие миграции для демо-БД (без Alembic)."""
 from __future__ import annotations
 
+import logging
+
 from sqlalchemy import text
 
 from db.database import engine
+
+logger = logging.getLogger(__name__)
 
 PG_MIGRATIONS = [
     "ALTER TABLE users ADD COLUMN IF NOT EXISTS login VARCHAR",
@@ -32,5 +36,8 @@ async def run_migrations():
         for stmt in PG_MIGRATIONS:
             try:
                 await conn.execute(text(stmt))
-            except Exception:
-                pass
+            except Exception as exc:  # noqa: BLE001
+                # IF NOT EXISTS уже защищает от повторов, но если миграция
+                # валится по другой причине — это нужно увидеть в логах
+                logger.warning("migration step skipped: %s | %s", stmt[:60], exc)
+

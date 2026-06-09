@@ -71,10 +71,21 @@ SEED_PRODUCTS = [
 
 
 async def seed_products():
+    """Итеративный upsert: если продукт уже есть — обновляем поля, иначе создаём.
+    Так новые SEED_PRODUCTS досиживаются при последующих деплоях.
+    """
     async with AsyncSessionLocal() as session:
-        result = await session.execute(select(Product).limit(1))
-        if result.scalar_one_or_none():
-            return
         for p in SEED_PRODUCTS:
-            session.add(Product(id=str(uuid.uuid4()), **p))
+            existing = await session.execute(
+                select(Product).where(Product.name == p["name"])
+            )
+            row = existing.scalar_one_or_none()
+            if row:
+                row.type = p["type"]
+                row.rate = p["rate"]
+                row.description = p["description"]
+                row.url = p["url"]
+            else:
+                session.add(Product(id=str(uuid.uuid4()), **p))
         await session.commit()
+

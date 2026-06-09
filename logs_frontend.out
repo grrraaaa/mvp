@@ -1,0 +1,67 @@
+
+> sber-ai-frontend@0.1.0 dev
+> next dev
+
+   ▲ Next.js 15.5.18
+   - Local:        http://localhost:3000
+   - Network:      http://26.245.233.228:3000
+   - Environments: .env.local
+
+ ✓ Starting...
+ ✓ Ready in 2.3s
+ ○ Compiling /middleware ...
+ ✓ Compiled /middleware in 541ms (115 modules)
+ ○ Compiling / ...
+ ✓ Compiled / in 10.9s (2715 modules)
+ GET /node_modules/.vite/deps/react_jsx-dev-runtime.js?v=68a38aa0 404 in 11396ms
+ GET /node_modules/.vite/deps/react.js?v=68a38aa0 404 in 11402ms
+ GET /src/main.tsx 404 in 11540ms
+ GET /@react-refresh 404 in 11544ms
+ GET /@vite/client 404 in 11551ms
+ GET /src/RoleContext.tsx 404 in 74ms
+ GET /node_modules/.vite/deps/react-dom_client.js?v=7eebc2da 404 in 81ms
+ GET / 200 in 11627ms
+ GET /node_modules/.vite/deps/motion_react.js?v=cc609dca 404 in 126ms
+ GET /node_modules/.vite/deps/lucide-react.js?v=05ec8871 404 in 84ms
+ GET /src/App.tsx 404 in 216ms
+ GET /src/index.css 404 in 215ms
+ GET /node_modules/vite/dist/client/env.mjs 404 in 215ms
+ GET /src/components/Navbar.tsx 404 in 41ms
+ GET / 200 in 288ms
+ GET /src/components/Sidebar.tsx 404 in 44ms
+ GET /src/components/MoneyView.tsx 404 in 83ms
+ GET /src/components/Copilot.tsx 404 in 88ms
+ GET /src/components/Footer.tsx 404 in 90ms
+ GET /src/components/PaymentsView.tsx 404 in 123ms
+ GET /src/components/PayrollView.tsx 404 in 65ms
+ GET /src/components/StatementView.tsx 404 in 68ms
+ GET /src/components/OtherView.tsx 404 in 87ms
+ GET /src/components/ServicesView.tsx 404 in 90ms
+ GET /src/components/ProductsView.tsx 404 in 96ms
+ GET /src/components/SettingsView.tsx 404 in 113ms
+ GET /src/components/CreateDocumentModal.tsx 404 in 74ms
+ GET /node_modules/.vite/deps/react_jsx-dev-runtime.js?v=68a38aa0 404 in 115ms
+ GET /node_modules/.vite/deps/react.js?v=68a38aa0 404 in 127ms
+ GET /@vite/client 404 in 248ms
+ GET /node_modules/.vite/deps/react-dom_client.js?v=7eebc2da 404 in 40ms
+ GET /src/RoleContext.tsx 404 in 38ms
+ GET /@react-refresh 404 in 215ms
+ GET /src/main.tsx 404 in 228ms
+ GET /node_modules/.vite/deps/motion_react.js?v=cc609dca 404 in 63ms
+ GET /src/components/Navbar.tsx 404 in 99ms
+ GET /node_modules/.vite/deps/lucide-react.js?v=05ec8871 404 in 101ms
+ GET /src/App.tsx 404 in 232ms
+ GET /src/index.css 404 in 183ms
+ GET /src/components/Sidebar.tsx 404 in 48ms
+ GET /node_modules/vite/dist/client/env.mjs 404 in 165ms
+ GET /src/components/Footer.tsx 404 in 92ms
+ GET /src/components/MoneyView.tsx 404 in 94ms
+ GET /src/components/Copilot.tsx 404 in 96ms
+ GET /src/components/StatementView.tsx 404 in 70ms
+ GET /src/components/PaymentsView.tsx 404 in 72ms
+ GET /src/components/PayrollView.tsx 404 in 147ms
+ GET /src/components/OtherView.tsx 404 in 147ms
+ GET /src/components/ServicesView.tsx 404 in 149ms
+ GET /src/components/ProductsView.tsx 404 in 150ms
+ GET /src/components/CreateDocumentModal.tsx 404 in 64ms
+ GET /src/components/SettingsView.tsx 404 in 67ms

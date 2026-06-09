@@ -1,0 +1,4 @@
+INFO:     127.0.0.1:52899 - "GET /api/health HTTP/1.1" 200 OK
+INFO:     127.0.0.1:52899 - "GET /api/admin/health HTTP/1.1" 200 OK
+INFO:     127.0.0.1:52899 - "GET /api/banking/documents?doc_prefix=INFO: HTTP/1.1" 401 Unauthorized
+INFO:     127.0.0.1:53010 - "POST /api/chat/guest HTTP/1.1" 200 OK

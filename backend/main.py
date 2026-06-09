@@ -9,7 +9,7 @@ from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 from contextlib import asynccontextmanager
 
-from api import auth, chat, products, navigation, forms, tts, banking, onec
+from api import auth, chat, products, navigation, forms, tts, banking, onec, admin
 from db.database import init_db
 from core.config import settings
 from core.site_auth import SiteBasicAuthMiddleware
@@ -49,6 +49,7 @@ app.include_router(forms.router, prefix="/api/forms", tags=["forms"])
 app.include_router(tts.router, prefix="/api/tts", tags=["tts"])
 app.include_router(banking.router, prefix="/api/banking", tags=["banking"])
 app.include_router(onec.router, prefix="/api/onec", tags=["onec"])
+app.include_router(admin.router, prefix="/api/admin", tags=["admin"])
 
 
 @app.get("/health")
