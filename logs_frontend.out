@@ -29,3 +29,12 @@
  GET /resource 404 in 41ms
  GET / 200 in 51ms
  GET /login 200 in 42ms
+ ✓ Compiled in 493ms (1314 modules)
+ ✓ Compiled in 240ms (1314 modules)
+ ✓ Compiled in 296ms (1314 modules)
+ ✓ Compiled in 273ms (1314 modules)
+ GET /login 200 in 58ms
+ GET / 200 in 39ms
+ POST / 200 in 42ms
+ GET / 200 in 40ms
+[?25h

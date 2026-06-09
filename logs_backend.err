@@ -1,4 +1,22 @@
-INFO:     Started server process [1692]
+postgresql+asyncpg://sber:sber@127.0.0.1:5432/sber=postgresql+asyncpg://sber:sber@127.0.0.1:5432/sber : Имя "postgresql
++asyncpg://sber:sber@127.0.0.1:5432/sber=postgresql+asyncpg://sber:sber@127.0.0.1:5432/sber" не распознано как имя кома
+ндлета, функции, файла сценария или выполняемой программы. Проверьте правильность написания имени, а также наличие и пр
+авильность пути, после чего повторите попытку.
+строка:1 знак:43
++ ... vp\backend; postgresql+asyncpg://sber:sber@127.0.0.1:5432/sber='postg ...
++                 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+    + CategoryInfo          : ObjectNotFound: (postgresql+asyn...0.0.1:5432/sber:String) [], CommandNotFoundException
+    + FullyQualifiedErrorId : CommandNotFoundException
+ 
+uvicorn : INFO:     Will watch for changes in these directories: ['C:\\Users\\New\\Desktop\\sber\\mvp\\backend']
+строка:1 знак:148
++ ... .0.0.1:5432/sber'; uvicorn main:app --reload --port 8000 2>&1 | Tee-O ...
++                        ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+    + CategoryInfo          : NotSpecified: (INFO:     Will ...\mvp\\backend']:String) [], RemoteException
+    + FullyQualifiedErrorId : NativeCommandError
+ 
+INFO:     Uvicorn running on http://127.0.0.1:8000 (Press CTRL+C to quit)
+INFO:     Started reloader process [15148] using WatchFiles
+INFO:     Started server process [7844]
 INFO:     Waiting for application startup.
 INFO:     Application startup complete.
-INFO:     Uvicorn running on http://127.0.0.1:8000 (Press CTRL+C to quit)
