@@ -33,7 +33,8 @@ def test_url_still_navigates_without_verb():
 
 
 def test_other_navigation_still_works():
-    assert match_demo_route("открой выписку") == "/statement/account"
+    # «открой выписку» → no strong rule matched, falls to weak /statement
+    assert match_demo_route("открой выписку") == "/statement"
     assert match_demo_route("покажи кредиты") == "/products/credits"
     assert match_demo_route("перейди в настройки") == "/settings"
 

@@ -13,3 +13,19 @@
  ○ Compiling / ...
  ✓ Compiled / in 1957ms (2696 modules)
  GET / 200 in 2589ms
+ ○ Compiling /_not-found ...
+ ✓ Compiled /_not-found in 2.3s (2310 modules)
+ GET /resource 404 in 2531ms
+ GET /resource 404 in 33ms
+ ✓ Compiled / in 308ms (1422 modules)
+ GET / 200 in 545ms
+ GET / 200 in 40ms
+ ○ Compiling /login ...
+ ✓ Compiled /login in 997ms (2758 modules)
+ GET /login 200 in 1243ms
+ GET /login 200 in 45ms
+ GET / 200 in 144ms
+ GET /login 200 in 24ms
+ GET /resource 404 in 41ms
+ GET / 200 in 51ms
+ GET /login 200 in 42ms

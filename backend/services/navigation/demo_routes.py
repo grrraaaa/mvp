@@ -96,12 +96,11 @@ _ROUTE_RULES: list[tuple[str, list[str]]] = [
             r"поручени\w*\s+на\s+платеж",
         ],
     ),
+    # Word-based patterns for /payments/counterparties are in weak_rules
+    # (require a verb) — only the URL stays here so direct navigation works.
     (
         "/payments/counterparties",
-        [
-            r"/payments/counterparties",
-            r"контрагент",
-        ],
+        [r"/payments/counterparties"],
     ),
     (
         "/statement/account",
