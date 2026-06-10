@@ -1,6 +1,7 @@
 """Запросы к банковским данным для ассистента."""
 from __future__ import annotations
 
+import logging
 import re
 from collections import defaultdict
 from datetime import datetime
@@ -30,6 +31,8 @@ from services.banking.search import (
     search_reports,
     smart_search,
 )
+
+logger = logging.getLogger(__name__)
 
 
 def _build_search_payload(message: str, hits: list, sources: list[dict], text: str) -> dict:
@@ -1282,6 +1285,7 @@ async def handle_banking_query(
         r"денежн\w*\s+поток\s+на\s+ближайш",
         low,
     ):
+        logger.info("[forecast] intent matched for: %r", message)
         horizon = 7
         # пытаемся вытащить горизонт из текста
         num_m = re.search(r"\b(\d{1,2})\s*(?:дн|дней|день)\b", low)
@@ -1297,6 +1301,7 @@ async def handle_banking_query(
             horizon = 30
 
         forecast = await build_cash_forecast(session, org_id, horizon_days=horizon)
+        logger.info("[forecast] built forecast via %s, horizon=%d", forecast.get("provider_source"), horizon)
         return forecast_to_assistant_response(forecast)
 
     # Старый rule-based «кассовый разрыв» с длинным горизонтом — оставлен как

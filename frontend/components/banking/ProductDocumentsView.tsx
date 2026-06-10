@@ -180,6 +180,24 @@ function filtersToQuery(f: FilterState): string {
   });
 }
 
+/** Конвертация dd.mm.yyyy → yyyy-mm-dd для <input type="date">. */
+function _ddmmyyyyToIso(value: string | null | undefined): string {
+  if (!value) return "";
+  const m = /^(\d{1,2})\.(\d{1,2})\.(\d{2,4})$/.exec(value);
+  if (!m) return "";
+  let [, d, mo, y] = m;
+  if (y.length === 2) y = `20${y}`;
+  return `${y}-${mo.padStart(2, "0")}-${d.padStart(2, "0")}`;
+}
+
+/** Конвертация yyyy-mm-dd (native date input) → dd.mm.yyyy для state/URL. */
+function _isoToDdMmYyyy(value: string): string | null {
+  if (!value) return null;
+  const m = /^(\d{4})-(\d{2})-(\d{2})$/.exec(value);
+  if (!m) return null;
+  return `${m[3]}.${m[2]}.${m[1]}`;
+}
+
 export default function ProductDocumentsView({
   title,
   docType,
@@ -597,6 +615,67 @@ export default function ProductDocumentsView({
             )}
           </div>
 
+          {/* Quick period segmented control — web-mobile style */}
+          {isAllDocsPage && (
+            <div
+              className="inline-flex items-center bg-white border border-gray-200 rounded-full p-0.5 text-xs font-semibold"
+              role="tablist"
+              aria-label="Быстрый период"
+            >
+              {[
+                { id: "all", label: "Все" },
+                { id: "year", label: "Год" },
+                { id: "month", label: "Месяц" },
+                { id: "range", label: "Период" },
+              ].map((chip) => {
+                const active =
+                  chip.id === "all"
+                    ? !filters.year && !filters.month && !filters.dateFrom && !filters.dateTo
+                    : chip.id === "year"
+                      ? filters.year != null && filters.month == null && !filters.dateFrom
+                      : chip.id === "month"
+                        ? filters.year != null && filters.month != null
+                        : !!(filters.dateFrom || filters.dateTo);
+                return (
+                  <button
+                    key={chip.id}
+                    type="button"
+                    role="tab"
+                    aria-selected={active}
+                    data-assistant-action={`quick-period-${chip.id}`}
+                    onClick={() => {
+                      if (chip.id === "all") {
+                        setFilters((f) => ({ ...f, year: null, month: null, dateFrom: null, dateTo: null }));
+                      } else if (chip.id === "year") {
+                        setFilters((f) => ({
+                          ...f,
+                          year: f.year ?? Math.max(...(years.length ? years : [new Date().getFullYear()])),
+                          month: null,
+                          dateFrom: null,
+                          dateTo: null,
+                        }));
+                      } else if (chip.id === "month") {
+                        const y = filters.year ?? Math.max(...(years.length ? years : [new Date().getFullYear()]));
+                        const m = filters.month ?? new Date().getMonth() + 1;
+                        setFilters((f) => ({ ...f, year: y, month: m, dateFrom: null, dateTo: null }));
+                      } else {
+                        // range — открываем панель, фокус на первое поле
+                        setFiltersOpen(true);
+                      }
+                    }}
+                    className={`px-3 py-1.5 rounded-full transition-colors ${
+                      active
+                        ? "bg-[#2d9494] text-white shadow-sm"
+                        : "text-gray-600 hover:text-[#2d9494]"
+                    }`}
+                  >
+                    {chip.label}
+                  </button>
+                );
+              })}
+            </div>
+          )}
+
           {/* Year dropdown */}
           {isAllDocsPage && (
             <div className="relative" ref={yearMenuRef}>
@@ -739,6 +818,133 @@ export default function ProductDocumentsView({
           </label>
         </div>
 
+        {/* Active-filter chips — web mobile summary. Видны всегда, когда есть фильтры. */}
+        {isAllDocsPage && activeFilterCount > 0 && (
+          <div
+            data-testid="active-filters"
+            className="max-w-6xl mx-auto mt-2 flex flex-wrap items-center gap-1.5"
+          >
+            <span className="text-[11px] text-gray-500 uppercase font-semibold tracking-wider mr-1">
+              Активны:
+            </span>
+            {filters.year != null && (
+              <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full bg-[#2d9494]/10 text-[#2d9494] text-xs font-medium">
+                {filters.year}
+                {filters.month != null && ` · ${MONTHS_RU[filters.month - 1]}`}
+                <button
+                  type="button"
+                  onClick={() => updateFilter("year", null)}
+                  className="hover:text-red-500"
+                  aria-label="Убрать год"
+                >
+                  <X className="w-3 h-3" />
+                </button>
+              </span>
+            )}
+            {filters.dateFrom && (
+              <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full bg-[#2d9494]/10 text-[#2d9494] text-xs font-medium">
+                с {filters.dateFrom}
+                <button
+                  type="button"
+                  onClick={() => updateFilter("dateFrom", null)}
+                  className="hover:text-red-500"
+                  aria-label="Убрать дату начала"
+                >
+                  <X className="w-3 h-3" />
+                </button>
+              </span>
+            )}
+            {filters.dateTo && (
+              <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full bg-[#2d9494]/10 text-[#2d9494] text-xs font-medium">
+                по {filters.dateTo}
+                <button
+                  type="button"
+                  onClick={() => updateFilter("dateTo", null)}
+                  className="hover:text-red-500"
+                  aria-label="Убрать дату окончания"
+                >
+                  <X className="w-3 h-3" />
+                </button>
+              </span>
+            )}
+            {filters.status && (
+              <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full bg-[#2d9494]/10 text-[#2d9494] text-xs font-medium">
+                {filters.status}
+                <button
+                  type="button"
+                  onClick={() => updateFilter("status", null)}
+                  className="hover:text-red-500"
+                  aria-label="Убрать статус"
+                >
+                  <X className="w-3 h-3" />
+                </button>
+              </span>
+            )}
+            {filters.docTypeFilter && (
+              <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full bg-[#2d9494]/10 text-[#2d9494] text-xs font-medium">
+                {displayKind(filters.docTypeFilter)}
+                <button
+                  type="button"
+                  onClick={() => updateFilter("docTypeFilter", null)}
+                  className="hover:text-red-500"
+                  aria-label="Убрать тип"
+                >
+                  <X className="w-3 h-3" />
+                </button>
+              </span>
+            )}
+            {filters.counterparty && (
+              <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full bg-[#2d9494]/10 text-[#2d9494] text-xs font-medium">
+                {filters.counterparty}
+                <button
+                  type="button"
+                  onClick={() => updateFilter("counterparty", null)}
+                  className="hover:text-red-500"
+                  aria-label="Убрать контрагента"
+                >
+                  <X className="w-3 h-3" />
+                </button>
+              </span>
+            )}
+            {(filters.minAmount || filters.maxAmount) && (
+              <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full bg-[#2d9494]/10 text-[#2d9494] text-xs font-medium">
+                {filters.minAmount || "0"} — {filters.maxAmount || "∞"} BYN
+                <button
+                  type="button"
+                  onClick={() => {
+                    updateFilter("minAmount", "");
+                    updateFilter("maxAmount", "");
+                  }}
+                  className="hover:text-red-500"
+                  aria-label="Убрать диапазон суммы"
+                >
+                  <X className="w-3 h-3" />
+                </button>
+              </span>
+            )}
+            {filters.q && (
+              <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full bg-[#2d9494]/10 text-[#2d9494] text-xs font-medium">
+                «{filters.q}»
+                <button
+                  type="button"
+                  onClick={() => updateFilter("q", "")}
+                  className="hover:text-red-500"
+                  aria-label="Убрать поиск"
+                >
+                  <X className="w-3 h-3" />
+                </button>
+              </span>
+            )}
+            <button
+              type="button"
+              onClick={resetFilters}
+              className="text-xs text-gray-500 hover:text-[#2d9494] hover:underline ml-1"
+            >
+              Сбросить все
+            </button>
+          </div>
+        )}
+
         {/* Extended filter panel */}
         {isAllDocsPage && filtersOpen && (
           <div
@@ -753,19 +959,19 @@ export default function ProductDocumentsView({
               </label>
               <div className="flex items-center gap-1.5">
                 <input
-                  type="text"
-                  value={filters.dateFrom ?? ""}
-                  onChange={(e) => updateFilter("dateFrom", e.target.value || null)}
-                  placeholder="01.03.2026"
-                  className="w-full px-2.5 py-1.5 text-sm border border-gray-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-[#2d9494]/30 focus:border-[#2d9494]"
+                  type="date"
+                  value={_ddmmyyyyToIso(filters.dateFrom)}
+                  onChange={(e) => updateFilter("dateFrom", _isoToDdMmYyyy(e.target.value))}
+                  className="w-full px-2 py-1.5 text-sm border border-gray-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-[#2d9494]/30 focus:border-[#2d9494]"
+                  aria-label="Дата начала"
                 />
                 <span className="text-gray-400 text-xs">—</span>
                 <input
-                  type="text"
-                  value={filters.dateTo ?? ""}
-                  onChange={(e) => updateFilter("dateTo", e.target.value || null)}
-                  placeholder="31.03.2026"
-                  className="w-full px-2.5 py-1.5 text-sm border border-gray-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-[#2d9494]/30 focus:border-[#2d9494]"
+                  type="date"
+                  value={_ddmmyyyyToIso(filters.dateTo)}
+                  onChange={(e) => updateFilter("dateTo", _isoToDdMmYyyy(e.target.value))}
+                  className="w-full px-2 py-1.5 text-sm border border-gray-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-[#2d9494]/30 focus:border-[#2d9494]"
+                  aria-label="Дата окончания"
                 />
               </div>
             </div>

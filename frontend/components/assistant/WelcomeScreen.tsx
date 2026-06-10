@@ -1,12 +1,13 @@
 "use client";
 
-import { Sparkles, Search, ScanLine, Database, ShieldCheck, GraduationCap, MoreHorizontal, Lightbulb, Wand2, ChevronRight, MessageCircle } from "lucide-react";
+import { Search, ScanLine, Database, ShieldCheck, GraduationCap, MoreHorizontal, Lightbulb, Wand2, ChevronRight, MessageSquare } from "lucide-react";
+import { IconAiSpark } from "./IconAiSpark";
 import { useAuthStore } from "@/store/authStore";
 import { useCharacterStore } from "@/store/characterStore";
 
 interface Props {
   onSendPrompt: (text: string) => void;
-  onFocusInput: () => void;
+  onStartChat: () => void;
   compact?: boolean;
 }
 
@@ -88,7 +89,7 @@ const SPECIAL_TILES = [
  * карточка с аватаром ассистента на мятном градиенте, приветствие,
  * сетка популярных запросов, «специально для вас» и крупная кнопка-CTA.
  */
-export function WelcomeScreen({ onSendPrompt, onFocusInput, compact }: Props) {
+export function WelcomeScreen({ onSendPrompt, onStartChat, compact }: Props) {
   const user = useAuthStore((s) => s.user);
   const characterName = useCharacterStore((s) => s.config.name);
   const greetingName =
@@ -136,8 +137,8 @@ export function WelcomeScreen({ onSendPrompt, onFocusInput, compact }: Props) {
         </div>
         {/* Sparkles-чип в углу */}
         <div className="absolute top-2.5 left-2.5 flex items-center gap-1 bg-white/70 backdrop-blur-sm rounded-full px-2 py-1 text-[10px] font-bold text-[#0d6e68]">
-          <Sparkles className="w-3 h-3" strokeWidth={2.4} />
-          AI · персонализировано
+          <IconAiSpark size={12} />
+          <span>AI · персонализировано</span>
         </div>
       </div>
 
@@ -211,10 +212,10 @@ export function WelcomeScreen({ onSendPrompt, onFocusInput, compact }: Props) {
       {/* Большая CTA-кнопка */}
       <button
         type="button"
-        onClick={onFocusInput}
+        onClick={onStartChat}
         className={`mt-4 w-full bg-gradient-to-br from-[#0a3d2e] to-[#0a2818] hover:from-[#0d4a37] hover:to-[#0d3020] text-white font-bold ${compact ? "py-2.5 text-sm" : "py-3 text-[15px]"} rounded-xl flex items-center justify-center gap-2 shadow-[0_4px_14px_rgba(8,53,38,0.32)] transition-all`}
       >
-        <MessageCircle className={compact ? "w-4 h-4" : "w-5 h-5"} strokeWidth={2.2} />
+        <MessageSquare className={compact ? "w-4 h-4" : "w-5 h-5"} strokeWidth={2.2} />
         Начать чат
         <ChevronRight className={compact ? "w-4 h-4" : "w-5 h-5"} />
       </button>

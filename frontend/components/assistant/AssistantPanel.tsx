@@ -42,6 +42,13 @@ export function AssistantPanel({ variant = "default", compactMobile = false, onR
   const [orgName, setOrgName] = useState<string | null>(null);
   const [userRole, setUserRole] = useState<string | null>(null);
   const [notifications, setNotifications] = useState<SmartNotification[]>([]);
+  /**
+   * Режим приветственного экрана: false — показываем WelcomeScreen (плавающий
+   * чат до явного «Начать чат»). Становится true при первом действии
+   * пользователя (нажал «Начать чат», кликнул плитку или отправил сообщение).
+   * Сбрасывается в false при очистке истории (`messages.length === 0`).
+   */
+  const [chatStarted, setChatStarted] = useState(false);
   const scrollRef = useRef<HTMLDivElement>(null);
   const bottomRef = useRef<HTMLDivElement>(null);
   const pathname = usePathname();
@@ -125,6 +132,15 @@ export function AssistantPanel({ variant = "default", compactMobile = false, onR
   const hideSuggestions = messages.length > 0 && suggestedChips.length === 0 && !input.trim();
 
   useEffect(() => () => stopSpeech(), [stopSpeech]);
+
+  // Синхронизация режима: первое сообщение → чат, пустая история → welcome.
+  useEffect(() => {
+    if (messages.length > 0) {
+      setChatStarted(true);
+    } else {
+      setChatStarted(false);
+    }
+  }, [messages.length]);
 
   useEffect(() => {
     void fetchOrgProfile()
@@ -361,7 +377,7 @@ export function AssistantPanel({ variant = "default", compactMobile = false, onR
         return;
       }
 
-      addMessage({ role: "user", content: `${isPdf ? "📄" : "📷"} Загружено: ${file.name}` });
+      addMessage({ role: "user", content: `${isPdf ? "PDF" : "Фото"}: ${file.name}` });
       setLoading(true);
 
       try {
@@ -443,11 +459,15 @@ export function AssistantPanel({ variant = "default", compactMobile = false, onR
             />
           </div>
         )}
-        {messages.length === 0 && inputCompact && (
+        {!chatStarted && messages.length === 0 && inputCompact && (
           <WelcomeScreen
             compact={compactMobile}
-            onSendPrompt={(text) => void sendMessage(text)}
-            onFocusInput={() => {
+            onSendPrompt={(text) => {
+              setChatStarted(true);
+              void sendMessage(text);
+            }}
+            onStartChat={() => {
+              setChatStarted(true);
               const ta = document.querySelector<HTMLTextAreaElement>(
                 "[data-chat-panel] textarea",
               );
@@ -547,55 +567,6 @@ export function AssistantPanel({ variant = "default", compactMobile = false, onR
               </div>
             )}
 
-            {/* Компактный ряд с графиками для mobile / embedded-чата */}
-            {messages.length === 0 && inputCompact && (
-              <div className="mt-3 mx-2 p-2.5 rounded-xl bg-gradient-to-br from-[#e5fcf7] to-white border border-[#107f8c]/20">
-                <p className="text-[10px] font-bold text-[#107f8c] mb-1.5 uppercase tracking-wider flex items-center gap-1">
-                  <span>📊</span> Графики по данным из БД
-                </p>
-                <div className="grid grid-cols-2 gap-1.5">
-                  <button
-                    type="button"
-                    onClick={() => void sendMessage("Кассовый прогноз")}
-                    className="text-left text-[11px] px-2 py-1.5 rounded-lg bg-white border border-[#e4e8eb] hover:border-[#107f8c] hover:bg-[#e5fcf7]/50 transition-colors"
-                  >
-                    <span className="block font-semibold text-[#1f1f22]">📈 Прогноз</span>
-                    <span className="block text-[10px] text-[#7d838a]">на сколько хватит</span>
-                  </button>
-                  <button
-                    type="button"
-                    onClick={() => void sendMessage("Расходы за 2026-03")}
-                    className="text-left text-[11px] px-2 py-1.5 rounded-lg bg-white border border-[#e4e8eb] hover:border-[#107f8c] hover:bg-[#e5fcf7]/50 transition-colors"
-                  >
-                    <span className="block font-semibold text-[#1f1f22]">🥧 Расходы</span>
-                    <span className="block text-[10px] text-[#7d838a]">по категориям</span>
-                  </button>
-                  <button
-                    type="button"
-                    onClick={() => void sendMessage("Сравни февраль и март")}
-                    className="text-left text-[11px] px-2 py-1.5 rounded-lg bg-white border border-[#e4e8eb] hover:border-[#107f8c] hover:bg-[#e5fcf7]/50 transition-colors"
-                  >
-                    <span className="block font-semibold text-[#1f1f22]">📊 Сравнить</span>
-                    <span className="block text-[10px] text-[#7d838a]">два месяца</span>
-                  </button>
-                  <button
-                    type="button"
-                    onClick={() => void sendMessage("Сколько на счёте?")}
-                    className="text-left text-[11px] px-2 py-1.5 rounded-lg bg-white border border-[#e4e8eb] hover:border-[#107f8c] hover:bg-[#e5fcf7]/50 transition-colors"
-                  >
-                    <span className="block font-semibold text-[#1f1f22]">💰 Счета</span>
-                    <span className="block text-[10px] text-[#7d838a]">остатки по счетам</span>
-                  </button>
-                </div>
-                <button
-                  type="button"
-                  onClick={() => router.push("/learning")}
-                  className="mt-1.5 w-full text-[10px] font-semibold text-[#107f8c] hover:underline text-center"
-                >
-                  Все команды ИИ и примеры → в обучении
-                </button>
-              </div>
-            )}
             {!embedded && !inputCompact && (
               <p className="mt-4 text-sm break-all sber-link">/payments · /statement · /salary</p>
             )}

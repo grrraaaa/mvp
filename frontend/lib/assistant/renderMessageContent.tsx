@@ -24,8 +24,24 @@ function normalizeBrokenGovUrls(text: string): string {
   return out;
 }
 
+/**
+ * Чистим markdown-маркеры в plain-text ответах ассистента: убираем двойные
+ * звёздочки (`**жирный**` → `жирный`), одиночные (`*курсив*` → `курсив`) и
+ * подчёркивания (`__жирный__`). Никаких эмодзи-смайликов в ответах —
+ * интерфейс строгий, иконки рисуются компонентами, не символами.
+ */
+function stripMarkdownMarkers(text: string): string {
+  return text
+    .replace(/\*\*([^*]+)\*\*/g, "$1")
+    .replace(/__([^_]+)__/g, "$1")
+    .replace(/(^|[\s(])\*([^*\n]+)\*/g, "$1$2")
+    .replace(/(^|[\s(])_([^_\n]+)_/g, "$1$2");
+}
+
 export function tokenizeAssistantMessage(text: string): Token[] {
-  const normalized = normalizeBrokenGovUrls(normalizeAssistantLinks(text));
+  const normalized = stripMarkdownMarkers(
+    normalizeBrokenGovUrls(normalizeAssistantLinks(text)),
+  );
   const tokens: Token[] = [];
   let last = 0;
 

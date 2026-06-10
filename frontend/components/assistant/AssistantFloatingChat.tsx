@@ -1,10 +1,11 @@
 "use client";
 
 import { useEffect, useRef, useState } from "react";
-import { Volume2, VolumeX, History, MoreHorizontal, Sparkles, X } from "lucide-react";
+import { Volume2, VolumeX, History, MoreHorizontal, X } from "lucide-react";
 import { AssistantPanel } from "./AssistantPanel";
 import { ChatArchive } from "./ChatArchive";
 import { IconChat } from "@/components/sbbol/SbbolIcons";
+import { IconAiSpark } from "./IconAiSpark";
 import { useIsMobile } from "@/hooks/useIsMobile";
 import { useTtsStore } from "@/store/ttsStore";
 import { useAssistantStore } from "@/store/assistantStore";
@@ -146,10 +147,10 @@ export function AssistantFloatingChat({ open, onOpenChange }: Props) {
           >
             <div className="flex items-center gap-2.5 min-w-0">
               <div
-                className="w-9 h-9 rounded-lg bg-gradient-to-br from-[#1c8a82] to-[#0d6e68] flex items-center justify-center text-white shrink-0 shadow-sm"
+                className="w-9 h-9 rounded-lg bg-white flex items-center justify-center shrink-0 shadow-sm border border-[#e4e8eb]"
                 aria-hidden
               >
-                <Sparkles className="w-4 h-4" strokeWidth={2.2} />
+                <IconAiSpark size={22} />
               </div>
               <div className="flex flex-col min-w-0">
                 <span className="text-sm font-bold text-[#1f1f22] truncate leading-tight">
