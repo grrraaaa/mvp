@@ -12,15 +12,18 @@ export interface AssistantCharacterConfig {
   hairColor: string;
   primaryColor: string;
   accentColor: string;
+  /** GLB в public/models/ */
+  modelPath?: string;
 }
 
 export const DEFAULT_CHARACTER: AssistantCharacterConfig = {
-  name: "Алексей",
+  name: "Александр",
   subtitle: "консультант интернет-банка СберБизнес",
   styleId: "human-m",
-  emoji: "👔",
-  skinTone: "#e8beac",
-  hairColor: "#2a1810",
+  emoji: "✨",
+  skinTone: "#f5d0b5",
+  hairColor: "#3d2314",
   primaryColor: "#053517",
   accentColor: "#21A038",
+  modelPath: "/models/personage.glb",
 };

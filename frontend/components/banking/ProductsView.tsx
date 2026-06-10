@@ -22,6 +22,7 @@ import type { BankAccount } from "@/lib/banking/types";
 import { runBankingAction } from "@/lib/banking/actionRegistry";
 import { productHref } from "@/lib/banking/productCatalog";
 import { useBankingStore } from "@/store/bankingStore";
+import { useRole } from "@/store/roleStore";
 
 function ProductLink({
   slug,
@@ -47,6 +48,7 @@ function ProductLink({
 }
 
 export default function ProductsView() {
+  const { can, denyTitle } = useRole();
   const accounts = useBankingStore((s) => s.accounts);
   const setAccounts = useBankingStore((s) => s.setAccounts);
   const loadAll = useBankingStore((s) => s.loadAll);
@@ -219,7 +221,12 @@ export default function ProductsView() {
                 <ChevronRight className="w-3.5 h-3.5 text-gray-300" />
               </button>
               
-              <button onClick={() => setActiveTool('open_account')} className="w-full text-left flex items-center justify-between text-sky-700 hover:underline font-semibold">
+              <button
+                onClick={() => can("open_account") && setActiveTool("open_account")}
+                disabled={!can("open_account")}
+                title={can("open_account") ? undefined : denyTitle("open_account")}
+                className="w-full text-left flex items-center justify-between text-sky-700 hover:underline font-semibold disabled:opacity-40 disabled:cursor-not-allowed"
+              >
                 <span className="font-bold text-emerald-850 flex items-center gap-1">Открытие счета <span className="bg-sky-50 text-sky-600 border px-1.5 py-0.5 text-[8px] rounded">Online</span></span>
                 <ChevronRight className="w-3.5 h-3.5 text-gray-300" />
               </button>
@@ -444,14 +451,16 @@ export default function ProductsView() {
                 >
                   Закрыть
                 </button>
-                <button 
+                <button
                   onClick={() => {
                     alert(`Заявка на депозит в объеме ${depAmount.toLocaleString()} ${depCurrency} под ${results.rate}% годовых успешно зарегистрирована ОАО «Сбер Банк» Belarus.`);
                     setActiveTool(null);
                   }}
-                  className="flex-1 py-1 px-1 bg-[#128e8b] text-white hover:bg-[#107c79] rounded-lg transition"
+                  disabled={!can("open_account")}
+                  title={can("open_account") ? undefined : denyTitle("open_account")}
+                  className="flex-1 py-1 px-1 bg-[#128e8b] text-white hover:bg-[#107c79] rounded-lg transition disabled:bg-gray-300 disabled:cursor-not-allowed"
                 >
-                  Оформить онлайн
+                  {can("open_account") ? "Оформить онлайн" : "Только Руководитель"}
                 </button>
               </div>
 
@@ -516,9 +525,11 @@ export default function ProductsView() {
                 >
                   Отмена
                 </button>
-                <button 
-                  type="submit" 
-                  className="flex-1 py-2.5 bg-[#128e8b] text-white hover:bg-[#107c79] font-bold rounded-lg transition"
+                <button
+                  type="submit"
+                  disabled={!can("open_account")}
+                  title={can("open_account") ? undefined : denyTitle("open_account")}
+                  className="flex-1 py-2.5 bg-[#128e8b] text-white hover:bg-[#107c79] font-bold rounded-lg transition disabled:bg-gray-300 disabled:cursor-not-allowed"
                 >
                   Открыть счет
                 </button>

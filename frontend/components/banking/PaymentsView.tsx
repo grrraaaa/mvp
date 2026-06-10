@@ -1,6 +1,6 @@
 ﻿"use client";
 
-import { useEffect, useState, type FormEvent } from "react";
+import { useEffect, useState, type Dispatch, type FormEvent, type SetStateAction } from "react";
 import Link from "next/link";
 import { ASSISTANT_ACTION_EVENT } from "@/lib/assistant/uiBridge";
 import { useSbbolUi } from "@/components/layout/SbbolUiContext";
@@ -16,11 +16,14 @@ import {
   Building,
   CheckCircle2,
   CalendarDays,
+  Pause,
+  Play,
 } from "lucide-react";
 import { runBankingAction } from "@/lib/banking/actionRegistry";
 import { isPaymentFormAction } from "@/lib/assistant/formFillRunner";
 import { useBankingStore } from "@/store/bankingStore";
 import { useAssistantStore } from "@/store/assistantStore";
+import { useRole } from "@/store/roleStore";
 
 export default function PaymentsView() {
   const accounts = useBankingStore((s) => s.accounts);
@@ -29,6 +32,7 @@ export default function PaymentsView() {
   const loadAll = useBankingStore((s) => s.loadAll);
   const { openDocumentModal } = useSbbolUi();
   const formActions = useAssistantStore((s) => s.formActions);
+  const { can, denyTitle } = useRole();
   const [activeModal, setActiveModal] = useState<string | null>(null);
 
   // Form states - Перевод в BYN
@@ -51,6 +55,120 @@ export default function PaymentsView() {
   const [fxAmount, setFxAmount] = useState('1000');
 
   const bynAccounts = accounts.filter(acc => acc.currency === 'BYN');
+
+  const [autofillTemplate, setAutofillTemplate] = useState<'none' | 'telecom' | 'rent' | 'tax'>('none');
+  const [isAutofilling, setIsAutofilling] = useState(false);
+  const [autofillStepIndex, setAutofillStepIndex] = useState(-1);
+  const [isPaused, setIsPaused] = useState(false);
+
+  const autofillData = {
+    telecom: [
+      { field: 'sourceAcc', value: bynAccounts[0]?.id || '' },
+      { field: 'rcptName', value: 'ООО БелтелекомСоб' },
+      { field: 'rcptIban', value: 'BY33BPSB30121111903420000000' },
+      { field: 'rcptUnp', value: '100654812' },
+      { field: 'payAmount', value: '340.00' },
+      { field: 'payPurpose', value: 'Оплата услуг высокоскоростного интернета и телефонии согласно акту выполненных работ № 104 от 30.04.2026г. Без НДС.' },
+    ],
+    rent: [
+      { field: 'sourceAcc', value: bynAccounts[0]?.id || '' },
+      { field: 'rcptName', value: 'ООО ПорталДевелопмент' },
+      { field: 'rcptIban', value: 'BY18BPSB30125555432109870000' },
+      { field: 'rcptUnp', value: '190284521' },
+      { field: 'payAmount', value: '1450.00' },
+      { field: 'payPurpose', value: 'Арендная плата за пользование офисными площадями за май 2026 года в соответствии с договором №45-АР от 12.01.2025 года. В том числе НДС.' },
+    ],
+    tax: [
+      { field: 'sourceAcc', value: bynAccounts[0]?.id || '' },
+      { field: 'rcptName', value: 'ИМНС РБ по Октябрьскому району г. Минска' },
+      { field: 'rcptIban', value: 'BY88AKBB36009000001240000000' },
+      { field: 'rcptUnp', value: '101340911' },
+      { field: 'payAmount', value: '870.50' },
+      { field: 'payPurpose', value: 'Перечисление налога при упрощенной системе налогообложения (УСН) за 1 квартал 2026 года. Без НДС.' },
+    ],
+  };
+
+  const startAutofill = (type: 'telecom' | 'rent' | 'tax') => {
+    setSourceAcc(bynAccounts[0]?.id || '');
+    setRcptName('');
+    setRcptIban('');
+    setRcptUnp('');
+    setPayAmount('');
+    setPayPurpose('');
+    setAutofillTemplate(type);
+    setIsAutofilling(true);
+    setAutofillStepIndex(1);
+    setIsPaused(false);
+  };
+
+  const cancelAutofill = () => {
+    setIsAutofilling(false);
+    setAutofillStepIndex(-1);
+    setAutofillTemplate('none');
+  };
+
+  const completeAutofillInstantly = () => {
+    if (autofillTemplate === 'none') return;
+    const steps = autofillData[autofillTemplate];
+    if (!steps) return;
+    const setterMap: Record<string, (val: string) => void> = {
+      sourceAcc: setSourceAcc,
+      rcptName: setRcptName,
+      rcptIban: setRcptIban,
+      rcptUnp: setRcptUnp,
+      payAmount: setPayAmount,
+      payPurpose: setPayPurpose,
+    };
+    steps.forEach((step) => {
+      const setter = setterMap[step.field];
+      if (setter) setter(step.value);
+    });
+    setIsAutofilling(false);
+    setAutofillStepIndex(-1);
+  };
+
+  useEffect(() => {
+    if (!isAutofilling || isPaused || autofillStepIndex < 0 || autofillTemplate === 'none') return;
+    const steps = autofillData[autofillTemplate];
+    if (!steps || autofillStepIndex >= steps.length) {
+      setIsAutofilling(false);
+      setAutofillStepIndex(-1);
+      return;
+    }
+    const currentStep = steps[autofillStepIndex];
+    const targetValue = currentStep.value;
+    let idx = 0;
+    const setterMap: Record<string, Dispatch<SetStateAction<string>>> = {
+      sourceAcc: setSourceAcc,
+      rcptName: setRcptName,
+      rcptIban: setRcptIban,
+      rcptUnp: setRcptUnp,
+      payAmount: setPayAmount,
+      payPurpose: setPayPurpose,
+    };
+    const setter = setterMap[currentStep.field];
+    if (!setter) return;
+    const interval = setInterval(() => {
+      idx++;
+      setter(targetValue.slice(0, idx));
+      if (idx >= targetValue.length) {
+        clearInterval(interval);
+        setTimeout(() => setAutofillStepIndex((prev) => prev + 1), 550);
+      }
+    }, currentStep.field === 'payPurpose' ? 12 : currentStep.field === 'rcptIban' ? 20 : 35);
+    return () => clearInterval(interval);
+  }, [isAutofilling, isPaused, autofillStepIndex, autofillTemplate, bynAccounts]);
+
+  useEffect(() => {
+    const handleTrigger = (e: Event) => {
+      const { template } = (e as CustomEvent<{ template: 'rent' | 'telecom' | 'tax' }>).detail ?? {};
+      if (!template) return;
+      setActiveModal('payout_byn');
+      setTimeout(() => startAutofill(template), 350);
+    };
+    window.addEventListener('trigger-sber-autofill', handleTrigger);
+    return () => window.removeEventListener('trigger-sber-autofill', handleTrigger);
+  }, [bynAccounts]);
 
   useEffect(() => {
     if (formActions?.some(isPaymentFormAction)) {
@@ -171,7 +289,9 @@ export default function PaymentsView() {
           type="button"
           data-assistant-action="open-doc-modal"
           onClick={() => openDocumentModal()}
-          className="bg-[#128e8b] hover:bg-[#107c79] text-white px-5 py-2.5 rounded-lg text-xs font-bold shadow-md shrink-0"
+          disabled={!can('create_document')}
+          title={can('create_document') ? undefined : denyTitle('create_document')}
+          className="bg-[#128e8b] hover:bg-[#107c79] text-white px-5 py-2.5 rounded-lg text-xs font-bold shadow-md shrink-0 disabled:bg-gray-300 disabled:cursor-not-allowed"
         >
           Создать документ
         </button>
@@ -254,9 +374,11 @@ export default function PaymentsView() {
                   <ChevronRight className="w-3.5 h-3.5 text-gray-300" />
                 </button>
 
-                <button 
+                <button
                   onClick={() => setActiveModal('forex_trade')}
-                  className="flex items-center justify-between text-left w-full hover:text-sky-600 focus:outline-none"
+                  disabled={!can('create_document')}
+                  title={can('create_document') ? undefined : denyTitle('create_document')}
+                  className="flex items-center justify-between text-left w-full hover:text-sky-600 focus:outline-none disabled:opacity-40 disabled:cursor-not-allowed"
                 >
                   <span className="text-xs font-semibold text-sky-700 hover:underline">Покупка/продажа (конверсия)</span>
                   <PlusCircle className="w-3.5 h-3.5 text-gray-300" />
@@ -291,9 +413,11 @@ export default function PaymentsView() {
                   <ChevronRight className="w-3.5 h-3.5 text-gray-300" />
                 </button>
                 
-                <button 
+                <button
                   onClick={() => setActiveModal('order_cash')}
-                  className="flex items-center justify-between text-left w-full hover:text-sky-600 focus:outline-none"
+                  disabled={!can('order_cash')}
+                  title={can('order_cash') ? undefined : denyTitle('order_cash')}
+                  className="flex items-center justify-between text-left w-full hover:text-sky-600 focus:outline-none disabled:opacity-40 disabled:cursor-not-allowed"
                 >
                   <span className="text-xs font-semibold text-sky-700 hover:underline">Заказ наличных денег</span>
                   <PlusCircle className="w-3.5 h-3.5 text-gray-300" />
@@ -418,14 +542,67 @@ export default function PaymentsView() {
             </div>
 
             <form onSubmit={handleSubmitPayoutByn} className="space-y-3 text-xs">
-              
+
+              <div className="bg-gradient-to-r from-emerald-500/10 via-[#138d8a]/5 to-amber-500/5 border border-emerald-100/50 p-3 rounded-xl space-y-2">
+                <div className="flex items-center justify-between">
+                  <div className="flex items-center gap-1.5">
+                    <Sparkles className="w-3.5 h-3.5 text-emerald-600 shrink-0" />
+                    <span className="text-[10.5px] font-extrabold text-emerald-800 uppercase tracking-widest leading-none">
+                      Автозаполнение Александрой
+                    </span>
+                  </div>
+                  {isAutofilling && (
+                    <div className="flex items-center gap-1.5">
+                      <span className="relative flex h-2 w-2">
+                        <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-emerald-400 opacity-75" />
+                        <span className="relative inline-flex rounded-full h-2 w-2 bg-emerald-500" />
+                      </span>
+                      <span className="text-[10px] text-emerald-700 font-extrabold">АКТИВНО</span>
+                    </div>
+                  )}
+                </div>
+                {!isAutofilling ? (
+                  <div className="space-y-1.5">
+                    <p className="text-[10.5px] text-gray-500 font-medium">Выберите шаблон счёта для демонстрации ИИ-заполнения:</p>
+                    <div className="flex flex-wrap gap-1.5">
+                      <button type="button" onClick={() => startAutofill('rent')} className="bg-white border border-gray-150 hover:border-emerald-500 text-[10px] px-2.5 py-1 rounded-lg font-bold text-gray-700">🏢 Аренда офиса</button>
+                      <button type="button" onClick={() => startAutofill('telecom')} className="bg-white border border-gray-150 hover:border-emerald-500 text-[10px] px-2.5 py-1 rounded-lg font-bold text-gray-700">📞 Связь и интернет</button>
+                      <button type="button" onClick={() => startAutofill('tax')} className="bg-white border border-gray-150 hover:border-emerald-500 text-[10px] px-2.5 py-1 rounded-lg font-bold text-gray-700">🏛 Налоги УСН</button>
+                    </div>
+                  </div>
+                ) : (
+                  <div className="space-y-2 bg-white/60 p-2.5 rounded-lg border border-emerald-100/30">
+                    <div className="flex items-center justify-between">
+                      <span className="text-[10.5px] text-emerald-950 font-black">
+                        {autofillTemplate === 'rent' && '🏢 Шаблон: Аренда офиса'}
+                        {autofillTemplate === 'telecom' && '📞 Шаблон: Белтелеком'}
+                        {autofillTemplate === 'tax' && '🏛 Шаблон: Налоги РБ'}
+                      </span>
+                      <span className="text-[10px] text-gray-400 font-bold font-mono">Поле {autofillStepIndex} из 5</span>
+                    </div>
+                    <div className="w-full bg-slate-100 h-1 rounded-full overflow-hidden">
+                      <div className="bg-emerald-500 h-full transition-all duration-300" style={{ width: `${(autofillStepIndex / 5) * 100}%` }} />
+                    </div>
+                    <div className="flex items-center justify-between gap-2.5 pt-1">
+                      <div className="flex items-center gap-1.5">
+                        <button type="button" onClick={() => setIsPaused((p) => !p)} className="bg-white border border-gray-200 text-gray-600 hover:bg-gray-50 px-1.5 py-1 rounded" title={isPaused ? 'Продолжить' : 'Пауза'}>
+                          {isPaused ? <Play className="w-3.5 h-3.5 text-emerald-600 fill-emerald-600" /> : <Pause className="w-3.5 h-3.5" />}
+                        </button>
+                        <button type="button" onClick={completeAutofillInstantly} className="bg-emerald-50 hover:bg-emerald-100 text-emerald-800 border border-emerald-250 font-bold text-[10px] px-2 py-1 rounded">⚡ Заполнить мгновенно</button>
+                      </div>
+                      <button type="button" onClick={cancelAutofill} className="text-red-500 hover:text-red-700 font-extrabold text-[10.5px]">✕ Прервать</button>
+                    </div>
+                  </div>
+                )}
+              </div>
+
               {/* Account selection */}
               <div>
                 <label className="block text-xs font-bold text-gray-700 mb-1">Списать со счета (BYN) *</label>
-                <select 
+                <select
                   value={sourceAcc}
                   onChange={(e) => setSourceAcc(e.target.value)}
-                  className="w-full border border-gray-300 rounded-lg p-2 font-semibold bg-white text-gray-750 focus:ring-[#138d8a] focus:border-[#138d8a]"
+                  className={`w-full border rounded-lg p-2 font-semibold bg-white text-gray-750 focus:ring-[#138d8a] focus:border-[#138d8a] transition-all ${isAutofilling && autofillStepIndex === 0 ? 'border-emerald-500 ring-2 ring-emerald-500/30' : 'border-gray-300'}`}
                   required
                 >
                   <option value="">-- Выберите расчетный счет --</option>
@@ -448,7 +625,7 @@ export default function PaymentsView() {
                   onChange={(e) => setRcptName(e.target.value)}
                   onBlur={(e) => applyCounterpartyFromDb(e.target.value)}
                   placeholder="Например, ООО БелТелесистемы"
-                  className="w-full border border-gray-300 rounded-lg p-2"
+                  className={`w-full border rounded-lg p-2 transition-all ${isAutofilling && autofillStepIndex === 1 ? 'border-emerald-500 ring-2 ring-emerald-500/35 bg-emerald-50/10 border-l-4 border-l-emerald-600' : 'border-gray-300'}`}
                   required
                 />
                 <datalist id="payments-counterparties">
@@ -468,7 +645,7 @@ export default function PaymentsView() {
                     value={rcptIban}
                     onChange={(e) => setRcptIban(e.target.value)}
                     placeholder="BY70 BPSB 3012 ..."
-                    className="w-full border border-gray-300 rounded-lg p-2 uppercase font-mono"
+                    className={`w-full border rounded-lg p-2 uppercase font-mono transition-all ${isAutofilling && autofillStepIndex === 2 ? 'border-emerald-500 ring-2 ring-emerald-500/35 bg-emerald-50/10 border-l-4 border-l-emerald-600' : 'border-gray-300'}`}
                     maxLength={28}
                     required
                   />
@@ -483,7 +660,7 @@ export default function PaymentsView() {
                     value={rcptUnp}
                     onChange={(e) => setRcptUnp(e.target.value)}
                     placeholder="9-значный код"
-                    className="w-full border border-gray-300 rounded-lg p-2"
+                    className={`w-full border rounded-lg p-2 transition-all ${isAutofilling && autofillStepIndex === 3 ? 'border-emerald-500 ring-2 ring-emerald-500/35 bg-emerald-50/10 border-l-4 border-l-emerald-600' : 'border-gray-300'}`}
                     maxLength={9}
                   />
                 </div>
@@ -493,12 +670,12 @@ export default function PaymentsView() {
               <div>
                 <label className="block text-xs font-bold text-gray-700 mb-1">Сумма к отправке (BYN) *</label>
                 <input
-                  type="number"
+                  type="text"
                   data-assistant-field="payAmount"
                   value={payAmount}
                   onChange={(e) => setPayAmount(e.target.value)}
                   placeholder="Сумма в рублях"
-                  className="w-full border border-gray-300 rounded-lg p-2 font-black text-gray-900"
+                  className={`w-full border rounded-lg p-2 font-black transition-all ${isAutofilling && autofillStepIndex === 4 ? 'border-emerald-500 ring-2 ring-emerald-500/35 bg-emerald-50/10 text-lg text-emerald-700 border-l-4 border-l-emerald-600' : 'border-gray-300 text-gray-900'}`}
                   required
                 />
               </div>
@@ -511,7 +688,7 @@ export default function PaymentsView() {
                   value={payPurpose}
                   onChange={(e) => setPayPurpose(e.target.value)}
                   placeholder="Оплата за поставку сырья согласно счета № 203 от..."
-                  className="w-full border border-gray-300 rounded-lg p-2 h-16 resize-none"
+                  className={`w-full border rounded-lg p-2 h-16 resize-none transition-all ${isAutofilling && autofillStepIndex === 5 ? 'border-emerald-500 ring-2 ring-emerald-500/35 bg-emerald-50/10 border-l-4 border-l-emerald-600' : 'border-gray-300'}`}
                 />
               </div>
 
@@ -528,11 +705,13 @@ export default function PaymentsView() {
                 >
                   Отмена
                 </button>
-                <button 
-                  type="submit" 
-                  className="flex-1 py-2.5 bg-[#128e8b] hover:bg-[#107c79] text-white font-bold rounded-lg transition"
+                <button
+                  type="submit"
+                  disabled={!can('sign_document')}
+                  title={can('sign_document') ? undefined : `${denyTitle('sign_document')}. Сохранить как черновик можно, но провести платёж — только Руководитель.`}
+                  className="flex-1 py-2.5 bg-[#128e8b] hover:bg-[#107c79] text-white font-bold rounded-lg transition disabled:bg-gray-300 disabled:cursor-not-allowed"
                 >
-                  Создать и сохранить
+                  {can('sign_document') ? 'Создать и сохранить' : 'Подпись доступна только Руководителю'}
                 </button>
               </div>
 
@@ -608,11 +787,13 @@ export default function PaymentsView() {
                 </div>
               </div>
 
-              <button 
-                type="submit" 
-                className="w-full py-2.5 bg-[#128e8b] hover:bg-[#107c79] text-white font-bold rounded-lg transition"
+              <button
+                type="submit"
+                disabled={!can('sign_document')}
+                title={can('sign_document') ? undefined : denyTitle('sign_document')}
+                className="w-full py-2.5 bg-[#128e8b] hover:bg-[#107c79] text-white font-bold rounded-lg transition disabled:bg-gray-300 disabled:cursor-not-allowed"
               >
-                Отправить заявку дилерам
+                {can('sign_document') ? 'Отправить заявку дилерам' : 'Подпись доступна только Руководителю'}
               </button>
             </form>
           </div>
@@ -683,9 +864,11 @@ export default function PaymentsView() {
                 />
               </div>
 
-              <button 
-                type="submit" 
-                className="w-full py-2.5 bg-[#128e8b] hover:bg-[#107c79] text-white font-bold rounded-lg transition"
+              <button
+                type="submit"
+                disabled={!can('order_cash')}
+                title={can('order_cash') ? undefined : denyTitle('order_cash')}
+                className="w-full py-2.5 bg-[#128e8b] hover:bg-[#107c79] text-white font-bold rounded-lg transition disabled:bg-gray-300 disabled:cursor-not-allowed"
               >
                 Подтвердить бронирование
               </button>

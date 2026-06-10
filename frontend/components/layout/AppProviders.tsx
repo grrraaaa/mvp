@@ -3,10 +3,11 @@
 import { ReactNode, Suspense, useEffect, useMemo, useState } from "react";
 import { usePathname, useSearchParams } from "next/navigation";
 import { AssistantFloatingChat } from "@/components/assistant/AssistantFloatingChat";
-import { DocumentTypeSelectionModal } from "@/components/sbbol/DocumentTypeSelectionModal";
+import CreateDocumentModal from "@/components/banking/CreateDocumentModal";
 import { SbbolUiContext } from "@/components/layout/SbbolUiContext";
 import { AssistantUiBridge } from "@/components/assistant/AssistantUiBridge";
 import { FormFillBridge } from "@/components/assistant/FormFillBridge";
+import { RoleCharacterSync } from "@/components/assistant/RoleCharacterSync";
 import { TtsBootstrap } from "@/components/assistant/TtsBootstrap";
 import { GatewayStatusBanner } from "@/components/banking/GatewayStatusBanner";
 import { ServiceApplicationModal } from "@/components/banking/ServiceApplicationModal";
@@ -14,7 +15,7 @@ import { useAuthStore } from "@/store/authStore";
 
 interface Props {
   children: ReactNode;
-  documentModalHtml: string;
+  documentModalHtml?: string;
 }
 
 function NewDocQueryOpener({ onOpen }: { onOpen: () => void }) {
@@ -71,14 +72,15 @@ function AppProvidersInner({ children, documentModalHtml }: Props) {
       {showBankingExtras && (
         <>
           <TtsBootstrap />
+          <RoleCharacterSync />
           <AssistantUiBridge />
           <FormFillBridge />
           <AssistantFloatingChat open={chatOpen} onOpenChange={setChatOpen} />
           <GatewayStatusBanner />
         </>
       )}
-      {showBankingExtras && docModalOpen && documentModalHtml ? (
-        <DocumentTypeSelectionModal html={documentModalHtml} onClose={() => setDocModalOpen(false)} />
+      {showBankingExtras && docModalOpen ? (
+        <CreateDocumentModal isOpen={docModalOpen} onClose={() => setDocModalOpen(false)} />
       ) : null}
       {showBankingExtras && serviceModalOpen ? (
         <ServiceApplicationModal

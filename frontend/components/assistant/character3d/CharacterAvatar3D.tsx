@@ -16,15 +16,16 @@ function ProceduralFallback({ config }: Props) {
   return <Humanoid3D config={config} />;
 }
 
-/** GLB `public/models/personage.glb` или fallback Humanoid3D. */
+/** GLB из `config.modelPath` (public/models/) или fallback Humanoid3D. */
 export function CharacterAvatar3D({ config }: Props) {
+  const modelPath = config.modelPath ?? DEFAULT_GLB_PATH;
   const loading = <ModelLoadingPlaceholder />;
   const fallback = <ProceduralFallback config={config} />;
 
   return (
     <ModelErrorBoundary fallback={fallback}>
       <Suspense fallback={loading}>
-        <GlbCharacter3D config={config} modelPath={DEFAULT_GLB_PATH} />
+        <GlbCharacter3D key={modelPath} config={config} modelPath={modelPath} />
       </Suspense>
     </ModelErrorBoundary>
   );

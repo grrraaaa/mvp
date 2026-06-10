@@ -1,6 +1,11 @@
 "use client";
 
 import { CHARACTER_PRESETS } from "@/lib/assistant/characterPresets";
+import {
+  CHARACTER_GLB_CATALOG,
+  displayNameForModel,
+  styleIdForModel,
+} from "@/lib/assistant/glbCharacter";
 import type { CharacterStyleId } from "@/lib/assistant/characterTypes";
 import { useCharacterStore } from "@/store/characterStore";
 import { AssistantVoicePicker } from "./AssistantVoicePicker";
@@ -40,9 +45,11 @@ export function CharacterSettings() {
 
       <div className="flex-1 overflow-y-auto p-4 space-y-5">
         <p className="text-xs text-gray-400 leading-relaxed">
-          Загружена модель <span className="text-sber-green-light">personage.glb</span> из
-          public/models/. Без анимаций в файле — лёгкое покачивание и речь через облачко;
-          липсинг включится, если в модели появятся morph targets.
+          Текущая модель:{" "}
+          <span className="text-sber-green-light">
+            {config.modelPath?.split("/").pop() ?? "personage.glb"}
+          </span>
+          . В каталоге: {CHARACTER_GLB_CATALOG.map((m) => m.label).join(", ")}.
         </p>
 
         {voiceSelection ? (
@@ -99,20 +106,21 @@ export function CharacterSettings() {
         </section>
 
         <section>
-          <p className="text-xs text-gray-500 uppercase tracking-wide mb-2">Внешность</p>
-          <div className="flex gap-2 mb-3">
-            {(
-              [
-                { id: "human-m" as CharacterStyleId, label: "Мужчина" },
-                { id: "human-f" as CharacterStyleId, label: "Женщина" },
-              ] as const
-            ).map((opt) => (
+          <p className="text-xs text-gray-500 uppercase tracking-wide mb-2">3D-образ</p>
+          <div className="flex flex-col gap-2 mb-3">
+            {CHARACTER_GLB_CATALOG.map((opt) => (
               <button
-                key={opt.id}
+                key={opt.path}
                 type="button"
-                onClick={() => setConfig({ styleId: opt.id })}
-                className={`flex-1 py-2 rounded-lg text-sm border ${
-                  config.styleId === opt.id
+                onClick={() =>
+                  setConfig({
+                    modelPath: opt.path,
+                    styleId: styleIdForModel(opt.path) as CharacterStyleId,
+                    name: displayNameForModel(opt.path),
+                  })
+                }
+                className={`w-full py-2 px-3 rounded-lg text-sm border text-left ${
+                  config.modelPath === opt.path
                     ? "border-blue-500 bg-blue-500/20 text-white"
                     : "border-white/10 text-gray-400"
                 }`}

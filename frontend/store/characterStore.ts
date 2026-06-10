@@ -5,6 +5,7 @@ import {
   type AssistantCharacterConfig,
 } from "@/lib/assistant/characterTypes";
 import { CHARACTER_PRESETS } from "@/lib/assistant/characterPresets";
+import { displayNameForModel, styleIdForModel } from "@/lib/assistant/glbCharacter";
 
 interface CharacterState {
   config: AssistantCharacterConfig;
@@ -44,7 +45,7 @@ export const useCharacterStore = create<CharacterState>()(
 
       resetCharacter: () =>
         set({
-          config: DEFAULT_CHARACTER,
+          config: { ...DEFAULT_CHARACTER },
           activePresetId: "banker-m",
         }),
 
@@ -52,16 +53,32 @@ export const useCharacterStore = create<CharacterState>()(
     }),
     {
       name: "sber-ai-character",
-      version: 2,
+      version: 4,
       partialize: (state) => ({
         config: state.config,
         activePresetId: state.activePresetId,
       }),
-      migrate: (persisted: unknown) => {
-        const p = persisted as { config?: Partial<AssistantCharacterConfig> };
+      migrate: (persisted: unknown, version: number) => {
+        if (version < 4) {
+          return {
+            config: { ...DEFAULT_CHARACTER },
+            activePresetId: "banker-m",
+          };
+        }
+        const p = persisted as {
+          config?: Partial<AssistantCharacterConfig>;
+          activePresetId?: string;
+        };
+        const modelPath = p?.config?.modelPath ?? DEFAULT_CHARACTER.modelPath;
         return {
-          config: { ...DEFAULT_CHARACTER, ...p?.config },
-          activePresetId: (p as { activePresetId?: string })?.activePresetId ?? "banker-m",
+          config: {
+            ...DEFAULT_CHARACTER,
+            ...p?.config,
+            modelPath,
+            name: displayNameForModel(modelPath),
+            styleId: styleIdForModel(modelPath),
+          },
+          activePresetId: p?.activePresetId ?? "banker-m",
         };
       },
     }

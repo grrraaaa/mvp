@@ -27,10 +27,12 @@ import { useBankingStore } from "@/store/bankingStore";
 import { patchAccountNote } from "@/lib/api/banking";
 import { bankingToast } from "@/lib/banking/toast";
 import { useAuthStore } from "@/store/authStore";
+import { useRole } from "@/store/roleStore";
 import { useSbbolUi } from "@/components/layout/SbbolUiContext";
 
 export default function MoneyView() {
   const router = useRouter();
+  const { can, denyTitle } = useRole();
   const orgName = useAuthStore((s) => s.user?.org_name) ?? "DEMO ЮРИДИЧЕСКОЕ ЛИЦО";
   const accounts = useBankingStore((s) => s.accounts);
   const setAccounts = useBankingStore((s) => s.setAccounts);
@@ -145,6 +147,7 @@ export default function MoneyView() {
 
   // Safe signature action
   const startSign = (doc: BankDocument) => {
+    if (!can("sign_document")) return;
     setSelectedDocToSign(doc);
     setSignatureModalOpen(true);
     setSmsSent(false);
@@ -297,7 +300,9 @@ export default function MoneyView() {
               type="button"
               data-assistant-action="create-document"
               onClick={onCreateDocument}
-              className="bg-[#128e8b] hover:bg-[#107c79] text-white px-6 py-3 rounded-lg text-sm font-bold shadow-md transition-all active:scale-[0.98] flex items-center gap-2 shrink-0 self-stretch sm:self-auto justify-center"
+              disabled={!can("create_document")}
+              title={can("create_document") ? "Открыть мастер создания документа" : denyTitle("create_document")}
+              className="bg-[#128e8b] hover:bg-[#107c79] text-white px-6 py-3 rounded-lg text-sm font-bold shadow-md transition-all active:scale-[0.98] flex items-center gap-2 shrink-0 self-stretch sm:self-auto justify-center disabled:bg-gray-300 disabled:cursor-not-allowed disabled:shadow-none"
             >
               <span>Создать документ</span>
             </button>
@@ -480,9 +485,11 @@ export default function MoneyView() {
                               <button onClick={() => handleSaveNote(account.id)} className="text-emerald-600 text-xs hover:underline font-bold">ОК</button>
                             </div>
                           ) : (
-                            <button 
+                            <button
                               onClick={() => handleEditNote(account.id, account.label)}
-                              className="text-xs text-sky-600 hover:underline cursor-pointer"
+                              disabled={!can("edit_account")}
+                              title={can("edit_account") ? undefined : denyTitle("edit_account")}
+                              className="text-xs text-sky-600 hover:underline cursor-pointer disabled:text-gray-300 disabled:no-underline disabled:cursor-not-allowed"
                             >
                               Изменить заметку
                             </button>
@@ -508,20 +515,24 @@ export default function MoneyView() {
                           <MoreVertical className="w-4 h-4" />
                         </button>
                         <div className="absolute right-0 mt-1 bg-white border border-gray-200 rounded-lg shadow-md py-1 w-36 hidden group-hover:block hover:block z-25">
-                          <button 
+                          <button
                             onClick={() => handleToggleHide(account.id)}
-                            className="w-full text-left px-3 py-1.5 hover:bg-slate-50 text-xs text-gray-700 transition"
+                            disabled={!can("edit_account")}
+                            title={can("edit_account") ? undefined : denyTitle("edit_account")}
+                            className="w-full text-left px-3 py-1.5 hover:bg-slate-50 text-xs text-gray-700 transition disabled:text-gray-300 disabled:cursor-not-allowed disabled:hover:bg-transparent"
                           >
                             {account.hidden ? 'Отображать' : 'Скрыть счет'}
                           </button>
-                          <button 
+                          <button
                             onClick={() => {
                               const amt = parseFloat(prompt('Введите сумму пополнения (симуляция):', '1000') || '0');
                               if (amt > 0) {
                                 setAccounts(prev => prev.map(a => a.id === account.id ? { ...a, balance: a.balance + amt } : a));
                               }
                             }}
-                            className="w-full text-left px-3 py-1.5 hover:bg-slate-50 text-xs text-gray-700 transition"
+                            disabled={!can("create_document")}
+                            title={can("create_document") ? undefined : denyTitle("create_document")}
+                            className="w-full text-left px-3 py-1.5 hover:bg-slate-50 text-xs text-gray-700 transition disabled:text-gray-300 disabled:cursor-not-allowed disabled:hover:bg-transparent"
                           >
                             Пополнить счет
                           </button>
@@ -716,9 +727,11 @@ export default function MoneyView() {
 
                               {/* Action to click to Sign documents which are pending signature */}
                               {doc.status === 'На подписи' && (
-                                <button 
+                                <button
                                   onClick={() => startSign(doc)}
-                                  className="text-[9px] bg-amber-600 font-black hover:bg-amber-700 text-white px-2 py-0.5 rounded cursor-pointer leading-tight transition-all active:scale-95"
+                                  disabled={!can("sign_document")}
+                                  title={can("sign_document") ? "Подписать СМС-кодом" : denyTitle("sign_document")}
+                                  className="text-[9px] bg-amber-600 font-black hover:bg-amber-700 text-white px-2 py-0.5 rounded cursor-pointer leading-tight transition-all active:scale-95 disabled:bg-gray-300 disabled:cursor-not-allowed"
                                 >
                                   Подписать SMS
                                 </button>
@@ -747,7 +760,7 @@ export default function MoneyView() {
             
             <div className="divide-y divide-gray-100">
               {/* Option 1: Документы на подписании */}
-              <button 
+              <button
                 onClick={() => {
                   const pendingCount = documents.filter(d => d.status === 'На подписи').length;
                   if (pendingCount > 0) {
@@ -757,7 +770,9 @@ export default function MoneyView() {
                     alert('Нет документов, ожидающих вашей цифровой подписи.');
                   }
                 }}
-                className="w-full flex items-center justify-between py-3 hover:text-[#138d8a] transition-colors group text-left"
+                disabled={!can("sign_document")}
+                title={can("sign_document") ? undefined : denyTitle("sign_document")}
+                className="w-full flex items-center justify-between py-3 hover:text-[#138d8a] transition-colors group text-left disabled:opacity-40 disabled:cursor-not-allowed disabled:hover:text-current"
               >
                 <div className="flex items-center gap-3">
                   <FileCheck2 className="w-5 h-5 text-gray-400 group-hover:text-[#138d8a]" />

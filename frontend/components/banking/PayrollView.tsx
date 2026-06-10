@@ -21,8 +21,10 @@ import { createEmployee } from "@/lib/api/banking";
 import { bankingToast } from "@/lib/banking/toast";
 import { runBankingAction } from "@/lib/banking/actionRegistry";
 import { useBankingStore } from "@/store/bankingStore";
+import { useRole } from "@/store/roleStore";
 
 export default function PayrollView() {
+  const { can, denyTitle } = useRole();
   const accounts = useBankingStore((s) => s.accounts);
   const setEmployees = useBankingStore((s) => s.setEmployees);
   const employees = useBankingStore((s) => s.employees);
@@ -305,9 +307,11 @@ export default function PayrollView() {
               />
             </div>
             <div className="flex items-end">
-              <button 
+              <button
                 type="submit"
-                className="w-full py-1.5 bg-[#128e8b] hover:bg-[#107c79] text-white rounded font-bold transition flex items-center justify-center gap-1 shrink-0"
+                disabled={!can("manage_employees")}
+                title={can("manage_employees") ? undefined : denyTitle("manage_employees")}
+                className="w-full py-1.5 bg-[#128e8b] hover:bg-[#107c79] text-white rounded font-bold transition flex items-center justify-center gap-1 shrink-0 disabled:bg-gray-300 disabled:cursor-not-allowed"
               >
                 <PlusCircle className="w-4 h-4" />
                 <span>Добавить</span>
@@ -354,9 +358,11 @@ export default function PayrollView() {
                         </span>
                       </td>
                       <td className="py-3 px-5 text-right">
-                        <button 
+                        <button
                           onClick={() => handleDeleteEmployee(e.id)}
-                          className="text-red-600 hover:text-red-900 cursor-pointer font-bold hover:underline"
+                          disabled={!can("manage_employees")}
+                          title={can("manage_employees") ? undefined : denyTitle("manage_employees")}
+                          className="text-red-600 hover:text-red-900 cursor-pointer font-bold hover:underline disabled:text-gray-300 disabled:no-underline disabled:cursor-not-allowed"
                         >
                           Удалить
                         </button>
@@ -413,9 +419,11 @@ export default function PayrollView() {
               <button
                 type="submit"
                 data-assistant-action="run-payroll"
-                className="w-full py-3 bg-[#128e8b] hover:bg-[#107c79] text-white text-xs font-black rounded-lg transition shadow active:scale-95"
+                disabled={!can("pay_payroll")}
+                title={can("pay_payroll") ? undefined : denyTitle("pay_payroll")}
+                className="w-full py-3 bg-[#128e8b] hover:bg-[#107c79] text-white text-xs font-black rounded-lg transition shadow active:scale-95 disabled:bg-gray-300 disabled:cursor-not-allowed disabled:shadow-none"
               >
-                Совершить выплату реестра в Сбер
+                {can("pay_payroll") ? "Совершить выплату реестра в Сбер" : "Подпись доступна только Руководителю"}
               </button>
             </form>
           ) : payStatus === 'loading' ? (

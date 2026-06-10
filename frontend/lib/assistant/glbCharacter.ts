@@ -1,7 +1,27 @@
 /** Имена morph targets и анимаций — подбираются по подстроке (lower case). */
 
+import type { CharacterStyleId } from "./characterTypes";
+
+export const MODEL_PERSONAGE = "/models/personage.glb";
+export const MODEL_SASHA_LADY1 = "/models/textured_sasha_lady1.glb";
+export const MODEL_SASHA_LADY2 = "/models/textured_sasha_lady2.glb";
+
+export const CHARACTER_GLB_CATALOG = [
+  { id: "alexander", label: "Александр", path: MODEL_PERSONAGE, gender: "male" as const },
+  { id: "alexandra1", label: "Александра (образ 1)", path: MODEL_SASHA_LADY1, gender: "female" as const },
+  { id: "alexandra2", label: "Александра (образ 2)", path: MODEL_SASHA_LADY2, gender: "female" as const },
+] as const;
+
+export function displayNameForModel(modelPath?: string): string {
+  return modelPath === MODEL_PERSONAGE ? "Александр" : "Александра";
+}
+
+export function styleIdForModel(modelPath?: string): CharacterStyleId {
+  return modelPath === MODEL_PERSONAGE ? "human-m" : "human-f";
+}
+
 export const DEFAULT_GLB_PATH =
-  process.env.NEXT_PUBLIC_CHARACTER_GLB ?? "/models/personage.glb";
+  process.env.NEXT_PUBLIC_CHARACTER_GLB ?? MODEL_PERSONAGE;
 
 /**
  * personage.glb (Sketchfab scan): 3 меша (Object_5–7), full-body ~1.9 m,

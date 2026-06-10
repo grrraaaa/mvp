@@ -11,8 +11,11 @@ import {
   CheckCircle2,
   RefreshCw
 } from 'lucide-react';
+import { useRole } from "@/store/roleStore";
 
 export default function SettingsView() {
+  const { can, denyTitle } = useRole();
+  const canManage = can("manage_security");
   const [phoneAlert, setPhoneAlert] = useState('+375 29 111-22-33');
   const [sessionTimeout, setSessionTimeout] = useState('15');
   const [smsSberConfirm, setSmsSberConfirm] = useState(true);
@@ -70,20 +73,24 @@ export default function SettingsView() {
             <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 text-xs">
               <div className="space-y-1">
                 <label className="text-[10px] font-bold text-gray-500 uppercase block">Телефон для СМС-паролей</label>
-                <input 
-                  type="text" 
+                <input
+                  type="text"
                   value={phoneAlert}
                   onChange={(e) => setPhoneAlert(e.target.value)}
-                  className="w-full border border-gray-300 rounded-lg p-2 font-bold"
+                  disabled={!canManage}
+                  title={canManage ? undefined : denyTitle("manage_security")}
+                  className="w-full border border-gray-300 rounded-lg p-2 font-bold disabled:bg-slate-50 disabled:text-gray-400 disabled:cursor-not-allowed"
                 />
               </div>
 
               <div className="space-y-1">
                 <label className="text-[10px] font-bold text-gray-500 uppercase block">Время авторазлогина (мин)</label>
-                <select 
+                <select
                   value={sessionTimeout}
                   onChange={(e) => setSessionTimeout(e.target.value)}
-                  className="w-full border border-gray-300 rounded-lg p-2.5 font-bold bg-white text-gray-700"
+                  disabled={!canManage}
+                  title={canManage ? undefined : denyTitle("manage_security")}
+                  className="w-full border border-gray-300 rounded-lg p-2.5 font-bold bg-white text-gray-700 disabled:bg-slate-50 disabled:text-gray-400 disabled:cursor-not-allowed"
                 >
                   <option value="5">5 минут</option>
                   <option value="15">15 минут</option>
@@ -101,11 +108,12 @@ export default function SettingsView() {
                 </span>
                 <p className="text-[10px] text-gray-400">Требовать одноразовый OTP код при отправке клиринга бенефициарам</p>
               </div>
-              <label className="relative inline-flex items-center cursor-pointer">
-                <input 
-                  type="checkbox" 
+              <label className={`relative inline-flex items-center ${canManage ? "cursor-pointer" : "cursor-not-allowed opacity-50"}`} title={canManage ? undefined : denyTitle("manage_security")}>
+                <input
+                  type="checkbox"
                   checked={smsSberConfirm}
                   onChange={(e) => setSmsSberConfirm(e.target.checked)}
+                  disabled={!canManage}
                   className="sr-only peer"
                 />
                 <div className="w-11 h-6 bg-gray-200 peer-focus:outline-none rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-5 after:width-5 after:transition-all peer-checked:bg-[#138d8a]" />
@@ -124,12 +132,14 @@ export default function SettingsView() {
 
             <div className="space-y-1 text-xs">
               <label className="text-[10px] font-bold text-gray-500 uppercase block">Белый список IP адресов</label>
-              <input 
-                type="text" 
+              <input
+                type="text"
                 value={ipWhitelist}
                 onChange={(e) => setIpWhitelist(e.target.value)}
                 placeholder="например, 178.120.21.32"
-                className="w-full border border-gray-300 rounded-lg p-2 font-mono font-semibold"
+                disabled={!canManage}
+                title={canManage ? undefined : denyTitle("manage_security")}
+                className="w-full border border-gray-300 rounded-lg p-2 font-mono font-semibold disabled:bg-slate-50 disabled:text-gray-400 disabled:cursor-not-allowed"
               />
             </div>
 
@@ -145,9 +155,11 @@ export default function SettingsView() {
           </div>
 
           <div className="flex items-center gap-3">
-            <button 
+            <button
               type="submit"
-              className="px-6 py-2.5 bg-[#128e8b] hover:bg-[#107c79] text-white text-xs font-bold rounded-lg transition shadow-md active:scale-95"
+              disabled={!canManage}
+              title={canManage ? undefined : denyTitle("manage_security")}
+              className="px-6 py-2.5 bg-[#128e8b] hover:bg-[#107c79] text-white text-xs font-bold rounded-lg transition shadow-md active:scale-95 disabled:bg-gray-300 disabled:cursor-not-allowed disabled:shadow-none"
             >
               Сохранить параметры безопасности
             </button>

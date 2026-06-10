@@ -6,9 +6,13 @@ const nextConfig = {
   // Корень трассировки — папка frontend (не родительский mvp с вторым lockfile)
   outputFileTracingRoot: path.join(__dirname),
   transpilePackages: ["three", "@react-three/fiber", "@react-three/drei"],
+  async redirects() {
+    // Мобильный UI — основное Next.js-приложение на /, без обязательного /m в URL
+    return [{ source: "/m", destination: "/", permanent: false }];
+  },
   async rewrites() {
-    // Мобильная версия (сборка "web mobile") лежит в public/m
-    return [{ source: "/m", destination: "/m/index.html" }];
+    // Статика старой сборки web mobile (assets) остаётся доступна по /m/assets/*
+    return [];
   },
   webpack: (config, { dev }) => {
     if (dev) {

@@ -16,6 +16,8 @@ import {
   ANIM_WALK_HINTS,
   collectLipBindings,
   DEFAULT_GLB_PATH,
+  MODEL_SASHA_LADY1,
+  MODEL_SASHA_LADY2,
   findClipName,
   GLB_Y_OFFSET,
   PORTRAIT_FACE_SCALE,
@@ -289,4 +291,6 @@ export function GlbCharacter3D({
   );
 }
 
+useGLTF.preload(MODEL_SASHA_LADY1);
+useGLTF.preload(MODEL_SASHA_LADY2);
 useGLTF.preload(DEFAULT_GLB_PATH);
