@@ -1,28 +1,22 @@
-import type { AssistantCharacterConfig } from "./characterTypes";
-import { MODEL_PERSONAGE, MODEL_SASHA_LADY1, MODEL_SASHA_LADY2 } from "./glbCharacter";
-
-export interface CharacterPreset {
-  id: string;
-  label: string;
-  config: AssistantCharacterConfig;
-}
-
-const ALEXANDRA_BASE: Omit<AssistantCharacterConfig, "subtitle" | "primaryColor" | "accentColor"> = {
+import type { AssistantCharacterConfig } from "./characterTypes";
 
-  name: "Александра",
+import { MODEL_PERSONAGE, MODEL_SASHA_LADY1, MODEL_SASHA_LADY2 } from "./glbCharacter";
 
-  styleId: "human-f",
 
-  emoji: "✨",
 
-  skinTone: "#f5d0b5",
+export interface CharacterPreset {
 
-  hairColor: "#3d2314",
+  id: string;
 
-  modelPath: MODEL_PERSONAGE,
+  label: string;
 
-};
+  config: AssistantCharacterConfig;
 
+}
+
+
+
+/** База для мужского персонажа (Александр). Голос: qwen-male. */
 const ALEXANDER_BASE: Omit<AssistantCharacterConfig, "subtitle" | "primaryColor" | "accentColor"> = {
 
   name: "Александр",
@@ -39,15 +33,58 @@ const ALEXANDER_BASE: Omit<AssistantCharacterConfig, "subtitle" | "primaryColor"
 
 };
 
+/** База для женского персонажа (Александра, образ 1). Голос: qwen-female. */
+const ALEXANDRA_BASE_1: Omit<AssistantCharacterConfig, "subtitle" | "primaryColor" | "accentColor"> = {
+
+  name: "Александра",
+
+  styleId: "human-f",
+
+  emoji: "✨",
+
+  skinTone: "#f5d0b5",
+
+  hairColor: "#3d2314",
+
+  modelPath: MODEL_SASHA_LADY1,
+
+};
+
+/** База для женского персонажа (Александра, образ 2). Голос: qwen-female. */
+const ALEXANDRA_BASE_2: Omit<AssistantCharacterConfig, "subtitle" | "primaryColor" | "accentColor"> = {
+
+  name: "Александра",
+
+  styleId: "human-f",
+
+  emoji: "✨",
+
+  skinTone: "#f5d0b5",
+
+  hairColor: "#3d2314",
+
+  modelPath: MODEL_SASHA_LADY2,
+
+};
 
 
+
+/**
+ * Всего 3 образа консультанта:
+ *   1. Александр     (мужской)  — personage.glb
+ *   2. Александра    (женский) — textured_sasha_lady1.glb
+ *   3. Александра    (женский) — textured_sasha_lady2.glb
+ *
+ * Голос подбирается автоматически по полу: human-m → qwen-male, human-f → qwen-female.
+ * Ручной выбор голоса в UI отключён.
+ */
 export const CHARACTER_PRESETS: CharacterPreset[] = [
 
   {
 
     id: "banker-m",
 
-    label: "Александр — консультант",
+    label: "Александр",
 
     config: {
 
@@ -67,11 +104,11 @@ export const CHARACTER_PRESETS: CharacterPreset[] = [
 
     id: "banker-f",
 
-    label: "Александра — менеджер",
+    label: "Александра",
 
     config: {
 
-      ...ALEXANDRA_BASE,
+      ...ALEXANDRA_BASE_1,
 
       subtitle: "Подберу лучшее предложение банка",
 
@@ -87,11 +124,11 @@ export const CHARACTER_PRESETS: CharacterPreset[] = [
 
     id: "vip",
 
-    label: "Александра — VIP",
+    label: "Александра",
 
     config: {
 
-      ...ALEXANDRA_BASE,
+      ...ALEXANDRA_BASE_2,
 
       subtitle: "Премиальное обслуживание",
 
@@ -103,35 +140,25 @@ export const CHARACTER_PRESETS: CharacterPreset[] = [
 
   },
 
-  {
-
-    id: "casual",
-
-    label: "Александра — дружелюбная",
-
-    config: {
-
-      ...ALEXANDRA_BASE,
-
-      subtitle: "Объясню простыми словами",
-
-      primaryColor: "#0f766e",
-
-      accentColor: "#99f6e4",
-
-    },
-
-  },
-
 ];
-
-/** Роль в navbar → пресет 3D-консультанта */
-export const ROLE_PRESET_MAP: Record<string, string> = {
-  manager: "banker-m",
-  admin: "banker-f",
-  user: "casual",
-};
-
-export function getPresetById(id: string): CharacterPreset | undefined {
-  return CHARACTER_PRESETS.find((p) => p.id === id);
-}
+
+
+
+/** Роль в navbar → пресет 3D-консультанта */
+export const ROLE_PRESET_MAP: Record<string, string> = {
+
+  manager: "banker-m",
+
+  admin: "banker-f",
+
+  user: "vip",
+
+};
+
+
+
+export function getPresetById(id: string): CharacterPreset | undefined {
+
+  return CHARACTER_PRESETS.find((p) => p.id === id);
+
+}

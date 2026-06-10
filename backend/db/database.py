@@ -15,14 +15,20 @@ DATABASE_URL = resolve_database_url()
 _engine_kwargs: dict = {
     "echo": False,
     "pool_pre_ping": True,
+    "pool_recycle": 1800,  # 30 min — recycle connections to avoid Neon pooler stale sockets
     "connect_args": engine_connect_args(),
 }
 if os.getenv("VERCEL") == "1":
     # Serverless: без долгоживущего пула
     _engine_kwargs["poolclass"] = NullPool
 else:
-    _engine_kwargs["pool_size"] = 5
-    _engine_kwargs["max_overflow"] = 5
+    # NOTE: previous settings (size=5, overflow=5, timeout=30) caused QueuePool
+    # exhaustion under modest concurrency (10 in-flight requests → 504 on the 11th).
+    # Bumped to 20/30 with shorter timeout so failures fail fast and connections
+    # are released back to the pool quickly.
+    _engine_kwargs["pool_size"] = 20
+    _engine_kwargs["max_overflow"] = 30
+    _engine_kwargs["pool_timeout"] = 10
 
 engine = create_async_engine(DATABASE_URL, **_engine_kwargs)
 
@@ -91,9 +97,14 @@ async def init_db():
     from db.seed_statement_recent import seed_statement_recent
     from db.seed_notification_links import seed_notification_links
     from db.seed_features import seed_features
+    from db.seed_dynamic_cleanup import cleanup_dynamic_notifications
 
     # Migrations: no timeout — should always succeed
     await run_migrations()
+
+    # Удаляем старые хардкод-уведомления с динамическими заголовками
+    # (теперь генерируются на лету из BankDocument + cash_gap_forecast).
+    await _timed(cleanup_dynamic_notifications)()
 
     # Seeds: each has its own timeout so one slow/blocked seed doesn't hang the rest
     await _timed(seed_products)()

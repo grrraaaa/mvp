@@ -63,24 +63,6 @@ EXTRA_DOCUMENTS = [
 
 SEED_NOTIFICATIONS = [
     {
-        "title": "Платёж поставщику",
-        "body": 'Через 3 дня ожидается ежемесячный платёж ООО «АльфаИнвест». Подготовить платёжное поручение?',
-        "severity": "info",
-        "category": "payment",
-        "action_url": "/payments/paydocbyn",
-        "action_label": "Подготовить платёж",
-        "due_date": "08.06.2026",
-    },
-    {
-        "title": "Аренда офиса",
-        "body": "Сегодня последний день оплаты аренды согласно предыдущим платежам.",
-        "severity": "warn",
-        "category": "payment",
-        "action_url": "/payments",
-        "action_label": "Создать платёж",
-        "due_date": "05.06.2026",
-    },
-    {
         "title": "Отчётность",
         "body": "Срок подачи отчётности истекает через 2 дня.",
         "severity": "critical",
@@ -88,24 +70,6 @@ SEED_NOTIFICATIONS = [
         "action_url": "/salary/obligations",
         "action_label": "Обязательства",
         "due_date": "07.06.2026",
-    },
-    {
-        "title": "Документ на подписи",
-        "body": "Платёжное поручение №105 без назначения — проверьте документ.",
-        "severity": "warn",
-        "category": "document",
-        "action_url": "/",
-        "action_label": "Открыть документы",
-        "due_date": None,
-    },
-    {
-        "title": "Кассовый прогноз",
-        "body": "Прогноз остатка показывает возможный дефицит средств через 7 дней.",
-        "severity": "warn",
-        "category": "analytics",
-        "action_url": "/statement",
-        "action_label": "Выписка",
-        "due_date": "12.06.2026",
     },
 ]
 

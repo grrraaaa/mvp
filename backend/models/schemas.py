@@ -111,6 +111,7 @@ class AssistantResponse(BaseModel):
     form_fill_status: Optional[str] = None  # collecting | partial | complete
     sources: Optional[List[SourceRef]] = None
     charts: Optional[List[ChartSpec]] = None
+    chart_payload: Optional[dict] = None  # структурированные данные графика (например «balance»)
     suggested_chips: Optional[List[str]] = None
     response_tone: Optional[str] = None  # success | warning | error | neutral | info
     character_emotion: Optional[str] = None
@@ -227,6 +228,37 @@ class CurrencyBalance(BaseModel):
 class BankingSummaryOut(BaseModel):
     balances: List[CurrencyBalance]
     total_accounts: int
+
+
+class BalanceAccountOut(BaseModel):
+    """Один счёт в разрезе баланса (для графика и UI)."""
+
+    iban: str
+    label: str
+    currency: str
+    balance: float
+    account_type: str
+
+
+class BalanceHistoryMonthOut(BaseModel):
+    """Месячный агрегат по выписке: чистый поток (кредит − дебет) и подпись."""
+
+    month: str  # YYYY-MM
+    label: str  # «Май 2026»
+    amount: float  # net (credit - debit) за месяц
+    debit: float = 0.0
+    credit: float = 0.0
+
+
+class BalanceSummaryDetailOut(BaseModel):
+    """Полные данные для «Сколько на счёте?» — реальные суммы из БД."""
+
+    total_byn: float
+    total_eur: float
+    total_usd: float
+    total_rub: float
+    accounts: List[BalanceAccountOut]
+    history: List[BalanceHistoryMonthOut]
 
 
 class CreateDocumentRequest(BaseModel):

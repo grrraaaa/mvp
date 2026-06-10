@@ -24,9 +24,27 @@ function envDefault(): AssistantCharacterConfig {
   return preset?.config ?? DEFAULT_CHARACTER;
 }
 
+/** Авто-выбор голоса Qwen по полу модели. Если групп ещё нет — пропускаем. */
+function autoPickQwenVoice(styleId: "human-m" | "human-f") {
+  if (typeof window === "undefined") return;
+  const gender = styleId === "human-m" ? "male" : "female";
+  // динамический импорт, чтобы не тянуть ttsStore в SSR
+  void import("@/store/ttsStore").then(({ useTtsStore }) => {
+    const tts = useTtsStore.getState();
+    const groups = tts.voiceGroups;
+    if (groups.length === 0) return;
+    // Приоритет: qwen-группа, потом edge
+    const preferred = groups.find((g) => g.id === "qwen") ?? groups[0];
+    const voice = preferred.voices.find((v) => v.gender === gender) ?? preferred.voices[0];
+    if (voice && tts.voiceId !== voice.id) {
+      tts.setVoiceId(voice.id);
+    }
+  });
+}
+
 export const useCharacterStore = create<CharacterState>()(
   persist(
-    (set) => ({
+    (set, get) => ({
       config: envDefault(),
       activePresetId: process.env.NEXT_PUBLIC_CHARACTER_PRESET ?? "banker-m",
       settingsOpen: false,
@@ -47,47 +65,26 @@ export const useCharacterStore = create<CharacterState>()(
         if (!preset) return;
         set({ config: { ...preset.config }, activePresetId: presetId });
         // Автоподбор голоса по полу модели: human-m → qwen-male, human-f → qwen-female.
-        // Если такого голоса нет (группы ещё не загрузились) — следующий useEffect догонит.
-        if (typeof window !== "undefined") {
-          try {
-            const gender = preset.config.styleId === "human-m" ? "male" : preset.config.styleId === "human-f" ? "female" : null;
-            if (gender) {
-              // динамический импорт, чтобы не тянуть ttsStore в SSR
-              void import("@/store/ttsStore").then(({ useTtsStore }) => {
-                const tts = useTtsStore.getState();
-                const groups = tts.voiceGroups;
-                if (groups.length === 0) return;
-                // Приоритет: qwen-группа, потом edge
-                const preferred = groups.find((g) => g.id === "qwen") ?? groups[0];
-                const voice = preferred.voices.find((v) => v.gender === gender) ?? preferred.voices[0];
-                if (voice && tts.voiceId !== voice.id) {
-                  tts.setVoiceId(voice.id);
-                }
-              });
-            }
-          } catch {
-            /* ignore */
-          }
-        }
+        autoPickQwenVoice(preset.config.styleId);
       },
 
-      resetCharacter: () =>
-        set({
-          config: { ...DEFAULT_CHARACTER },
-          activePresetId: "banker-m",
-        }),
+      resetCharacter: () => {
+        // Через applyPreset — единая логика: и сброс конфига, и перевыбор голоса.
+        get().applyPreset("banker-m");
+      },
 
       setSettingsOpen: (open) => set({ settingsOpen: open }),
     }),
     {
       name: "sber-ai-character",
-      version: 4,
+      version: 5,
       partialize: (state) => ({
         config: state.config,
         activePresetId: state.activePresetId,
       }),
       migrate: (persisted: unknown, version: number) => {
-        if (version < 4) {
+        // v4 и раньше: полный сброс на новый дефолт (Александр, banker-m).
+        if (version < 5) {
           return {
             config: { ...DEFAULT_CHARACTER },
             activePresetId: "banker-m",
@@ -98,6 +95,12 @@ export const useCharacterStore = create<CharacterState>()(
           activePresetId?: string;
         };
         const modelPath = p?.config?.modelPath ?? DEFAULT_CHARACTER.modelPath;
+        // Подстраховка: если в стейте залежался id, которого больше нет
+        // (например, ранее удалённый «casual»), подменяем на дефолтный.
+        const activePresetId =
+          p?.activePresetId && CHARACTER_PRESETS.some((cp) => cp.id === p.activePresetId)
+            ? p.activePresetId
+            : "banker-m";
         return {
           config: {
             ...DEFAULT_CHARACTER,
@@ -106,7 +109,7 @@ export const useCharacterStore = create<CharacterState>()(
             name: displayNameForModel(modelPath),
             styleId: styleIdForModel(modelPath),
           },
-          activePresetId: p?.activePresetId ?? "banker-m",
+          activePresetId,
         };
       },
     }

@@ -34,8 +34,9 @@ export function useTtsBootstrap() {
     fetchTtsStatus()
       .then((s) => {
         const enabled = Boolean(s.enabled);
+        // Голос выбирается автоматически по полу модели (см. characterStore.applyPreset),
+        // ручной UI-выбор озвучки отключён, поэтому voiceSelection не передаём.
         setServerTts(enabled, {
-          voiceSelection: true,
           defaultVoice: s.voice ?? staticFallback.defaultVoice,
         });
         return fetchTtsVoices()
@@ -49,7 +50,7 @@ export function useTtsBootstrap() {
       })
       .catch(() => {
         setVoiceGroups(COMBINED_VOICE_GROUPS, COMBINED_DEFAULT_VOICE);
-        useTtsStore.setState({ serverTts: true, voiceSelection: true });
+        useTtsStore.setState({ serverTts: true });
       });
   }, [setServerTts, setVoiceGroups]);
 }

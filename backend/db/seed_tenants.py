@@ -33,11 +33,7 @@ TENANT_PACKAGES: dict[str, dict] = {
             {"name": 'ООО "БелТорг"', "unp": "123456789", "account": "BY12 BPSB 3012 0000 0000 0000 0001", "bank_name": "БПС-Сбербанк"},
             {"name": "ООО АльфаИнвест", "unp": "190552317", "account": "BY70 BPSB 3012 4444 4444 4444 4444", "bank_name": "БПС-Сбербанк"},
         ],
-        "notifications": [
-            {"title": "Платёж поставщику", "body": "Через 3 дня платёж ООО «АльфаИнвест».", "severity": "info", "category": "payment", "action_url": "/payments/paydocbyn", "action_label": "Подготовить платёж", "due_date": "08.06.2026"},
-            {"title": "Документ на подписи", "body": "Платёжное поручение №105 ожидает подписи.", "severity": "warn", "category": "document", "action_url": "/other/documents/signing", "action_label": "Открыть", "due_date": None},
-            {"title": "Кассовый прогноз", "body": "Прогноз остатка показывает возможный дефицит через 7 дней.", "severity": "warn", "category": "analytics", "action_url": "/statement", "action_label": "Выписка", "due_date": "12.06.2026"},
-        ],
+        "notifications": [],
     },
     "ip_ivanov": {
         "accounts": [

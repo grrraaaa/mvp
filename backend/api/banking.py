@@ -28,6 +28,9 @@ from db.models import (
     User,
 )
 from models.schemas import (
+    BalanceAccountOut,
+    BalanceHistoryMonthOut,
+    BalanceSummaryDetailOut,
     BankAccountOut,
     BankDocumentOut,
     BankingSummaryOut,
@@ -221,6 +224,32 @@ async def banking_summary(
     return BankingSummaryOut(balances=balances, total_accounts=len(accounts))
 
 
+@router.get("/balance/summary", response_model=BalanceSummaryDetailOut)
+async def balance_summary(
+    db: AsyncSession = Depends(get_db),
+    current_user: User = Depends(get_current_user),
+    history_months: int = Query(6, ge=1, le=12),
+):
+    """Полная сводка «Сколько на счёте?» — реальные данные из БД.
+
+    Возвращает totals по валютам, список счетов и помесячную историю net-потока
+    (credit − debit) из statement_lines. Никаких моков: всё агрегируется
+    SQLAlchemy-запросами.
+    """
+    org_id = user_org_id(current_user)
+    from services.banking.queries import get_balance_data
+
+    data = await get_balance_data(db, org_id, history_months=history_months)
+    return BalanceSummaryDetailOut(
+        total_byn=data["total_byn"],
+        total_eur=data["total_eur"],
+        total_usd=data["total_usd"],
+        total_rub=data["total_rub"],
+        accounts=[BalanceAccountOut(**a) for a in data["accounts"]],
+        history=[BalanceHistoryMonthOut(**h) for h in data["history"]],
+    )
+
+
 @router.get("/org", response_model=OrgProfileOut)
 async def get_org_profile(
     db: AsyncSession = Depends(get_db),
@@ -239,16 +268,40 @@ async def list_notifications(
     current_user: User = Depends(get_current_user),
     unread_only: bool = True,
 ):
+    """Умные напоминания — реальные данные из PostgreSQL, никаких моков в коде.
+
+    Источники:
+      1) compute_dynamic_notifications — собирает нотификации на лету из БД
+         (BankDocument «На подписи»/«Черновик» + cash_gap_forecast).
+      2) SmartNotification — таблица с seed-уведомлениями, из которой фильтруем
+         дубликаты динамических категорий (filter_static_notifications).
+
+    TODO: replace seed with real data source — подключить брокер событий
+    (поступление/списание, неподписанный документ, приближающийся налоговый
+    срок) и писать в smart_notifications из боевых хендлеров, а не из сидов.
+    """
+    from services.banking.dynamic_notifications import (
+        compute_dynamic_notifications,
+        filter_static_notifications,
+    )
     from services.banking.notifications import resolve_notification_action_url
 
     org_id = user_org_id(current_user)
+
+    # 1) Динамические уведомления: реальные данные из БД (BankDocument, cash_gap_forecast).
+    dynamic = await compute_dynamic_notifications(db, org_id)
+
+    # 2) Статические из БД, но только те, что НЕ генерируются динамически
+    #    (старые seed-уведомления вроде «Налог ИП» остаются).
     stmt = select(SmartNotification).where(SmartNotification.org_id == org_id)
     if unread_only:
         stmt = stmt.where(SmartNotification.is_read == False)
     result = await db.execute(stmt)
-    rows = result.scalars().all()
+    static_rows = filter_static_notifications(list(result.scalars().all()))
+
     out: list[SmartNotificationOut] = []
-    for n in rows:
+    # Сначала динамические (отражают реальное состояние), потом статические дополнения.
+    for n in dynamic + static_rows:
         action_url = await resolve_notification_action_url(db, org_id, n)
         out.append(
             SmartNotificationOut(

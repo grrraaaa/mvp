@@ -2,12 +2,14 @@
 from __future__ import annotations
 
 import re
+from collections import defaultdict
+from datetime import datetime
 from urllib.parse import quote
 
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from db.models import BankAccount, BankDocument, Counterparty, OrganizationProfile
+from db.models import BankAccount, BankDocument, Counterparty, OrganizationProfile, StatementLine
 from services.banking.analytics import (
     cash_gap_forecast,
     compare_months,
@@ -105,24 +107,135 @@ async def get_org_profile(session: AsyncSession, org_id: str = "demo") -> Organi
 
 
 async def get_balance_summary(session: AsyncSession, org_id: str = "demo") -> str:
-    result = await session.execute(
-        select(BankAccount).where(BankAccount.org_id == org_id, BankAccount.hidden == False)
-    )
-    accounts = result.scalars().all()
-    byn = sum(a.balance for a in accounts if a.currency == "BYN")
+    """Текстовая сводка по счетам — оставлена как shim для совместимости.
+
+    Используйте `get_balance_data()` — она возвращает структурированный dict
+    с реальными суммами из БД, пригодный для построения графиков.
+    """
+    data = await get_balance_data(session, org_id)
+    byn = data["total_byn"]
     parts = [f"**{byn:,.2f} BYN** на расчётных счетах"]
-    for cur in ("EUR", "USD", "RUB"):
-        total = sum(a.balance for a in accounts if a.currency == cur)
+    for cur_key, cur_label in (("total_eur", "EUR"), ("total_usd", "USD"), ("total_rub", "RUB")):
+        total = data[cur_key]
         if total:
-            parts.append(f"{total:,.2f} {cur}")
+            parts.append(f"{total:,.2f} {cur_label}")
     return "Остаток по счетам: " + "; ".join(parts) + "."
 
 
+async def get_balance_data(
+    session: AsyncSession, org_id: str = "demo", *, history_months: int = 6
+) -> dict:
+    """Реальные данные по остаткам из БД (BankAccount + StatementLine).
+
+    Возвращает dict:
+      {
+        "total_byn": float, "total_eur": float, "total_usd": float, "total_rub": float,
+        "accounts": [{"iban": str, "label": str, "currency": str, "balance": float,
+                      "account_type": str}],
+        "history": [{"month": "YYYY-MM", "label": str, "amount": float,
+                     "debit": float, "credit": float}]
+      }
+
+    `amount` в history — чистый поток за месяц (credit − debit) по всем
+    счетам организации в BYN. Берётся агрегатом из statement_lines, без
+    моков и хардкода.
+    """
+    accounts_q = await session.execute(
+        select(BankAccount).where(
+            BankAccount.org_id == org_id, BankAccount.hidden.is_(False)
+        )
+    )
+    accounts = list(accounts_q.scalars().all())
+
+    totals: dict[str, float] = defaultdict(float)
+    accounts_out: list[dict] = []
+    for acc in accounts:
+        totals[acc.currency] += float(acc.balance or 0.0)
+        accounts_out.append(
+            {
+                "iban": acc.iban,
+                "label": acc.label or "",
+                "currency": acc.currency,
+                "balance": round(float(acc.balance or 0.0), 2),
+                "account_type": acc.account_type or "",
+            }
+        )
+
+    # Monthly aggregation of statement_lines (net flow credit − debit).
+    # Real DB aggregate; falls back to last-6-months window starting at the
+    # earliest date we have, so empty DBs still return up to history_months
+    # empty slots (labelled) instead of failing.
+    monthly: dict[str, dict[str, float]] = defaultdict(
+        lambda: {"debit": 0.0, "credit": 0.0, "count": 0}
+    )
+    lines_q = await session.execute(
+        select(StatementLine).where(StatementLine.org_id == org_id)
+    )
+    for line in lines_q.scalars().all():
+        try:
+            dt = datetime.strptime(line.operation_date, "%d.%m.%Y")
+        except (ValueError, TypeError):
+            continue
+        key = dt.strftime("%Y-%m")
+        monthly[key]["debit"] += float(line.debit or 0.0)
+        monthly[key]["credit"] += float(line.credit or 0.0)
+        monthly[key]["count"] += 1
+
+    # Pick the most recent N months that have data, OR (if no data) the
+    # current calendar month minus N+1 .. -1 slots.
+    if monthly:
+        sorted_keys = sorted(monthly.keys(), reverse=True)
+        chosen = sorted_keys[:history_months]
+        chosen_set = set(chosen)
+    else:
+        # Fallback window: anchor on today; produce history_months empty months
+        today = datetime.utcnow()
+        chosen = [
+            f"{(today.year + (today.month - i - 1) // 12):04d}-"
+            f"{(today.month - i - 1) % 12 + 1:02d}"
+            for i in range(history_months)
+        ]
+        chosen_set = set(chosen)
+
+    _RU_MONTHS = {
+        1: "Январь", 2: "Февраль", 3: "Март", 4: "Апрель",
+        5: "Май", 6: "Июнь", 7: "Июль", 8: "Август",
+        9: "Сентябрь", 10: "Октябрь", 11: "Ноябрь", 12: "Декабрь",
+    }
+
+    history_out: list[dict] = []
+    for key in sorted(chosen):
+        agg = monthly.get(key, {"debit": 0.0, "credit": 0.0, "count": 0})
+        year, month = key.split("-")
+        label = f"{_RU_MONTHS[int(month)]} {year}"
+        history_out.append(
+            {
+                "month": key,
+                "label": label,
+                "amount": round(agg["credit"] - agg["debit"], 2),
+                "debit": round(agg["debit"], 2),
+                "credit": round(agg["credit"], 2),
+            }
+        )
+
+    return {
+        "total_byn": round(totals.get("BYN", 0.0), 2),
+        "total_eur": round(totals.get("EUR", 0.0), 2),
+        "total_usd": round(totals.get("USD", 0.0), 2),
+        "total_rub": round(totals.get("RUB", 0.0), 2),
+        "accounts": accounts_out,
+        "history": history_out,
+    }
+
+
 def is_balance_query(message: str) -> bool:
+    """Детектор «сколько на счёте / остаток / баланс» — поддерживает ё/е."""
     low = message.lower()
     return bool(
         re.search(
-            r"сколько\s+(?:денег|средств)|остаток|баланс|на\s+счет",
+            r"сколько\s+(?:денег|средств|на\s+сч[её]т|на\s+сч[её]те)|"
+            r"остаток|баланс|на\s+сч[её]т|на\s+сч[её]те|"
+            r"сколько\s+(?:у\s+меня|осталось|есть)",
             low,
         )
     )
@@ -778,14 +891,100 @@ async def handle_banking_query(
         }
 
     if is_balance_query(message):
-        text = await get_balance_summary(session, org_id)
+        data = await get_balance_data(session, org_id)
+        byn = data["total_byn"]
+        eur = data["total_eur"]
+        usd = data["total_usd"]
+        rub = data["total_rub"]
+
+        # Текстовое summary — реальные суммы из БД
+        currency_parts: list[str] = []
+        if byn:
+            currency_parts.append(f"**{byn:,.2f} BYN**")
+        if usd:
+            currency_parts.append(f"{usd:,.2f} USD")
+        if eur:
+            currency_parts.append(f"{eur:,.2f} EUR")
+        if rub:
+            currency_parts.append(f"{rub:,.2f} RUB")
+        if not currency_parts:
+            currency_parts.append("нет активных счетов")
+
+        history = data["history"]
+        history_text = ""
+        if history:
+            lines = [
+                f"  • {h['label']}: {h['amount']:+,.2f} BYN (дебет {h['debit']:,.2f} / кредит {h['credit']:,.2f})"
+                for h in history
+            ]
+            history_text = "\nДинамика по выписке (net-поток):\n" + "\n".join(lines)
+
+        accs = data["accounts"]
+        text = (
+            f"💰 **Остатки на счетах (реальные данные PostgreSQL):**\n"
+            f"  • BYN: **{byn:,.2f}**\n"
+            f"  • USD: {usd:,.2f}\n"
+            f"  • EUR: {eur:,.2f}\n"
+            f"  • RUB: {rub:,.2f}\n"
+            f"Всего счетов: **{len(accs)}**.{history_text}"
+        )
+
+        # Bar chart: текущие остатки по счетам в BYN (берём только BYN, чтобы не
+        # смешивать валюты на одной шкале). Не-BYN счета добавляем подписями.
+        byn_accounts = [a for a in accs if a["currency"] == "BYN"]
+        bar_labels = [
+            (a["label"] or a["iban"][-4:]).strip() or a["iban"][-4:]
+            for a in byn_accounts
+        ] or ["Нет счёта в BYN"]
+        bar_values = [a["balance"] for a in byn_accounts] or [0.0]
+        bar_chart = to_chart_bar("Остатки по счетам (BYN)", bar_labels, bar_values, "BYN")
+
+        # Line chart: net-поток по месяцам из выписки.
+        # Собираем dict вручную, чтобы labels были названиями месяцев
+        # (to_chart_line жёстко проставляет «День N», что не подходит для истории).
+        line_labels = [h["label"] for h in history] or ["Нет данных"]
+        line_values = [h["amount"] for h in history] or [0.0]
+        line_chart = {
+            "type": "line",
+            "title": "Поток по выписке, BYN/мес",
+            "labels": line_labels,
+            "datasets": [{"label": "BYN", "data": line_values}],
+            "currency": "BYN",
+        }
+
+        chart_payload = {
+            "type": "balance",
+            "data": data,  # полный dict с totals/accounts/history
+            "bar": {
+                "title": bar_chart["title"],
+                "labels": bar_chart["labels"],
+                "values": bar_chart["datasets"][0]["data"],
+                "currency": "BYN",
+            },
+            "line": {
+                "title": line_chart["title"],
+                "labels": line_chart["labels"],
+                "values": line_chart["datasets"][0]["data"],
+                "currency": "BYN",
+            },
+        }
+
         return {
             "message": text,
-            "sources": [{"index": 1, "label": "Источник 1: Выписка по счёту", "kind": "account", "url": "/statement/account"}],
+            "chart_payload": chart_payload,
+            "charts": [bar_chart, line_chart],
+            "sources": [
+                {
+                    "index": 1,
+                    "label": "Источник 1: Счета и выписка PostgreSQL",
+                    "kind": "account",
+                    "url": "/statement/account",
+                }
+            ],
             "action_buttons": [
-                {"label": "Детализация счетов", "url": "/statement/account", "variant": "primary"},
-                {"label": "Выписка", "url": "/statement", "variant": "secondary"},
-                {"label": "Последние операции", "message": "Покажи последние документы", "variant": "secondary"},
+                {"label": "Открыть выписку", "url": "/statement", "variant": "primary"},
+                {"label": "За квартал", "message": "Покажи выписку за отчётный квартал", "variant": "secondary"},
+                {"label": "За год", "message": "Покажи выписку за год", "variant": "secondary"},
             ],
         }
 

@@ -1,7 +1,6 @@
 "use client";
 
 import { useState, useRef, useEffect } from "react";
-import Image from "next/image";
 import { Phone, Bell, MessageSquare, HelpCircle, ChevronDown, Check, LogOut } from "lucide-react";
 import { SberBrandLogo } from "@/components/banking/SberBrandLogo";
 import { ROLES, ROLE_ORDER } from "@/lib/banking/roles";
@@ -50,16 +49,31 @@ export default function Navbar({
       <div className="flex items-center gap-2 sm:gap-4">
         <button
           onClick={openChat}
-          className="flex items-center gap-2 px-2 sm:px-3.5 py-1.5 border border-sber-green/30 hover:border-sber-green bg-white hover:bg-emerald-50 text-gray-700 rounded-full transition-all text-xs font-semibold focus:outline-none shrink-0 cursor-pointer shadow-sm"
+          className="flex items-center gap-1.5 px-2 sm:px-3.5 py-1.5 z-15 border border-gray-200 hover:border-gray-300 bg-white hover:bg-gray-50 text-gray-700 rounded-full transition-all text-xs font-semibold focus:outline-none shrink-0 cursor-pointer shadow-sm"
           title="Интеллектуальный ИИ-ассистент"
         >
-          <Image
-            src="/images/assistant/open-ai-button.png"
-            alt="ИИ-ассистент"
-            width={28}
-            height={28}
-            className="shrink-0 rounded-full"
-          />
+          <div className="relative flex items-center justify-center">
+            <svg
+              className="w-[18px] h-[18px] flex-shrink-0"
+              viewBox="0 0 24 24"
+              fill="none"
+              xmlns="http://www.w3.org/2000/svg"
+            >
+              <circle cx="12" cy="12" r="10" fill="#108c7c" />
+              <path
+                d="M12 7.5L13.1 10.9L16.5 12L13.1 13.1L12 16.5L10.9 13.1L7.5 12L10.9 10.9L12 7.5Z"
+                fill="white"
+              />
+              <circle
+                cx="16.5"
+                cy="7.5"
+                r="1.8"
+                fill="#21A038"
+                stroke="white"
+                strokeWidth="0.8"
+              />
+            </svg>
+          </div>
           <span className="font-sans font-medium text-gray-700 leading-none hidden sm:inline">
             ИИ-ассистент
           </span>

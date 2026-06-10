@@ -1,0 +1,198 @@
+﻿version: 1
+plan:
+  name: 'Sber Business MVP: фикс дизайна, workflow «Сколько на счёте?» с графиком, 504 fix'
+  max_concurrency: 3
+  max_consecutive_failures: 2
+  max_cycles: 6
+  auto_reject_retries: 1
+  verifier_config:
+    default_verifiers: [verifier]
+    audit_sample_rate: 0.0
+tasks:
+  - id: 'backend-balance-graph'
+    title: 'Backend: workflow «Сколько на счёте?» возвращает график и подсчёты (данные из БД, не моки)'
+    assigned_to: coder
+    verified_by: verifier
+    max_retries: 2
+    prompt: |
+      Контекст: это Sber Business MVP (FastAPI бэкенд + Next.js фронт). Работай в C:\Users\New\Desktop\sber\mvp.
+
+      Текущее поведение: пользователь пишет ассистенту «Сколько на счёте?» и получает сухой текстовый ответ-инструкцию
+      «Для проверки остатка на счёте вам нужно зайти в систему СберБизнес...». Это НЕ устраивает пользователя.
+      Пользователь требует: «должен высылаться график и подсчеты», причём данные из БД, не моки.
+
+      Что нужно сделать:
+      1. Открой backend/services/banking/queries.py — функция get_balance_summary сейчас возвращает строку.
+         Перепиши её в новую функцию get_balance_data(session, org_id), которая возвращает dict:
+         {
+           "total_byn": float, "total_eur": float, "total_usd": float, "total_rub": float,
+           "accounts": [{"iban": str, "label": str, "currency": str, "balance": float, "account_type": str}],
+           "history": [{"month": "YYYY-MM", "label": str, "amount": float}]  # помесячные итоги за 6-12 мес из statement_lines
+         }
+         Все суммы и iban-ы — реальные данные из БД (BankAccount, StatementLine), никаких моков.
+      2. В backend/api/banking.py добавь endpoint GET /api/banking/balance/summary (response_model с этими полями).
+      3. В backend/services/ai/assistant.py — найди, где обрабатывается is_balance_query. Сейчас там возвращается строка
+         «Остаток по счетам: ...» через get_balance_summary. Замени на: вернуть dict с message + chart_payload
+         (например {"type": "balance", "data": {...}}). График — bar chart по счетам в BYN + line chart по истории.
+         Также добавь action_buttons: «Открыть выписку», «За квартал», «За год».
+      4. Проверь тест backend/tests/test_assistant_parsers.py — там есть assert not q.is_search_query("сколько на счёте?")
+         Этот тест должен продолжать проходить.
+      5. НЕ дублируй данные в коде, всё тянем из БД через SQLAlchemy. Если данных по истории нет, сделай реальный
+         агрегат из statement_lines (дебет/кредит помесячно), а не хардкод.
+
+      Критерии PASS:
+      - GET /api/banking/balance/summary возвращает 200 и реальные суммы из БД.
+      - POST /api/chat/guest с message="Сколько на счёте?" возвращает chart_payload (а не текст-инструкцию).
+      - Никаких моков/захардкоженных цифр — только данные из БД.
+      - Тесты в backend/tests/ продолжают проходить (pytest backend/tests/test_assistant_parsers.py).
+
+      Сообщи список изменённых файлов и вывод pytest по тесту ассистента.
+    verify_prompt: |
+      Независимая проверка backend/части.
+      1. Подними backend (если не запущен) и выполни:
+         Invoke-RestMethod http://127.0.0.1:8000/api/banking/balance/summary
+         Проверь, что в ответе есть total_byn, accounts[], history[], значения не нули (или не дефолт) и
+         совпадают с реальными банковскими счетами из БД.
+      2. Выполни: $r = Invoke-RestMethod -Method Post http://127.0.0.1:8000/api/chat/guest -ContentType 'application/json' -Body '{"message":"Сколько на счёте?"}'
+         Проверь, что $r содержит chart_payload или эквивалент с данными для графика, и НЕ содержит старый текст
+         «Для проверки остатка на счёте вам нужно зайти в систему СберБизнес...».
+      3. Прочитай изменённые файлы — никаких хардкод-чисел вроде 12345.67, 458200.0 (если только это не seed для теста).
+         Все суммы должны идти из запроса к БД.
+      4. Запусти: cd backend && pytest tests/test_assistant_parsers.py -q
+         Должно быть passed.
+      PASS = все 4 пункта пройдены. Иначе FAIL с указанием конкретного пункта.
+
+  - id: 'frontend-mobile-and-graph'
+    title: 'Frontend: SVG-кнопка ИИ-ассистента (как в web mobile) + мобильное соответствие + график баланса'
+    assigned_to: coder
+    verified_by: verifier
+    max_retries: 2
+    depends_on: ['backend-balance-graph']
+    prompt: |
+      Контекст: Sber Business MVP. Фронт в C:\Users\New\Desktop\sber\mvp\frontend. Исходник дизайна в
+      C:\Users\New\Desktop\sber\mvp\web mobile (там всё работает корректно, нужно подтянуть к нему).
+
+      Что нужно сделать:
+      1. Кнопка ИИ-ассистента в Navbar (frontend/components/banking/Navbar.tsx) сейчас использует PNG
+         /images/assistant/open-ai-button.png. В web mobile/src/components/Navbar.tsx кнопка собрана на inline SVG:
+         <svg viewBox="0 0 24 24" ...><circle cx="12" cy="12" r="10" fill="#108c7c"/><path d="M12 7.5..." fill="white"/><circle cx="16.5" cy="7.5" r="1.8" fill="#21A038" stroke="white" strokeWidth="0.8"/></svg>
+         Скопируй ТОЧЬ-В-ТОЧЬ этот SVG inline (вместо PNG), стиль обёртки (border-gray-200, rounded-full, padding, etc.)
+         тоже подтяни к web mobile. Удали импорт Image/open-ai-button.png, если он больше не нужен.
+
+      2. Проверь мобильное соответствие web mobile:
+         - Сравни frontend/components/banking/Navbar.tsx и web mobile/src/components/Navbar.tsx
+         - Сравни frontend/components/banking/Sidebar.tsx и web mobile/src/components/Sidebar.tsx
+         Для мобильного breakpoint (sm: и ниже) — размеры иконок, отступы, видимость элементов должны
+         совпадать с web mobile. Если в web mobile какой-то элемент скрыт на мобильном — в frontend тоже скрой.
+         Если есть расхождения в font-size / padding / icon size на мобильном — поправь.
+
+      3. Реализуй отображение графика для workflow «Сколько на счёте?»:
+         - Ассистент в AssistantPanel.tsx / AssistantFloatingChat.tsx сейчас показывает text message.
+         - Когда в ответе ассистента есть chart_payload (после фикса backend-balance-graph),
+           AssistantChart.tsx должен рендерить bar chart по счетам (accounts) и line chart по истории.
+         - Используй recharts (он уже есть в проекте, проверь package.json) или Chart.js. Бары — BYN по iban-ам,
+           линия — total по месяцам. Цвета — в палитре Сбера (зелёный #108c7c / sber-green).
+         - Не дублируй расчёты — бери данные из chart_payload, который приходит с бэкенда.
+
+      4. Убедись, что новый компонент/правки не ломают существующие AssistantPanel/AssistantFloatingChat —
+         старые текстовые ответы продолжают работать.
+
+      Критерии PASS:
+      - Кнопка ИИ-ассистента визуально идентична web mobile (тот же SVG, та же обёртка).
+      - На мобильном breakpoint (375px) Navbar и Sidebar соответствуют web mobile.
+      - На запрос «Сколько на счёте?» в ассистенте появляется график (bar + line) с реальными данными.
+      - npm run build не падает (если возможно, прогон typecheck).
+
+      Сообщи список изменённых файлов и скриншот-проверку (можно описать словами, что совпадает).
+    verify_prompt: |
+      Проверка frontend.
+      1. Открой frontend/components/banking/Navbar.tsx. Должен быть inline SVG кнопки ИИ-ассистента
+         (circle r=10 fill=#108c7c, path с M12 7.5..., circle r=1.8 fill=#21A038). НЕ должно быть импорта
+         open-ai-button.png в Navbar.
+      2. Сравни mobile-стили Navbar и Sidebar между frontend/components/banking/* и web mobile/src/components/*.
+         Допустимы мелкие отличия в kebab/camel, но классы Tailwind на sm:/md: должны соответствовать.
+      3. Найди, где AssistantChart/AssistantPanel получает chart_payload. Запрос «Сколько на счёте?» должен
+         рендерить график (recharts). Запусти: cd frontend && npm run build (или npx tsc --noEmit) — не должно
+         быть type errors.
+      4. В package.json — recharts или chart.js должен быть в зависимостях. Если нет — это FAIL.
+      PASS = 1-4 пройдены. Иначе FAIL с указанием пункта.
+
+  - id: 'backend-504-and-mocks'
+    title: 'Backend: 504 fix + убрать моки в notifications/balance/assistant (источник — БД)'
+    assigned_to: coder
+    verified_by: verifier
+    max_retries: 2
+    prompt: |
+      Контекст: Sber Business MVP. Бэкенд в C:\Users\New\Desktop\sber\mvp\backend. На проде 504 ошибки:
+      /api/tts/status, /api/banking/documents, /api/banking/counterparties, /api/banking/employees,
+      /api/banking/accounts, /api/banking/notifications?unread_only=true, /api/banking/gateway/payments,
+      /api/chat/history/{id}, /api/banking/org, /stream.
+
+      Также пользователь требует: «никаких моков, все из БД, не дублируй в коде, а используй из базы.
+      Особенно notifications — должны быть на основе реальных данных.»
+
+      Что нужно сделать:
+      1. Прочитай backend/logs_backend.err (там есть stacktrace-ы 504). Найди корневую причину 504.
+         Типичные причины: блокирующий вызов (sync в async), тяжёлый запрос без индекса, deadlock, отсутствующий await.
+         Поправь.
+      2. Все эндпоинты выше (/api/banking/accounts, /api/banking/documents, /api/banking/employees,
+         /api/banking/counterparties, /api/banking/gateway/payments, /api/banking/org,
+         /api/banking/notifications, /api/chat/history/{id}, /api/tts/status) — приведи к единому виду:
+         async endpoint, async session (AsyncSession), await на каждом запросе, .scalars().all() для коллекций,
+         нет блокирующих pydantic/SQLAlchemy вызовов.
+      3. Убери моки в notifications: backend/api/banking.py:236 — list_notifications. Сейчас он тянет из
+         smart_notifications в БД, проверь что это реальные данные (не из seed_comprehensive, который мог быть
+         с демо-данными). Если данные моковые — пометь в коде явно // TODO: replace seed with real data source.
+         Но логика endpoint-а уже должна быть «из БД», а не «захардкожен в код».
+      4. Прочитай backend/services/ai/assistant.py — найди места, где возвращаются захардкоженные строки
+         (например, демо-данные). Если есть статичные данные, которые не из БД — пометь явно.
+      5. Запусти: cd backend && python -c "import main" для проверки синтаксиса, потом pytest -q для тестов.
+
+      Критерии PASS:
+      - backend/logs_backend.err не растёт новыми 504 (запусти бэкенд, постучи по всем эндпоинтам curl/Invoke-RestMethod, проверь).
+      - Все перечисленные эндпоинты возвращают 200 в течение 2 секунд.
+      - list_notifications тянет данные из БД (smart_notifications), а не из констант в коде.
+      - pytest -q проходит (или хотя бы test_assistant_parsers).
+
+      Сообщи что было сломано, что починил, вывод curl/Invoke-RestMethod по проблемным эндпоинтам.
+    verify_prompt: |
+      Проверка 504 fix и моков.
+      1. Перезапусти backend (uvicorn main:app --reload или kill+start), подожди 5 сек.
+      2. Прогони все проблемные эндпоинты (Invoke-RestMethod), замерь время:
+         - /api/banking/accounts
+         - /api/banking/documents
+         - /api/banking/counterparties
+         - /api/banking/employees
+         - /api/banking/gateway/payments
+         - /api/banking/org
+         - /api/banking/notifications?unread_only=true
+         - /api/chat/history/{any-uuid}
+         - /api/tts/status
+         Все должны вернуть 200, время < 2000ms.
+      3. Прочитай backend/api/banking.py и backend/services/ai/assistant.py — никаких хардкод-списков
+         уведомлений/балансов/счетов вне БД. Если есть — FAIL с указанием файла и строки.
+      4. Сравни backend/logs_backend.err до и после — новых traceback-ов не должно появиться.
+      PASS = все эндпоинты 200 < 2s, нет хардкода, нет новых traceback-ов.
+
+  - id: 'final-workflow-demo-verify'
+    title: 'Final gate: пройти 4 сценария workflow_demo'
+    assigned_to: verifier
+    role: verify-as-task
+    max_retries: 1
+    depends_on: ['backend-balance-graph', 'frontend-mobile-and-graph', 'backend-504-and-mocks']
+    prompt: |
+      Финальная приёмочная проверка по C:\Users\New\Desktop\sber\mvp\docs\WORKFLOW_DEMO.md.
+
+      Сценарии:
+      1) Платежи → навигация: «открой платежи» → navigation_path с /payments.
+      2) Поиск: «найди платежи Иванова» → структурированный ответ с hits.
+      3) Создание: «сумма 500» на /payments/paydocbyn → form_actions с COMMON_COLUMNS_AMOUNT.
+      4) Информационный запрос: «информационный запрос» → /other/info-requests.
+      ПЛЮС новая проверка: «Сколько на счёте?» → chart_payload с bar/line данными, НЕ текст-инструкция.
+
+      Запусти backend (если не запущен). Прогони все сценарии через Invoke-RestMethod к /api/chat/guest
+      и через /api/banking/balance/summary. Также прогони Smoke-тест из конца WORKFLOW_DEMO.md.
+
+      Сделай E2E-отчёт: для каждого сценария — фактический ответ API, соответствие ожиданиям из доки,
+      список PASS/FAIL. Дай финальный вердикт PLAN PASS/FAIL с указанием блокеров, если есть.
+    verify_skip_reason: 'Это финальный gate; его собственный verdict — единственный артефакт, downstream-верификации не нужны.'

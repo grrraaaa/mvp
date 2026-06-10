@@ -2,8 +2,6 @@
 
 import { CHARACTER_PRESETS } from "@/lib/assistant/characterPresets";
 import { useCharacterStore } from "@/store/characterStore";
-import { AssistantVoicePicker } from "./AssistantVoicePicker";
-import { useTtsStore } from "@/store/ttsStore";
 
 export function CharacterSettings() {
   const {
@@ -15,7 +13,6 @@ export function CharacterSettings() {
     applyPreset,
     resetCharacter,
   } = useCharacterStore();
-  const voiceSelection = useTtsStore((s) => s.voiceSelection);
 
   if (!settingsOpen) return null;
 
@@ -42,13 +39,6 @@ export function CharacterSettings() {
           Выберите один из 3 образов консультанта. Голос подбирается автоматически
           по полу персонажа (Qwen: мужской/женский).
         </p>
-
-        {voiceSelection ? (
-          <section>
-            <p className="text-xs text-gray-500 uppercase tracking-wide mb-2">Голос озвучки</p>
-            <AssistantVoicePicker theme="embedded" className="flex-wrap gap-2" />
-          </section>
-        ) : null}
 
         <section>
           <p className="text-xs text-gray-500 uppercase tracking-wide mb-2">Образ (1 из 3)</p>

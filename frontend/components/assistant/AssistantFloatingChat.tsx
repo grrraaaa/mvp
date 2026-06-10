@@ -5,7 +5,6 @@ import { Volume2, VolumeX } from "lucide-react";
 import { AssistantPanel } from "./AssistantPanel";
 import { IconChat, IconClose } from "@/components/sbbol/SbbolIcons";
 import { useIsMobile } from "@/hooks/useIsMobile";
-import { AssistantVoicePicker } from "./AssistantVoicePicker";
 import { useTtsStore } from "@/store/ttsStore";
 
 interface Props {
@@ -154,7 +153,6 @@ export function AssistantFloatingChat({ open, onOpenChange }: Props) {
               <span className="text-sm font-semibold text-[#1f1f22] truncate">AI-консультант</span>
             </div>
             <div className="flex items-center gap-1 shrink-0">
-              <AssistantVoicePicker theme="embedded" />
               <button
                 type="button"
                 onClick={toggleTts}

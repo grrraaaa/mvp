@@ -118,6 +118,18 @@ def test_balance_intent_typos():
     assert q.is_balance_query("какой остаток?")
 
 
+def test_balance_intent_handles_yo_and_full_phrase():
+    """«Сколько на счёте?» должно попадать в balance-handler (ё и суффикс -е)."""
+    assert q.is_balance_query("Сколько на счёте?")
+    assert q.is_balance_query("сколько на счёте")
+    assert q.is_balance_query("сколько денег на счёте")
+    # отрицательные кейсы: не должно ложно срабатывать
+    assert not q.is_balance_query("сколько стоит подписка")
+    assert not q.is_balance_query("создай платёжку на 100")
+    # search-регекс по-прежнему не считает это поиском
+    assert not q.is_search_query("сколько на счёте?")
+
+
 def test_build_search_payload_navigates_single_hit():
     hit = s.SearchHit("counterparty", "cp1", "ИП Петров", "УНП", None, None, None, "/services/counterparty?cp=cp1")
     sources = [{"index": 1, "label": "x", "kind": "counterparty", "id": "cp1", "url": "/services/counterparty?cp=cp1"}]

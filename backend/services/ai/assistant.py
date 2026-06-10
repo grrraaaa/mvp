@@ -1273,6 +1273,9 @@ class AssistantService:
         if page_hint:
             msg += f"\n\n{page_hint}"
 
+        # TODO: role_chips и welcome_chips захардкожены в коде. Когда появится
+        # админка/feature-flags — вынести в БД (таблица welcome_widgets по роли)
+        # или в конфиг, чтобы можно было менять без релиза.
         role_chips: dict[str, tuple[str, str, str | None, str | None]] = {
             "businessman": ("Проверить остаток", "Платёжное поручение", None, "/payments/paydocbyn"),
             "accountant": ("Выписка по счёту", "Обязательства ФСЗН", "/statement/account", "/salary/obligations"),
@@ -1300,6 +1303,7 @@ class AssistantService:
         ]
         buttons.extend(get_page_quick_actions(page_route)[:1])
 
+        # TODO: hardcoded welcome_chips — см. TODO выше про role_chips.
         welcome_chips = [
             "Сколько на счёте?",
             "Покажи последние документы",
@@ -1327,6 +1331,7 @@ class AssistantService:
             sources=[SourceRef(**s) for s in result.get("sources", [])],
             action_buttons=[ActionButton(**b) for b in result.get("action_buttons", [])],
             charts=[ChartSpec(**c) for c in result.get("charts", [])] or None,
+            chart_payload=result.get("chart_payload"),
             ui_actions=[UiAction(**u) for u in result.get("ui_actions", [])] or None,
             pending_form_fields=result.get("pending_form_fields"),
             suggested_chips=result.get("suggested_chips"),
@@ -1338,6 +1343,8 @@ class AssistantService:
         low = message.lower()
         if not (re.search(r"зарплат", low) and re.search(r"фсзн|соц|страхов", low)):
             return None
+        # TODO: текст ответа захардкожен. Пошаговый сценарий зарплата+ФСЗН
+        # должен собираться из реальных данных: obligations, salary_project, calendar.
         return AssistantResponse(
             message=(
                 "Для выплаты зарплаты и перечисления в ФСЗН:\n"
@@ -1471,6 +1478,9 @@ class AssistantService:
             product_type = intent_cfg["product_type"] if intent_cfg else None
             raw = await self.products.search({"product_type": product_type or "credit", "max_rate": _extract_max_rate(message)})
             scored: List[BankProduct] = []
+            # TODO: формула score (55.0 + turnover/10000 + (10 - i*3)) — hardcoded
+            # эвристика. Заменить на обучаемую модель/конфиг, когда появится A/B
+            # платформа для скорингов продуктов.
             for i, p in enumerate(_external_products(raw[:3])):
                 score = min(98.0, 55.0 + (turnover / 10000) + (10 - i * 3))
                 scored.append(p.model_copy(update={"match_score": round(score, 1)}))
