@@ -2,6 +2,15 @@ import { apiUrl } from "@/lib/api/baseUrl";
 import { authHeaders } from "@/lib/auth/tokenRef";
 import type { ChatMessage } from "@/store/assistantStore";
 
+export interface ChatSessionSummary {
+  session_id: string;
+  title: string;
+  preview: string;
+  message_count: number;
+  created_at: string | null;
+  is_guest: boolean;
+}
+
 export async function fetchChatHistory(sessionId: string): Promise<ChatMessage[]> {
   const res = await fetch(apiUrl(`/api/chat/history/${sessionId}`), {
     credentials: "same-origin",
@@ -10,6 +19,16 @@ export async function fetchChatHistory(sessionId: string): Promise<ChatMessage[]
   if (!res.ok) return [];
   const data = await res.json();
   return (data.messages ?? []) as ChatMessage[];
+}
+
+export async function fetchChatSessions(limit = 50): Promise<ChatSessionSummary[]> {
+  const res = await fetch(apiUrl(`/api/chat/sessions?limit=${limit}`), {
+    credentials: "same-origin",
+    headers: authHeaders(),
+  });
+  if (!res.ok) return [];
+  const data = await res.json();
+  return (data.sessions ?? []) as ChatSessionSummary[];
 }
 
 export async function streamChatMessage(

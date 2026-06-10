@@ -11,7 +11,7 @@ from fastapi.responses import StreamingResponse
 from models.schemas import ChatRequest, AssistantResponse
 from services.ai.assistant import AssistantService
 from services.chat.enrichment import enrich_response
-from services.chat.history import load_history, save_message
+from services.chat.history import load_history, list_sessions, save_message
 from core.dependencies import get_current_user
 from db.database import AsyncSessionLocal
 from db.models import OrganizationProfile
@@ -159,3 +159,17 @@ async def get_history(session_id: str):
     """Получить историю диалога сессии."""
     messages = await load_history(session_id)
     return {"session_id": session_id, "messages": messages}
+
+
+@router.get("/sessions")
+async def get_sessions(
+    current_user=Depends(get_current_user),
+    limit: int = 50,
+):
+    """Архив прошлых сессий текущего пользователя.
+
+    Возвращает список с превью первого user-сообщения, числом сообщений и временем.
+    Гостевые сессии (user_id IS NULL) идут отдельным блоком в конце.
+    """
+    sessions = await list_sessions(user_id=current_user.id, limit=limit)
+    return {"sessions": sessions}

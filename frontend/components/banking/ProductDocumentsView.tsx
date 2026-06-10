@@ -1,20 +1,43 @@
 "use client";
 
-import { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import {
+  useCallback,
+  useEffect,
+  useMemo,
+  useRef,
+  useState,
+  type ChangeEvent,
+} from "react";
 import Link from "next/link";
-import { useRouter } from "next/navigation";
+import { usePathname, useRouter, useSearchParams } from "next/navigation";
 import {
   ArrowLeft,
+  Calendar,
   ChevronDown,
+  Filter,
   MoreVertical,
   Pencil,
   Search,
   Star,
   X,
+  Check,
+  Hash,
+  Building2,
+  Tag,
+  Wallet,
 } from "lucide-react";
-import { fetchDocuments, createDocument, signDocument } from "@/lib/api/banking";
+import {
+  buildDocumentsQueryString,
+  createDocument,
+  fetchDocumentFacets,
+  fetchDocuments,
+  parseDocumentsSearchParams,
+  signDocument,
+  type DocumentFacets,
+} from "@/lib/api/banking";
 import type { BankDocument } from "@/lib/banking/types";
 import { bankingToast } from "@/lib/banking/toast";
+import { ASSISTANT_ACTION_EVENT } from "@/lib/assistant/uiBridge";
 
 type TabKey =
   | "all"
@@ -37,6 +60,11 @@ const TABS: { key: TabKey; label: string; status?: string }[] = [
   { key: "deleted", label: "Удаленные", status: "Удален" },
 ];
 
+const MONTHS_RU = [
+  "Январь", "Февраль", "Март", "Апрель", "Май", "Июнь",
+  "Июль", "Август", "Сентябрь", "Октябрь", "Ноябрь", "Декабрь",
+];
+
 function formatAmount(amount: number, currency: string): string {
   const formatted = amount.toLocaleString("ru-RU", {
     minimumFractionDigits: 2,
@@ -50,22 +78,9 @@ function parseDocDate(date: string): number {
   return new Date(y, m - 1, d).getTime();
 }
 
-type PeriodKey = "all" | "today" | "week" | "month" | "quarter" | "year";
-
-const PERIODS: { key: PeriodKey; label: string; days?: number }[] = [
-  { key: "all", label: "За все время" },
-  { key: "today", label: "Сегодня", days: 1 },
-  { key: "week", label: "За неделю", days: 7 },
-  { key: "month", label: "За месяц", days: 31 },
-  { key: "quarter", label: "За квартал", days: 92 },
-  { key: "year", label: "За год", days: 366 },
-];
-
-function inPeriod(docDate: string, period: PeriodKey): boolean {
-  const def = PERIODS.find((p) => p.key === period);
-  if (!def?.days) return true;
-  const diffMs = Date.now() - parseDocDate(docDate);
-  return diffMs <= def.days * 24 * 60 * 60 * 1000 && diffMs > -24 * 60 * 60 * 1000;
+function ymdToMs(date: string): number {
+  const [d, m, y] = date.split(".").map(Number);
+  return new Date(y, m - 1, d).getTime();
 }
 
 const FAV_STORAGE_KEY = "sbbol_fav_docs";
@@ -110,6 +125,61 @@ function displayKind(type: string): string {
   return type.startsWith(INFO_PREFIX) ? type.slice(INFO_PREFIX.length) : type;
 }
 
+interface FilterState {
+  year: number | null;
+  month: number | null;
+  dateFrom: string | null;
+  dateTo: string | null;
+  status: string | null;
+  docTypeFilter: string | null;
+  counterparty: string | null;
+  minAmount: string;
+  maxAmount: string;
+  q: string;
+}
+
+const EMPTY_FILTERS: FilterState = {
+  year: null,
+  month: null,
+  dateFrom: null,
+  dateTo: null,
+  status: null,
+  docTypeFilter: null,
+  counterparty: null,
+  minAmount: "",
+  maxAmount: "",
+  q: "",
+};
+
+function filtersToParams(f: FilterState, opts: { limit?: number } = {}): NonNullable<Parameters<typeof fetchDocuments>[0]> {
+  const p: NonNullable<Parameters<typeof fetchDocuments>[0]> = {};
+  if (f.year != null) p.year = f.year;
+  if (f.month != null) p.month = f.month;
+  if (f.dateFrom) p.dateFrom = f.dateFrom;
+  if (f.dateTo) p.dateTo = f.dateTo;
+  if (f.status) p.status = f.status;
+  if (f.docTypeFilter) p.docType = f.docTypeFilter;
+  if (f.counterparty) p.counterparty = f.counterparty;
+  if (f.q) p.q = f.q;
+  if (f.minAmount) p.minAmount = Number(f.minAmount.replace(",", "."));
+  if (f.maxAmount) p.maxAmount = Number(f.maxAmount.replace(",", "."));
+  if (opts.limit) p.limit = opts.limit;
+  return p;
+}
+
+function filtersToQuery(f: FilterState): string {
+  return buildDocumentsQueryString({
+    year: f.year,
+    month: f.month,
+    dateFrom: f.dateFrom,
+    dateTo: f.dateTo,
+    status: f.status,
+    docType: f.docTypeFilter,
+    counterparty: f.counterparty,
+    q: f.q,
+  });
+}
+
 export default function ProductDocumentsView({
   title,
   docType,
@@ -126,64 +196,177 @@ export default function ProductDocumentsView({
   docRefLabel = "Платежное поручение",
 }: Props) {
   const router = useRouter();
+  const pathname = usePathname();
+  const searchParams = useSearchParams();
+  const isAllDocsPage = pathname === "/other/documents";
+
   const [documents, setDocuments] = useState<BankDocument[]>([]);
   const [loading, setLoading] = useState(true);
   const [activeTab, setActiveTab] = useState<TabKey>(defaultTab);
   const [selected, setSelected] = useState<Set<string>>(new Set());
   const [favoritesOnly, setFavoritesOnly] = useState(false);
-  const [searchQuery, setSearchQuery] = useState("");
-  const [period, setPeriod] = useState<PeriodKey>("all");
-  const [periodMenuOpen, setPeriodMenuOpen] = useState(false);
   const [sortDesc, setSortDesc] = useState(true);
   const [favorites, setFavorites] = useState<Set<string>>(() => loadFavorites());
   const [signing, setSigning] = useState(false);
-  const periodMenuRef = useRef<HTMLDivElement | null>(null);
+  const [facets, setFacets] = useState<DocumentFacets | null>(null);
 
+  // Расширенные фильтры
+  const [filters, setFilters] = useState<FilterState>(EMPTY_FILTERS);
+  const [filtersOpen, setFiltersOpen] = useState(false);
+  const [yearMenuOpen, setYearMenuOpen] = useState(false);
+  const [monthMenuOpen, setMonthMenuOpen] = useState(false);
+  const [typeMenuOpen, setTypeMenuOpen] = useState(false);
+  const [counterpartyMenuOpen, setCounterpartyMenuOpen] = useState(false);
+  const yearMenuRef = useRef<HTMLDivElement | null>(null);
+  const monthMenuRef = useRef<HTMLDivElement | null>(null);
+  const typeMenuRef = useRef<HTMLDivElement | null>(null);
+  const cpMenuRef = useRef<HTMLDivElement | null>(null);
+  const filtersPanelRef = useRef<HTMLDivElement | null>(null);
+
+  const [initialUrlApplied, setInitialUrlApplied] = useState(false);
+
+  // ── URL → state (только для /other/documents) ───────────────────────────
   useEffect(() => {
-    if (!periodMenuOpen) return;
+    if (!isAllDocsPage || initialUrlApplied) return;
+    const sp = parseDocumentsSearchParams(searchParams);
+    const next: FilterState = {
+      ...EMPTY_FILTERS,
+      year: sp.year,
+      month: sp.month,
+      dateFrom: sp.dateFrom,
+      dateTo: sp.dateTo,
+      status: sp.status,
+      docTypeFilter: sp.docType,
+      counterparty: sp.counterparty,
+      q: sp.q ?? "",
+    };
+    // Если есть явный статус — переключаем вкладку на соответствующую
+    if (sp.status) {
+      const tabByStatus = TABS.find((t) => t.status === sp.status);
+      if (tabByStatus) setActiveTab(tabByStatus.key);
+    } else if (sp.statuses?.length) {
+      setActiveTab("all");
+    } else if (!sp.q) {
+      setActiveTab("all");
+    }
+    setFilters(next);
+    setInitialUrlApplied(true);
+  }, [isAllDocsPage, initialUrlApplied, searchParams]);
+
+  // ── Закрытие дропдаунов по клику вне ──────────────────────────────────────
+  useEffect(() => {
+    if (!yearMenuOpen && !monthMenuOpen && !typeMenuOpen && !counterpartyMenuOpen) return;
     const close = (e: MouseEvent) => {
-      if (!periodMenuRef.current?.contains(e.target as Node)) setPeriodMenuOpen(false);
+      const t = e.target as Node;
+      if (yearMenuRef.current?.contains(t)) return;
+      if (monthMenuRef.current?.contains(t)) return;
+      if (typeMenuRef.current?.contains(t)) return;
+      if (cpMenuRef.current?.contains(t)) return;
+      setYearMenuOpen(false);
+      setMonthMenuOpen(false);
+      setTypeMenuOpen(false);
+      setCounterpartyMenuOpen(false);
     };
     window.addEventListener("mousedown", close);
     return () => window.removeEventListener("mousedown", close);
-  }, [periodMenuOpen]);
+  }, [yearMenuOpen, monthMenuOpen, typeMenuOpen, counterpartyMenuOpen]);
 
-  const toggleFavorite = (docId: string) => {
-    setFavorites((prev) => {
-      const next = new Set(prev);
-      if (next.has(docId)) next.delete(docId);
-      else next.add(docId);
-      try {
-        window.localStorage.setItem(FAV_STORAGE_KEY, JSON.stringify([...next]));
-      } catch {
-        /* quota */
+  // ── Ассистент: слушаем клики «filter-signed» / «reset-filters» / …
+  useEffect(() => {
+    const handler = (e: Event) => {
+      const detail = (e as CustomEvent<{ action: string; value?: string }>).detail;
+      if (!detail) return;
+      const value = detail.value;
+      if (detail.action === "reset-filters") {
+        setFilters(EMPTY_FILTERS);
+        setActiveTab("all");
+        if (isAllDocsPage) {
+          const url = new URL(window.location.href);
+          url.search = "";
+          window.history.replaceState(null, "", url.toString());
+        }
+        bankingToast("Фильтры сброшены");
+      } else if (detail.action === "filter-signed") {
+        setActiveTab("to_sign");
+        setFilters((f) => ({ ...f, status: "На подписи" }));
+      } else if (detail.action === "filter-year" && value) {
+        const yr = Number(value);
+        if (!Number.isNaN(yr)) {
+          setFilters((f) => ({ ...f, year: yr, month: null }));
+          setActiveTab("all");
+        }
+      } else if (detail.action === "filter-month" && value) {
+        // value формата "YYYY-MM"
+        const m = value.match(/^(\d{4})-(\d{1,2})$/);
+        if (m) {
+          setFilters((f) => ({ ...f, year: Number(m[1]), month: Number(m[2]) }));
+          setActiveTab("all");
+        }
+      } else if (detail.action === "filter-range" && value) {
+        // value: "dd.mm.yyyy|dd.mm.yyyy"
+        const parts = value.split("|");
+        if (parts.length === 2) {
+          setFilters((f) => ({ ...f, dateFrom: parts[0], dateTo: parts[1] }));
+          setActiveTab("all");
+        }
       }
-      return next;
-    });
-  };
+    };
+    window.addEventListener(ASSISTANT_ACTION_EVENT, handler);
+    return () => window.removeEventListener(ASSISTANT_ACTION_EVENT, handler);
+  }, [isAllDocsPage]);
 
-  const resetFilters = () => {
-    setSearchQuery("");
-    setPeriod("all");
-    setFavoritesOnly(false);
-  };
+  // ── Загрузка facets один раз (на /other/documents) ───────────────────────
+  useEffect(() => {
+    if (!isAllDocsPage) return;
+    let cancelled = false;
+    void fetchDocumentFacets()
+      .then((data) => {
+        if (!cancelled) setFacets(data);
+      })
+      .catch(() => setFacets(null));
+    return () => {
+      cancelled = true;
+    };
+  }, [isAllDocsPage]);
 
+  // ── Загрузка документов ─────────────────────────────────────────────────
   const load = useCallback(async () => {
     setLoading(true);
     try {
-      const rows = await fetchDocuments({ docType, docPrefix });
+      const params = filtersToParams(filters, { limit: 1000 });
+      // Если выбрана вкладка со статусом — добавим в params
+      const tab = TABS.find((t) => t.key === activeTab);
+      if (tab?.status && !params.status) (params as { status?: string }).status = tab.status;
+      const rows = await fetchDocuments({
+        docType,
+        docPrefix,
+        ...params,
+      });
       setDocuments(rows);
     } catch {
       bankingToast("Не удалось загрузить документы", "err");
     } finally {
       setLoading(false);
     }
-  }, [docType, docPrefix]);
+  }, [docType, docPrefix, filters, activeTab]);
 
   useEffect(() => {
     void load();
   }, [load]);
 
+  // ── URL sync (только /other/documents) ─────────────────────────────────
+  useEffect(() => {
+    if (!isAllDocsPage) return;
+    const qs = filtersToQuery(filters);
+    const url = qs ? `${pathname}?${qs}` : pathname;
+    const current = `${pathname}${searchParams.toString() ? "?" + searchParams.toString() : ""}`;
+    if (url !== current) {
+      window.history.replaceState(null, "", url);
+    }
+  }, [filters, isAllDocsPage, pathname, searchParams]);
+
+  // ── Counts по табам (на сервере мы фильтруем по docType/docPrefix, но
+  //    counts считаем по всем загруженным документам org_id) ───────────────
   const counts = useMemo(() => {
     const c: Record<TabKey, number> = {
       all: documents.length,
@@ -207,20 +390,15 @@ export default function ProductDocumentsView({
     return c;
   }, [documents]);
 
+  // ── Клиентская фильтрация поверх серверной (поиск/диапазон сумм/избранное) ─
   const filtered = useMemo(() => {
-    const tab = TABS.find((t) => t.key === activeTab);
     let rows = documents;
-    if (tab?.status) {
-      rows = rows.filter((d) => d.status === tab.status);
-    }
-    if (period !== "all") {
-      rows = rows.filter((d) => inPeriod(d.date, period));
-    }
     if (favoritesOnly) {
       rows = rows.filter((d) => favorites.has(d.id));
     }
-    const q = searchQuery.trim().toLowerCase();
-    if (q) {
+    const q = filters.q.trim().toLowerCase();
+    if (q && !isAllDocsPage) {
+      // На /other/documents поиск уже уехал на сервер
       rows = rows.filter((d) =>
         [d.doc_number ?? "", d.id, d.type, d.counterparty ?? "", d.purpose ?? "", d.status, String(d.amount)]
           .join(" ")
@@ -228,9 +406,18 @@ export default function ProductDocumentsView({
           .includes(q),
       );
     }
+    // Диапазон сумм — клиент (на сервере тоже есть, но для быстрого UX дублируем)
+    if (filters.minAmount) {
+      const min = Number(filters.minAmount.replace(",", "."));
+      if (!Number.isNaN(min)) rows = rows.filter((d) => d.amount >= min);
+    }
+    if (filters.maxAmount) {
+      const max = Number(filters.maxAmount.replace(",", "."));
+      if (!Number.isNaN(max)) rows = rows.filter((d) => d.amount <= max);
+    }
     const dir = sortDesc ? -1 : 1;
     return [...rows].sort((a, b) => dir * (parseDocDate(a.date) - parseDocDate(b.date)));
-  }, [documents, activeTab, period, favoritesOnly, favorites, searchQuery, sortDesc]);
+  }, [documents, favoritesOnly, favorites, filters.q, filters.minAmount, filters.maxAmount, sortDesc, isAllDocsPage]);
 
   const toggleAll = () => {
     if (selected.size === filtered.length) {
@@ -290,7 +477,55 @@ export default function ProductDocumentsView({
     await load();
   };
 
+  const toggleFavorite = (docId: string) => {
+    setFavorites((prev) => {
+      const next = new Set(prev);
+      if (next.has(docId)) next.delete(docId);
+      else next.add(docId);
+      try {
+        window.localStorage.setItem(FAV_STORAGE_KEY, JSON.stringify([...next]));
+      } catch {
+        /* quota */
+      }
+      return next;
+    });
+  };
+
+  const resetFilters = () => {
+    setFilters(EMPTY_FILTERS);
+    setActiveTab("all");
+  };
+
+  const updateFilter = <K extends keyof FilterState>(key: K, value: FilterState[K]) => {
+    setFilters((prev) => ({ ...prev, [key]: value }));
+  };
+
+  // При смене вкладки — сбрасываем кастомный status в фильтрах, чтобы не было дублей
+  const handleTabChange = (tab: TabKey) => {
+    setActiveTab(tab);
+    setSelected(new Set());
+    const def = TABS.find((t) => t.key === tab);
+    setFilters((f) => ({ ...f, status: def?.status ?? null }));
+  };
+
+  const activeFilterCount = useMemo(() => {
+    let n = 0;
+    if (filters.year != null) n++;
+    if (filters.month != null) n++;
+    if (filters.dateFrom) n++;
+    if (filters.dateTo) n++;
+    if (filters.counterparty) n++;
+    if (filters.docTypeFilter) n++;
+    if (filters.minAmount) n++;
+    if (filters.maxAmount) n++;
+    if (filters.q) n++;
+    return n;
+  }, [filters]);
+
   const showBulkBar = activeTab === "to_sign" && filtered.length > 0;
+  const years = facets?.years ?? [];
+  const docTypes = facets?.types ?? [];
+  const counterparties = facets?.counterparties ?? [];
 
   return (
     <div className="font-sans -mx-4 sm:-mx-6 lg:-mx-8">
@@ -302,6 +537,11 @@ export default function ProductDocumentsView({
               <ArrowLeft className="w-5 h-5" />
             </Link>
             <h1 className="text-base sm:text-lg font-semibold truncate">{title}</h1>
+            {activeFilterCount > 0 && (
+              <span className="shrink-0 px-2 py-0.5 rounded-full bg-white/20 text-white text-[10px] font-bold uppercase tracking-wider">
+                {activeFilterCount} фильтр
+              </span>
+            )}
           </div>
           <div className="flex gap-2 shrink-0">
             {showImport && (
@@ -324,23 +564,23 @@ export default function ProductDocumentsView({
         </div>
       </div>
 
-      {/* Filters */}
+      {/* Filters bar */}
       <div className="bg-[#f4f6f8] border-b border-gray-200 px-4 sm:px-6 py-3">
         <div className="max-w-6xl mx-auto flex flex-wrap items-center gap-3 text-sm text-gray-700">
-          {/* Search with magnifier */}
+          {/* Search */}
           <div className="relative flex-1 min-w-[220px] max-w-md">
             <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-400 pointer-events-none" />
             <input
               type="search"
-              value={searchQuery}
-              onChange={(e) => setSearchQuery(e.target.value)}
+              value={filters.q}
+              onChange={(e: ChangeEvent<HTMLInputElement>) => updateFilter("q", e.target.value)}
               placeholder="Поиск: номер, контрагент, назначение…"
               className="w-full pl-9 pr-8 py-2 bg-white border border-gray-200 rounded-full text-sm placeholder:text-gray-400 focus:outline-none focus:ring-2 focus:ring-[#2d9494]/30 focus:border-[#2d9494] transition-shadow"
             />
-            {searchQuery && (
+            {filters.q && (
               <button
                 type="button"
-                onClick={() => setSearchQuery("")}
+                onClick={() => updateFilter("q", "")}
                 className="absolute right-2.5 top-1/2 -translate-y-1/2 p-0.5 text-gray-400 hover:text-gray-600"
                 aria-label="Очистить поиск"
               >
@@ -349,51 +589,137 @@ export default function ProductDocumentsView({
             )}
           </div>
 
-          {/* Period dropdown */}
-          <div className="relative" ref={periodMenuRef}>
-            <button
-              type="button"
-              onClick={() => setPeriodMenuOpen((v) => !v)}
-              className={`flex items-center gap-1 px-3 py-1.5 bg-white border rounded-full transition-colors ${
-                period !== "all" ? "border-[#2d9494] text-[#2d9494] font-medium" : "border-gray-200"
-              }`}
-            >
-              {PERIODS.find((p) => p.key === period)?.label}
-              <ChevronDown className={`w-4 h-4 transition-transform ${periodMenuOpen ? "rotate-180" : ""} ${period !== "all" ? "text-[#2d9494]" : "text-gray-400"}`} />
-            </button>
-            {periodMenuOpen && (
-              <div className="absolute z-20 mt-1.5 w-44 bg-white border border-gray-200 rounded-xl shadow-lg py-1 overflow-hidden">
-                {PERIODS.map((p) => (
+          {/* Year dropdown */}
+          {isAllDocsPage && (
+            <div className="relative" ref={yearMenuRef}>
+              <button
+                type="button"
+                onClick={() => setYearMenuOpen((v) => !v)}
+                className={`flex items-center gap-1 px-3 py-1.5 bg-white border rounded-full transition-colors ${
+                  filters.year != null ? "border-[#2d9494] text-[#2d9494] font-medium" : "border-gray-200"
+                }`}
+              >
+                {filters.year ?? "Год"}
+                <ChevronDown className={`w-4 h-4 transition-transform ${yearMenuOpen ? "rotate-180" : ""} ${filters.year != null ? "text-[#2d9494]" : "text-gray-400"}`} />
+              </button>
+              {yearMenuOpen && (
+                <div className="absolute z-20 mt-1.5 w-40 bg-white border border-gray-200 rounded-xl shadow-lg py-1 max-h-72 overflow-y-auto">
                   <button
-                    key={p.key}
                     type="button"
                     onClick={() => {
-                      setPeriod(p.key);
-                      setPeriodMenuOpen(false);
+                      updateFilter("year", null);
+                      setYearMenuOpen(false);
                     }}
-                    className={`block w-full text-left px-4 py-2 text-sm hover:bg-gray-50 ${
-                      period === p.key ? "text-[#2d9494] font-semibold bg-teal-50/50" : "text-gray-700"
-                    }`}
+                    className={`block w-full text-left px-4 py-2 text-sm hover:bg-gray-50 ${!filters.year ? "text-[#2d9494] font-semibold bg-teal-50/50" : "text-gray-700"}`}
                   >
-                    {p.label}
+                    Все годы
                   </button>
-                ))}
-              </div>
-            )}
-          </div>
+                  {years.length === 0 ? (
+                    <p className="px-4 py-2 text-xs text-gray-400">Нет данных</p>
+                  ) : (
+                    years.map((y) => (
+                      <button
+                        key={y}
+                        type="button"
+                        onClick={() => {
+                          updateFilter("year", y);
+                          updateFilter("month", null);
+                          setYearMenuOpen(false);
+                        }}
+                        className={`block w-full text-left px-4 py-2 text-sm hover:bg-gray-50 ${filters.year === y ? "text-[#2d9494] font-semibold bg-teal-50/50" : "text-gray-700"}`}
+                      >
+                        {y}
+                      </button>
+                    ))
+                  )}
+                </div>
+              )}
+            </div>
+          )}
 
-          <button type="button" className="hidden sm:block px-3 py-1.5 bg-white border border-gray-200 rounded-full text-gray-500 cursor-default">
-            {filter2Label}
-          </button>
+          {/* Month dropdown (active when year selected) */}
+          {isAllDocsPage && filters.year != null && (
+            <div className="relative" ref={monthMenuRef}>
+              <button
+                type="button"
+                onClick={() => setMonthMenuOpen((v) => !v)}
+                className={`flex items-center gap-1 px-3 py-1.5 bg-white border rounded-full transition-colors ${
+                  filters.month != null ? "border-[#2d9494] text-[#2d9494] font-medium" : "border-gray-200"
+                }`}
+              >
+                {filters.month != null ? MONTHS_RU[filters.month - 1] : "Месяц"}
+                <ChevronDown className={`w-4 h-4 transition-transform ${monthMenuOpen ? "rotate-180" : ""} ${filters.month != null ? "text-[#2d9494]" : "text-gray-400"}`} />
+              </button>
+              {monthMenuOpen && (
+                <div className="absolute z-20 mt-1.5 w-44 bg-white border border-gray-200 rounded-xl shadow-lg py-1 max-h-72 overflow-y-auto">
+                  <button
+                    type="button"
+                    onClick={() => {
+                      updateFilter("month", null);
+                      setMonthMenuOpen(false);
+                    }}
+                    className={`block w-full text-left px-4 py-2 text-sm hover:bg-gray-50 ${filters.month == null ? "text-[#2d9494] font-semibold bg-teal-50/50" : "text-gray-700"}`}
+                  >
+                    Весь год
+                  </button>
+                  {MONTHS_RU.map((label, idx) => (
+                    <button
+                      key={idx}
+                      type="button"
+                      onClick={() => {
+                        updateFilter("month", idx + 1);
+                        setMonthMenuOpen(false);
+                      }}
+                      className={`block w-full text-left px-4 py-2 text-sm hover:bg-gray-50 ${filters.month === idx + 1 ? "text-[#2d9494] font-semibold bg-teal-50/50" : "text-gray-700"}`}
+                    >
+                      {label}
+                    </button>
+                  ))}
+                </div>
+              )}
+            </div>
+          )}
+
+          {/* Date range — compact toggle (open full filter panel) */}
+          {isAllDocsPage && (
+            <button
+              type="button"
+              onClick={() => setFiltersOpen((v) => !v)}
+              className={`flex items-center gap-1.5 px-3 py-1.5 bg-white border rounded-full transition-colors ${
+                filtersOpen || filters.dateFrom || filters.dateTo || activeFilterCount > 0
+                  ? "border-[#2d9494] text-[#2d9494] font-medium"
+                  : "border-gray-200"
+              }`}
+              aria-expanded={filtersOpen}
+            >
+              <Filter className="w-3.5 h-3.5" />
+              <span>Все фильтры</span>
+              {activeFilterCount > 0 && (
+                <span className="ml-1 inline-flex items-center justify-center min-w-[18px] h-[18px] px-1 rounded-full bg-[#2d9494] text-white text-[10px] font-bold">
+                  {activeFilterCount}
+                </span>
+              )}
+              <ChevronDown className={`w-3.5 h-3.5 transition-transform ${filtersOpen ? "rotate-180" : ""}`} />
+            </button>
+          )}
+
+          {!isAllDocsPage && (
+            <button type="button" className="hidden sm:block px-3 py-1.5 bg-white border border-gray-200 rounded-full text-gray-500 cursor-default">
+              {filter2Label}
+            </button>
+          )}
+
           <button
             type="button"
+            data-assistant-action="reset-filters"
             onClick={resetFilters}
             className={`hover:underline ${
-              searchQuery || period !== "all" || favoritesOnly ? "text-[#2d9494] font-medium" : "text-gray-500"
+              activeFilterCount > 0 || activeTab !== "all" ? "text-[#2d9494] font-medium" : "text-gray-500"
             }`}
           >
             Сбросить фильтры
           </button>
+
           <label className="ml-auto flex items-center gap-2 cursor-pointer">
             <span className="text-gray-600">Избранное</span>
             <input
@@ -404,6 +730,217 @@ export default function ProductDocumentsView({
             />
           </label>
         </div>
+
+        {/* Extended filter panel */}
+        {isAllDocsPage && filtersOpen && (
+          <div
+            ref={filtersPanelRef}
+            className="max-w-6xl mx-auto mt-3 grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3 p-4 bg-white border border-gray-200 rounded-xl"
+          >
+            {/* Date range */}
+            <div>
+              <label className="flex items-center gap-1.5 text-[11px] font-bold text-gray-600 mb-1 uppercase tracking-wider">
+                <Calendar className="w-3 h-3" />
+                Период (с — по)
+              </label>
+              <div className="flex items-center gap-1.5">
+                <input
+                  type="text"
+                  value={filters.dateFrom ?? ""}
+                  onChange={(e) => updateFilter("dateFrom", e.target.value || null)}
+                  placeholder="01.03.2026"
+                  className="w-full px-2.5 py-1.5 text-sm border border-gray-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-[#2d9494]/30 focus:border-[#2d9494]"
+                />
+                <span className="text-gray-400 text-xs">—</span>
+                <input
+                  type="text"
+                  value={filters.dateTo ?? ""}
+                  onChange={(e) => updateFilter("dateTo", e.target.value || null)}
+                  placeholder="31.03.2026"
+                  className="w-full px-2.5 py-1.5 text-sm border border-gray-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-[#2d9494]/30 focus:border-[#2d9494]"
+                />
+              </div>
+            </div>
+
+            {/* Document type */}
+            <div>
+              <label className="flex items-center gap-1.5 text-[11px] font-bold text-gray-600 mb-1 uppercase tracking-wider">
+                <Tag className="w-3 h-3" />
+                Тип документа
+              </label>
+              <div className="relative" ref={typeMenuRef}>
+                <button
+                  type="button"
+                  onClick={() => setTypeMenuOpen((v) => !v)}
+                  className={`w-full flex items-center justify-between px-2.5 py-1.5 text-sm bg-white border rounded-lg ${
+                    filters.docTypeFilter ? "border-[#2d9494] text-[#2d9494] font-medium" : "border-gray-200"
+                  }`}
+                >
+                  <span className="truncate">
+                    {filters.docTypeFilter
+                      ? displayKind(filters.docTypeFilter)
+                      : "Все типы"}
+                  </span>
+                  <ChevronDown className={`w-4 h-4 text-gray-400 transition-transform ${typeMenuOpen ? "rotate-180" : ""}`} />
+                </button>
+                {typeMenuOpen && (
+                  <div className="absolute z-30 mt-1.5 left-0 right-0 max-h-64 overflow-y-auto bg-white border border-gray-200 rounded-xl shadow-lg py-1">
+                    <button
+                      type="button"
+                      onClick={() => {
+                        updateFilter("docTypeFilter", null);
+                        setTypeMenuOpen(false);
+                      }}
+                      className={`block w-full text-left px-3 py-1.5 text-sm hover:bg-gray-50 ${!filters.docTypeFilter ? "text-[#2d9494] font-semibold bg-teal-50/50" : "text-gray-700"}`}
+                    >
+                      Все типы
+                    </button>
+                    {docTypes.map((t) => (
+                      <button
+                        key={t}
+                        type="button"
+                        onClick={() => {
+                          updateFilter("docTypeFilter", t);
+                          setTypeMenuOpen(false);
+                        }}
+                        className={`block w-full text-left px-3 py-1.5 text-sm hover:bg-gray-50 ${filters.docTypeFilter === t ? "text-[#2d9494] font-semibold bg-teal-50/50" : "text-gray-700"}`}
+                      >
+                        {displayKind(t)}
+                      </button>
+                    ))}
+                  </div>
+                )}
+              </div>
+            </div>
+
+            {/* Counterparty */}
+            <div>
+              <label className="flex items-center gap-1.5 text-[11px] font-bold text-gray-600 mb-1 uppercase tracking-wider">
+                <Building2 className="w-3 h-3" />
+                Контрагент
+              </label>
+              <div className="relative" ref={cpMenuRef}>
+                <button
+                  type="button"
+                  onClick={() => setCounterpartyMenuOpen((v) => !v)}
+                  className={`w-full flex items-center justify-between px-2.5 py-1.5 text-sm bg-white border rounded-lg ${
+                    filters.counterparty ? "border-[#2d9494] text-[#2d9494] font-medium" : "border-gray-200"
+                  }`}
+                >
+                  <span className="truncate">{filters.counterparty ?? "Любой"}</span>
+                  <ChevronDown className={`w-4 h-4 text-gray-400 transition-transform ${counterpartyMenuOpen ? "rotate-180" : ""}`} />
+                </button>
+                {counterpartyMenuOpen && (
+                  <div className="absolute z-30 mt-1.5 left-0 right-0 max-h-64 overflow-y-auto bg-white border border-gray-200 rounded-xl shadow-lg py-1">
+                    <button
+                      type="button"
+                      onClick={() => {
+                        updateFilter("counterparty", null);
+                        setCounterpartyMenuOpen(false);
+                      }}
+                      className={`block w-full text-left px-3 py-1.5 text-sm hover:bg-gray-50 ${!filters.counterparty ? "text-[#2d9494] font-semibold bg-teal-50/50" : "text-gray-700"}`}
+                    >
+                      Любой контрагент
+                    </button>
+                    {counterparties.map((c) => (
+                      <button
+                        key={c}
+                        type="button"
+                        onClick={() => {
+                          updateFilter("counterparty", c);
+                          setCounterpartyMenuOpen(false);
+                        }}
+                        className={`block w-full text-left px-3 py-1.5 text-sm hover:bg-gray-50 ${filters.counterparty === c ? "text-[#2d9494] font-semibold bg-teal-50/50" : "text-gray-700"}`}
+                      >
+                        {c}
+                      </button>
+                    ))}
+                  </div>
+                )}
+              </div>
+            </div>
+
+            {/* Amount range */}
+            <div>
+              <label className="flex items-center gap-1.5 text-[11px] font-bold text-gray-600 mb-1 uppercase tracking-wider">
+                <Wallet className="w-3 h-3" />
+                Сумма (от — до)
+              </label>
+              <div className="flex items-center gap-1.5">
+                <input
+                  type="text"
+                  inputMode="decimal"
+                  value={filters.minAmount}
+                  onChange={(e) => updateFilter("minAmount", e.target.value)}
+                  placeholder="0"
+                  className="w-full px-2.5 py-1.5 text-sm border border-gray-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-[#2d9494]/30 focus:border-[#2d9494]"
+                />
+                <span className="text-gray-400 text-xs">—</span>
+                <input
+                  type="text"
+                  inputMode="decimal"
+                  value={filters.maxAmount}
+                  onChange={(e) => updateFilter("maxAmount", e.target.value)}
+                  placeholder="∞"
+                  className="w-full px-2.5 py-1.5 text-sm border border-gray-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-[#2d9494]/30 focus:border-[#2d9494]"
+                />
+              </div>
+            </div>
+
+            {/* Active chips summary */}
+            {(filters.dateFrom || filters.dateTo) && (
+              <div className="sm:col-span-2 lg:col-span-4 flex flex-wrap items-center gap-2 pt-2 border-t border-gray-100">
+                <span className="text-xs text-gray-500">Применено:</span>
+                {filters.dateFrom && (
+                  <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full bg-teal-50 text-[#2d9494] text-xs font-medium">
+                    с {filters.dateFrom}
+                    <button onClick={() => updateFilter("dateFrom", null)} className="hover:text-red-500">
+                      <X className="w-3 h-3" />
+                    </button>
+                  </span>
+                )}
+                {filters.dateTo && (
+                  <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full bg-teal-50 text-[#2d9494] text-xs font-medium">
+                    по {filters.dateTo}
+                    <button onClick={() => updateFilter("dateTo", null)} className="hover:text-red-500">
+                      <X className="w-3 h-3" />
+                    </button>
+                  </span>
+                )}
+                {filters.docTypeFilter && (
+                  <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full bg-teal-50 text-[#2d9494] text-xs font-medium">
+                    {displayKind(filters.docTypeFilter)}
+                    <button onClick={() => updateFilter("docTypeFilter", null)} className="hover:text-red-500">
+                      <X className="w-3 h-3" />
+                    </button>
+                  </span>
+                )}
+                {filters.counterparty && (
+                  <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full bg-teal-50 text-[#2d9494] text-xs font-medium">
+                    {filters.counterparty}
+                    <button onClick={() => updateFilter("counterparty", null)} className="hover:text-red-500">
+                      <X className="w-3 h-3" />
+                    </button>
+                  </span>
+                )}
+                {(filters.minAmount || filters.maxAmount) && (
+                  <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full bg-teal-50 text-[#2d9494] text-xs font-medium">
+                    {filters.minAmount || "0"} — {filters.maxAmount || "∞"}
+                    <button
+                      onClick={() => {
+                        updateFilter("minAmount", "");
+                        updateFilter("maxAmount", "");
+                      }}
+                      className="hover:text-red-500"
+                    >
+                      <X className="w-3 h-3" />
+                    </button>
+                  </span>
+                )}
+              </div>
+            )}
+          </div>
+        )}
       </div>
 
       {/* Tabs */}
@@ -413,18 +950,15 @@ export default function ProductDocumentsView({
             <button
               key={tab.key}
               type="button"
-              onClick={() => {
-                setActiveTab(tab.key);
-                setSelected(new Set());
-              }}
-              className={`shrink-0 px-4 py-3 text-sm border-b-2 transition-colors ${
+              onClick={() => handleTabChange(tab.key)}
+              className={`shrink-0 px-4 py-3 text-sm border-b-2 transition-colors flex items-center gap-1.5 ${
                 activeTab === tab.key
                   ? "border-[#2d9494] text-[#2d9494] font-semibold"
                   : "border-transparent text-gray-600 hover:text-gray-900"
               }`}
             >
               {tab.label}
-              <span className="ml-1 text-gray-400">{counts[tab.key]}</span>
+              <span className="text-gray-400 text-xs">{counts[tab.key]}</span>
             </button>
           ))}
         </div>
@@ -462,14 +996,21 @@ export default function ProductDocumentsView({
                 : "\u00a0"}
             </p>
           )}
-          <button
-            type="button"
-            onClick={() => setSortDesc((v) => !v)}
-            className="flex items-center gap-1 text-gray-600 hover:text-gray-900"
-          >
-            По дате документа ({sortDesc ? "по убыванию" : "по возрастанию"})
-            <ChevronDown className={`w-4 h-4 transition-transform ${sortDesc ? "" : "rotate-180"}`} />
-          </button>
+          <div className="flex items-center gap-3">
+            <span className="text-gray-500 text-xs">
+              {filtered.length === documents.length
+                ? `Всего: ${documents.length}`
+                : `Найдено: ${filtered.length} из ${documents.length}`}
+            </span>
+            <button
+              type="button"
+              onClick={() => setSortDesc((v) => !v)}
+              className="flex items-center gap-1 text-gray-600 hover:text-gray-900"
+            >
+              По дате документа ({sortDesc ? "по убыванию" : "по возрастанию"})
+              <ChevronDown className={`w-4 h-4 transition-transform ${sortDesc ? "" : "rotate-180"}`} />
+            </button>
+          </div>
         </div>
       </div>
 
@@ -478,7 +1019,18 @@ export default function ProductDocumentsView({
         {loading ? (
           <p className="text-center text-gray-400 py-12 text-sm">Загрузка…</p>
         ) : filtered.length === 0 ? (
-          <p className="text-center text-gray-400 py-12 text-sm">Документы не найдены</p>
+          <div className="text-center text-gray-400 py-12 text-sm space-y-2">
+            <p>Документы не найдены</p>
+            {activeFilterCount > 0 && (
+              <button
+                type="button"
+                onClick={resetFilters}
+                className="text-[#2d9494] font-semibold hover:underline"
+              >
+                Сбросить фильтры
+              </button>
+            )}
+          </div>
         ) : (
           <ul className="max-w-6xl mx-auto divide-y divide-gray-100">
             {filtered.map((doc) => {

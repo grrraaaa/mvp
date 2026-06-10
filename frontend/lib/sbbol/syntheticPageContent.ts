@@ -644,5 +644,23 @@ export function hydrateSyntheticPageBody(
     }));
   }
 
+  if (path === "/other/documents/signing" && hydrated.table) {
+    const signing = ctx.documents
+      .filter((d) => d.status === "На подписи")
+      .map((d) => ({
+        type: d.type,
+        number: d.id.replace(/^№\s*/, ""),
+        amount: fmtAmount(d.amount, d.currency),
+        date: d.date,
+      }));
+
+    if (signing.length > 0) {
+      hydrated.table.rows = signing;
+      if (hydrated.toolbar) {
+        hydrated.toolbar = { ...hydrated.toolbar, primaryAction: "Подписать выбранные" };
+      }
+    }
+  }
+
   return hydrated;
 }

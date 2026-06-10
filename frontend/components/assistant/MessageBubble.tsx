@@ -17,8 +17,8 @@ export function MessageBubble({ message, isTyping, compact }: Props) {
     <div className={`flex ${isUser ? "justify-end" : "justify-start"} mb-1`}>
       {!isUser && (
         <div
-          className={`rounded-full mr-1.5 mt-0.5 flex-shrink-0 flex items-center justify-center bg-sber-green/20 border border-sber-border ${
-            compact ? "w-6 h-6 text-[10px]" : "w-8 h-8 text-sm"
+          className={`mr-1.5 mt-0.5 flex-shrink-0 flex items-center justify-center font-black text-white bg-[#008064] ${
+            compact ? "w-6 h-6 text-[10px] rounded-md" : "w-7 h-7 text-[11px] rounded-lg"
           }`}
           aria-hidden
         >

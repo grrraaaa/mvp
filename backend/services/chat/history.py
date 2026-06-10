@@ -63,3 +63,52 @@ async def load_history(session_id: str, limit: int = 100) -> list[dict[str, Any]
                 pass
         out.append({"role": m.role, "content": m.content, **meta})
     return out
+
+
+async def list_sessions(user_id: str | None, limit: int = 50) -> list[dict[str, Any]]:
+    """Архив: список сессий пользователя с превью первого user-сообщения и числом сообщений.
+
+    Для гостевых сессий user_id IS NULL — показываем их отдельным блоком «Демо».
+    Возвращаем в порядке: сначала авторизованные пользовательские, затем гостевые.
+    """
+    async with AsyncSessionLocal() as db:
+        # Берём все сессии: сначала user_id, потом created_at DESC.
+        result = await db.execute(
+            select(ChatSession).order_by(ChatSession.created_at.desc()).limit(limit * 2)
+        )
+        sessions = result.scalars().all()
+
+        # Превью первого user-сообщения + общее число сообщений — отдельным запросом.
+        # Сортируем по created_at ASC, берём первое.
+        out: list[dict[str, Any]] = []
+        for s in sessions:
+            first_msg = await db.execute(
+                select(Message)
+                .where(Message.session_id == s.id, Message.role == "user")
+                .order_by(Message.created_at.asc())
+                .limit(1)
+            )
+            first = first_msg.scalar_one_or_none()
+            count_q = await db.execute(
+                select(Message).where(Message.session_id == s.id)
+            )
+            count = len(count_q.scalars().all())
+            if count == 0:
+                # пустые сессии не показываем
+                continue
+            out.append(
+                {
+                    "session_id": s.id,
+                    "title": (first.content[:60] + "…") if first and len(first.content) > 60 else (first.content if first else "Пустой диалог"),
+                    "preview": first.content if first else "",
+                    "message_count": count,
+                    "created_at": s.created_at.isoformat() if s.created_at else None,
+                    "is_guest": s.user_id is None,
+                }
+            )
+            if len(out) >= limit:
+                break
+
+        # Сортируем: сначала пользовательские (не гость), потом гостевые; внутри — свежие сверху
+        out.sort(key=lambda x: (x["is_guest"], x["created_at"] or ""), reverse=True)
+        return out

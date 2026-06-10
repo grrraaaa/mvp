@@ -2,6 +2,7 @@
 
 import { useState, useRef, useEffect, useMemo, useCallback } from "react";
 import { usePathname, useRouter } from "next/navigation";
+import { Settings } from "lucide-react";
 import { MessageBubble } from "./MessageBubble";
 import { ChatInput } from "./ChatInput";
 import { ProductCard } from "./ProductCard";
@@ -412,11 +413,11 @@ export function AssistantPanel({ variant = "default", compactMobile = false, onR
           <button
             type="button"
             onClick={() => setSettingsOpen(true)}
-            className="absolute top-3 right-3 z-10 w-9 h-9 rounded-full bg-sber-panel-elevated border border-sber-border text-sber-muted hover:text-white hover:border-sber-green flex items-center justify-center text-sm"
+            className="absolute top-3 right-3 z-10 w-9 h-9 rounded-full bg-white border border-[#e4e8eb] text-[#7d838a] hover:text-[#008064] hover:border-[#008064]/40 flex items-center justify-center transition-colors"
             title="Настроить консультанта"
             aria-label="Настроить консультанта"
           >
-            ⚙
+            <Settings className="w-4 h-4" />
           </button>
         )}
         <AssistantCharacter
@@ -514,6 +515,66 @@ export function AssistantPanel({ variant = "default", compactMobile = false, onR
                   className="text-xs px-3 py-1 rounded-full border border-sber-border text-sber-green-light hover:bg-sber-green/10"
                 >
                   Создать платёж
+                </button>
+                <button
+                  type="button"
+                  onClick={() => router.push("/learning")}
+                  className="text-xs px-3 py-1 rounded-full bg-sber-green/15 border border-sber-green/30 text-sber-green-light hover:bg-sber-green/25 font-semibold flex items-center gap-1"
+                >
+                  <svg className="w-3 h-3" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2.5}>
+                    <path strokeLinecap="round" strokeLinejoin="round" d="M12 6.253v13m0-13C10.832 5.477 9.246 5 7.5 5S4.168 5.477 3 6.253v13C4.168 18.477 5.754 18 7.5 18s3.332.477 4.5 1.253m0-13C13.168 5.477 14.754 5 16.5 5c1.747 0 3.332.477 4.5 1.253v13C19.832 18.477 18.247 18 16.5 18c-1.746 0-3.332.477-4.5 1.253" />
+                  </svg>
+                  Что я умею — обучение
+                </button>
+              </div>
+            )}
+
+            {/* Компактный ряд с графиками для mobile / embedded-чата */}
+            {messages.length === 0 && inputCompact && (
+              <div className="mt-3 mx-2 p-2.5 rounded-xl bg-gradient-to-br from-[#e5fcf7] to-white border border-[#107f8c]/20">
+                <p className="text-[10px] font-bold text-[#107f8c] mb-1.5 uppercase tracking-wider flex items-center gap-1">
+                  <span>📊</span> Графики по данным из БД
+                </p>
+                <div className="grid grid-cols-2 gap-1.5">
+                  <button
+                    type="button"
+                    onClick={() => void sendMessage("Кассовый прогноз")}
+                    className="text-left text-[11px] px-2 py-1.5 rounded-lg bg-white border border-[#e4e8eb] hover:border-[#107f8c] hover:bg-[#e5fcf7]/50 transition-colors"
+                  >
+                    <span className="block font-semibold text-[#1f1f22]">📈 Прогноз</span>
+                    <span className="block text-[10px] text-[#7d838a]">на сколько хватит</span>
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => void sendMessage("Расходы за 2026-03")}
+                    className="text-left text-[11px] px-2 py-1.5 rounded-lg bg-white border border-[#e4e8eb] hover:border-[#107f8c] hover:bg-[#e5fcf7]/50 transition-colors"
+                  >
+                    <span className="block font-semibold text-[#1f1f22]">🥧 Расходы</span>
+                    <span className="block text-[10px] text-[#7d838a]">по категориям</span>
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => void sendMessage("Сравни февраль и март")}
+                    className="text-left text-[11px] px-2 py-1.5 rounded-lg bg-white border border-[#e4e8eb] hover:border-[#107f8c] hover:bg-[#e5fcf7]/50 transition-colors"
+                  >
+                    <span className="block font-semibold text-[#1f1f22]">📊 Сравнить</span>
+                    <span className="block text-[10px] text-[#7d838a]">два месяца</span>
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => void sendMessage("Сколько на счёте?")}
+                    className="text-left text-[11px] px-2 py-1.5 rounded-lg bg-white border border-[#e4e8eb] hover:border-[#107f8c] hover:bg-[#e5fcf7]/50 transition-colors"
+                  >
+                    <span className="block font-semibold text-[#1f1f22]">💰 Счета</span>
+                    <span className="block text-[10px] text-[#7d838a]">остатки по счетам</span>
+                  </button>
+                </div>
+                <button
+                  type="button"
+                  onClick={() => router.push("/learning")}
+                  className="mt-1.5 w-full text-[10px] font-semibold text-[#107f8c] hover:underline text-center"
+                >
+                  Все команды ИИ и примеры → в обучении
                 </button>
               </div>
             )}

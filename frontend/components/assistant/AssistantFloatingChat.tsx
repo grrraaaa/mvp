@@ -1,11 +1,13 @@
 "use client";
 
 import { useEffect, useRef, useState } from "react";
-import { Volume2, VolumeX } from "lucide-react";
+import { Volume2, VolumeX, History } from "lucide-react";
 import { AssistantPanel } from "./AssistantPanel";
+import { ChatArchive } from "./ChatArchive";
 import { IconChat, IconClose } from "@/components/sbbol/SbbolIcons";
 import { useIsMobile } from "@/hooks/useIsMobile";
 import { useTtsStore } from "@/store/ttsStore";
+import { useAssistantStore } from "@/store/assistantStore";
 
 interface Props {
   open: boolean;
@@ -17,12 +19,17 @@ export function AssistantFloatingChat({ open, onOpenChange }: Props) {
   const isMobile = useIsMobile();
   const ttsEnabled = useTtsStore((s) => s.enabled);
   const toggleTts = useTtsStore((s) => s.toggleEnabled);
+  const sessionId = useAssistantStore((s) => s.sessionId);
   const [dragPos, setDragPos] = useState<{ x: number; y: number } | null>(null);
+  const [archiveOpen, setArchiveOpen] = useState(false);
   const dragRef = useRef<{ startX: number; startY: number; origX: number; origY: number } | null>(null);
   const resetChatRef = useRef<(() => void) | null>(null);
 
   useEffect(() => {
-    if (!open) setDragPos(null);
+    if (!open) {
+      setDragPos(null);
+      setArchiveOpen(false);
+    }
   }, [open]);
 
   useEffect(() => {
@@ -155,6 +162,15 @@ export function AssistantFloatingChat({ open, onOpenChange }: Props) {
             <div className="flex items-center gap-1 shrink-0">
               <button
                 type="button"
+                onClick={() => setArchiveOpen(true)}
+                className="w-8 h-8 flex items-center justify-center rounded text-[#7d838a] hover:bg-[#f2f4f7] hover:text-[#107f8c]"
+                aria-label="Архив сообщений"
+                title="Архив сообщений"
+              >
+                <History className="w-4 h-4" />
+              </button>
+              <button
+                type="button"
                 onClick={toggleTts}
                 className={`w-8 h-8 flex items-center justify-center rounded ${
                   ttsEnabled ? "text-[#107f8c] bg-[#e5fcf7]" : "text-[#7d838a] hover:bg-[#f2f4f7]"
@@ -176,13 +192,18 @@ export function AssistantFloatingChat({ open, onOpenChange }: Props) {
             </div>
           </div>
 
-          <div className="flex-1 min-h-0 flex flex-col overflow-hidden">
+          <div className="flex-1 min-h-0 flex flex-col overflow-hidden relative">
             <AssistantPanel
               variant="embedded"
               compactMobile={isMobile}
               onRegisterReset={(fn) => {
                 resetChatRef.current = fn;
               }}
+            />
+            <ChatArchive
+              open={archiveOpen}
+              onClose={() => setArchiveOpen(false)}
+              activeSessionId={sessionId}
             />
           </div>
         </div>

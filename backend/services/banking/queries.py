@@ -386,6 +386,307 @@ async def _statement_reply(
     }
 
 
+# ──────────────────────────────────────────────────────────────────────────────
+# AI-интент: «покажи все документы / документы за период / на подпись / …»
+# ──────────────────────────────────────────────────────────────────────────────
+
+_RU_MONTH_NAME = {
+    1: "январь", 2: "февраль", 3: "март", 4: "апрель",
+    5: "май", 6: "июнь", 7: "июль", 8: "август",
+    9: "сентябрь", 10: "октябрь", 11: "ноябрь", 12: "декабрь",
+}
+
+
+def _parse_doc_period_from_text(message: str) -> dict:
+    """Извлечь из сообщения фильтр документов: year / month / date_from / date_to.
+
+    Возвращает dict с ключами: year, month, date_from, date_to, raw.
+    """
+    low = message.lower()
+    out: dict = {"raw": message, "year": None, "month": None, "date_from": None, "date_to": None}
+
+    # 1) Диапазон: "с 01.01.2026 по 31.03.2026" / "от 01.01 до 31.03"
+    range_m = re.search(
+        r"(?:с|от)\s*(\d{1,2}[./]\d{1,2}(?:[./]\d{2,4})?)\s*(?:по|до)\s*(\d{1,2}[./]\d{1,2}(?:[./]\d{2,4})?)",
+        low,
+    )
+    if range_m:
+        out["date_from"] = _normalize_date_token(range_m.group(1))
+        out["date_to"] = _normalize_date_token(range_m.group(2))
+        return out
+
+    # 2) Месяц + год: "за март 2026", "за март", "за мартом 2026 года"
+    month_m = re.search(
+        r"за\s+(январ[ья]?|феврал[ья]?|март[а]?|апрел[ья]?|ма[йя]|мая|июн[ья]?|июл[ья]?|"
+        r"август[а]?|сентябр[ья]?|октябр[ья]?|ноябр[ья]?|декабр[ья]?)",
+        low,
+    )
+    year_m = re.search(r"(20\d{2})", low)
+    if month_m:
+        stem = month_m.group(1)
+        # подбираем месяц по стему
+        for m_num, name in _RU_MONTH_NAME.items():
+            if stem.startswith(name[:4]) or name.startswith(stem[:4]):
+                out["month"] = m_num
+                break
+        if out["month"] and year_m:
+            out["year"] = int(year_m.group(1))
+        elif out["month"]:
+            out["year"] = 2026  # дефолт для демо
+        return out
+
+    # 3) Квартал: "за 1 квартал 2026", "за II квартал 2026" — ПЕРЕД годом,
+    #    иначе year-чек съест «2026» из фразы и мы не развернём в даты
+    q_m = re.search(
+        r"(\d|перв|втор|трет|четверт)\w*\s*квартал\w*\s*(20\d{2})?", low
+    )
+    if q_m:
+        q_text = q_m.group(0)
+        q_year = re.search(r"(20\d{2})", q_text)
+        out["year"] = int(q_year.group(1)) if q_year else 2026
+        if "перв" in q_text or q_m.group(1) == "1":
+            out["date_from"] = f"01.01.{out['year']}"
+            out["date_to"] = f"31.03.{out['year']}"
+        elif "втор" in q_text or q_m.group(1) == "2":
+            out["date_from"] = f"01.04.{out['year']}"
+            out["date_to"] = f"30.06.{out['year']}"
+        elif "трет" in q_text or q_m.group(1) == "3":
+            out["date_from"] = f"01.07.{out['year']}"
+            out["date_to"] = f"30.09.{out['year']}"
+        elif "четверт" in q_text or q_m.group(1) == "4":
+            out["date_from"] = f"01.10.{out['year']}"
+            out["date_to"] = f"31.12.{out['year']}"
+        return out
+
+    # 4) Только год: "за 2026 год", "за год" / "за этот год"
+    if re.search(r"за\s+(этот\s+|прошл\w*\s+)?год", low) or re.search(r"\bза\s+год\b", low):
+        if year_m:
+            out["year"] = int(year_m.group(1))
+        else:
+            out["year"] = 2026
+        return out
+
+    if year_m:
+        out["year"] = int(year_m.group(1))
+        return out
+
+    return out
+
+
+def _normalize_date_token(token: str | None) -> str | None:
+    """Привести дату к dd.mm.yyyy."""
+    if not token:
+        return None
+    t = token.replace("/", ".").strip()
+    parts = t.split(".")
+    if len(parts) == 2:
+        # dd.mm — добавим дефолтный год
+        return f"{parts[0].zfill(2)}.{parts[1].zfill(2)}.2026"
+    if len(parts) == 3:
+        d, m, y = parts
+        if len(y) == 2:
+            y = f"20{y}"
+        return f"{d.zfill(2)}.{m.zfill(2)}.{y}"
+    return None
+
+
+def _build_documents_query_string(filters: dict) -> str:
+    parts: list[str] = []
+    if filters.get("status"):
+        parts.append(f"status={quote(filters['status'])}")
+    if filters.get("statuses"):
+        parts.append(f"statuses={quote(','.join(filters['statuses']))}")
+    if filters.get("year"):
+        parts.append(f"year={filters['year']}")
+    if filters.get("month"):
+        parts.append(f"month={filters['month']}")
+    if filters.get("date_from"):
+        parts.append(f"date_from={quote(filters['date_from'])}")
+    if filters.get("date_to"):
+        parts.append(f"date_to={quote(filters['date_to'])}")
+    if filters.get("counterparty"):
+        parts.append(f"counterparty={quote(filters['counterparty'])}")
+    if filters.get("q"):
+        parts.append(f"q={quote(filters['q'])}")
+    if filters.get("doc_type"):
+        parts.append(f"doc_type={quote(filters['doc_type'])}")
+    return "&".join(parts)
+
+
+async def _list_documents_reply(
+    session: AsyncSession, message: str, org_id: str
+) -> dict | None:
+    """AI-интент: «покажи все документы / за год / за март / с 01.01 по 31.03 / на подпись»."""
+    low = message.lower()
+    # Триггеры:
+    #   1) «документы» + глагол действия (покажи/найди/открой/…)
+    #   2) «документы за/на/по/с/между <период|статус|контрагент>» — без глагола
+    #   3) «документы на подпись» / «документы за 2026» — типичный разговорный
+    has_doc = bool(re.search(r"документ\w*|журнал\w*|реестр\w*", low))
+    if not has_doc:
+        return None
+    has_action = bool(
+        re.search(
+            r"покажи|показать|открой|открыть|дай|выведи|вывести|список\w*|"
+            r"перейди|хочу\s+посмотреть|хочу\s+увидеть|хочу\s+открыть|"
+            r"найди|найти|поищи|ищи|посмотр\w*",
+            low,
+        )
+    )
+    # Без явного глагола — но есть «документы» + контекст периода/контрагента/статуса
+    has_period = bool(
+        re.search(
+            r"за\s+(?:\d{4}|этот\s+год|прошл\w*\s+год|январ|феврал|март|апрел|ма[йя]|"
+            r"июн|июл|август|сентябр|октябр|ноябр|декабр|квартал)|"
+            r"с\s+\d{1,2}\.\d{1,2}|на\s+подпис|ожида\w+\s+подпис|"
+            r"подписан\w+|проведен\w+|исполнен\w+|черновик|отказан\w+",
+            low,
+        )
+    )
+    if not (has_action or has_period):
+        return None
+
+    filters: dict = {}
+    period = _parse_doc_period_from_text(message)
+    if period.get("year"):
+        filters["year"] = period["year"]
+    if period.get("month"):
+        filters["month"] = period["month"]
+    if period.get("date_from"):
+        filters["date_from"] = period["date_from"]
+    if period.get("date_to"):
+        filters["date_to"] = period["date_to"]
+
+    # Статус из текста
+    if re.search(r"на\s+подпис\w*|ожида\w*\s+подпис\w*|не\s+подпис\w*", low):
+        filters["status"] = "На подписи"
+    elif re.search(r"подписан\w*|подпис\w+\s+документ", low):
+        filters["status"] = "Подписан"
+    elif re.search(r"в\s+обработк\w*|обрабатыв\w*|обработк\w+", low):
+        filters["status"] = "В обработке"
+    elif re.search(r"проведен\w*|исполнен\w*|оплачен\w*|заверш\w+", low):
+        filters["status"] = "Проведен"
+    elif re.search(r"отказан\w*|отклон\w*|отмен\w+", low):
+        filters["status"] = "Отказан"
+    elif re.search(r"черновик\w*|не\s+заверш\w*", low):
+        filters["status"] = "Черновик"
+    elif re.search(r"удал\w+", low):
+        filters["status"] = "Удален"
+
+    # Контрагент: "документы ООО Ромашка" / "документы Ромашка за март"
+    cp_match = re.search(
+        r"документ\w*\s+(?:у|от|по|для|контрагент\w*|поставщик\w*)?\s*"
+        r"([А-ЯЁа-яё0-9«»\"\']{3,}(?:\s+[А-ЯЁа-яё0-9]{3,})?)(?:\s+за\s+|\s+на\s+|$|\.)",
+        message,
+    )
+    if cp_match:
+        candidate = cp_match.group(1).strip(" .,")
+        if candidate.lower() not in {
+            "за", "на", "по", "у", "от", "для", "все", "всех", "этот", "этого", "месяц", "год", "период"
+        }:
+            # Не подставляем в фильтр, если это просто «документы за 2026» — там cp_match не сработает
+            if not re.match(r"^\d{4}$", candidate) and not re.search(
+                r"январ|феврал|март|апрел|ма[йя]|июн|июл|август|сентябр|октябр|ноябр|декабр",
+                candidate.lower(),
+            ):
+                filters["counterparty"] = candidate
+
+    # Прямой поиск по слову/номеру: «найди документ 211», «покажи счёт 555»
+    if "найди" in low or "найти" in low:
+        num_m = re.search(r"\b(\d{2,6})\b", message)
+        if num_m and num_m.group(1) not in (str(filters.get("year") or ""),):
+            filters["q"] = num_m.group(1)
+
+    # Считаем сколько доков попадёт под фильтры — для подсказки «найдено N»
+    count_stmt = select(BankDocument).where(BankDocument.org_id == org_id)
+    if filters.get("status"):
+        count_stmt = count_stmt.where(BankDocument.status == filters["status"])
+    if filters.get("year") and filters.get("month"):
+        mm = f"{filters['month']:02d}"
+        count_stmt = count_stmt.where(
+            BankDocument.doc_date.like(f"%.{mm}.{filters['year']}")
+        )
+    elif filters.get("year"):
+        count_stmt = count_stmt.where(
+            BankDocument.doc_date.like(f"%.{filters['year']}")
+        )
+    rows = (await session.execute(count_stmt)).scalars().all()
+    if filters.get("counterparty"):
+        cpf = filters["counterparty"].lower()
+        rows = [r for r in rows if cpf in (r.counterparty or "").lower()]
+    if filters.get("q"):
+        qq = filters["q"].lower()
+        rows = [
+            r for r in rows
+            if qq in (r.doc_number or "").lower()
+            or qq in (r.purpose or "").lower()
+            or qq in (r.counterparty or "").lower()
+        ]
+    found = len(rows)
+
+    qs = _build_documents_query_string(filters)
+    url = "/other/documents" + (f"?{qs}" if qs else "")
+
+    # Сборка красивого текста-подсказки
+    pretty_filters: list[str] = []
+    if filters.get("year") and filters.get("month"):
+        pretty_filters.append(
+            f"за {_RU_MONTH_NAME[filters['month']]} {filters['year']}"
+        )
+    elif filters.get("year"):
+        pretty_filters.append(f"за {filters['year']} год")
+    if filters.get("status"):
+        pretty_filters.append(f"статус «{filters['status']}»")
+    if filters.get("counterparty"):
+        pretty_filters.append(f"контрагент «{filters['counterparty']}»")
+    if filters.get("q"):
+        pretty_filters.append(f"поиск «{filters['q']}»")
+
+    if pretty_filters:
+        filter_label = " · ".join(pretty_filters)
+        msg = f"Открываю список документов ({filter_label})."
+    else:
+        filter_label = ""
+        msg = "Открываю список всех документов."
+
+    if found == 0:
+        msg += "\n\nВ базе пока нет документов под выбранные фильтры — но открою страницу, чтобы было видно."
+    elif found <= 30:
+        msg += f"\n\nПод фильтры попадает **{found}** документов."
+    else:
+        msg += f"\n\nПод фильтры попадает **{found}** документов — при необходимости уточните период или контрагента."
+
+    buttons: list[dict] = [
+        {"label": "Открыть документы", "url": url, "variant": "primary"},
+    ]
+    if filters.get("year") and not filters.get("month"):
+        buttons.append({
+            "label": f"За {filters['year']} год по месяцам",
+            "message": f"Покажи документы за {_RU_MONTH_NAME[1]} {filters['year']}",
+            "variant": "secondary",
+        })
+
+    return {
+        "message": msg,
+        "sources": [
+            {
+                "index": 1,
+                "label": f"Источник 1: Журнал документов{(' — ' + filter_label) if filter_label else ''}",
+                "kind": "documents",
+                "url": url,
+            }
+        ],
+        "ui_actions": [{"type": "navigate", "target": url}],
+        "action_buttons": buttons,
+        "suggested_chips": [
+            "Покажи все документы",
+            "Документы на подпись",
+            "Документы за март 2026",
+            "Документы за 2026 год",
+        ] if not (filters.get("year") or filters.get("status")) else None,
+    }
+
+
 async def _account_note_reply(
     session: AsyncSession, message: str, org_id: str
 ) -> dict | None:
@@ -477,6 +778,10 @@ async def handle_banking_query(
     statement_reply = await _statement_reply(session, message, org_id)
     if statement_reply:
         return statement_reply
+
+    documents_reply = await _list_documents_reply(session, message, org_id)
+    if documents_reply:
+        return documents_reply
 
     if re.search(r"подпиш\w+.*шлюз|отправ\w+.*шлюз|подписать\s+и\s+отправ", low):
         from services.banking.gateway_sim import sign_latest_and_submit
@@ -834,7 +1139,75 @@ async def handle_banking_query(
             ],
         }
 
+    # Универсальный обработчик «покажи график / диаграмму» — если ИИ явно
+    # просят график, но не уточняют тип, выдаём каталог доступных визуализаций
+    # и сразу рисуем самый полезный (прогноз остатка).
+    if re.search(r"\b(график|диаграмм|визуализ|визуализир|chart)\b", low) and not re.search(
+        r"расход|сравни|кассов|разрыв|прогноз|остатк|баланс", low
+    ):
+        forecast = await cash_gap_forecast(session, org_id)
+        return {
+            "message": (
+                "Я умею строить несколько видов графиков по реальным данным из БД:\n\n"
+                "📊 **Доступно прямо сейчас:**\n"
+                "• **Прогноз остатка** — линейный график, на сколько дней хватит текущих средств\n"
+                "• **Структура расходов** — круговая диаграмма по категориям за месяц\n"
+                "• **Сравнение месяцев** — столбчатая диаграмма (февраль vs март и т.п.)\n"
+                "• **Остатки по счетам** — гистограмма по всем счетам в BYN\n\n"
+                "Скажите, что нарисовать, например:\n"
+                "• «Прогноз остатка»\n"
+                "• «Расходы за 2026-03»\n"
+                "• «Сравни февраль и март»\n"
+                "• «Сколько на счёте»"
+            ),
+            "charts": [to_chart_line("Прогноз остатка", forecast["forecast"])],
+            "sources": [
+                {"index": 1, "label": "Источник 1: Счета PostgreSQL", "kind": "account", "url": "/statement"},
+                {"index": 2, "label": "Источник 2: Аналитика PostgreSQL", "kind": "analytics", "url": "/services"},
+            ],
+            "action_buttons": [
+                {"label": "📈 Прогноз остатка", "message": "Кассовый прогноз", "variant": "primary"},
+                {"label": "🥧 Расходы за март", "message": "Расходы за 2026-03", "variant": "secondary"},
+                {"label": "📊 Сравнить месяцы", "message": "Сравни февраль и март", "variant": "secondary"},
+            ],
+            "suggested_chips": [
+                "Кассовый прогноз",
+                "Расходы за 2026-03",
+                "Сравни февраль и март",
+                "Сколько на счёте?",
+            ],
+        }
+
     if re.search(r"расход|покажи\s+расход|структур\w*\s+расход", low):
+        month_m = re.search(r"(20\d{2}-\d{2})", message)
+        month = month_m.group(1) if month_m else None
+        items = await monthly_expenses(session, org_id, month)
+        if not items:
+            return {
+                "message": "За выбранный период расходов в базе нет. Укажите месяц, например: «расходы за 2026-03».",
+                "pending_form_fields": ["Период (YYYY-MM)"],
+                "action_buttons": [
+                    {"label": "За март 2026", "message": "Расходы за 2026-03", "variant": "primary"},
+                    {"label": "За июнь 2026", "message": "Расходы за 2026-06", "variant": "secondary"},
+                ],
+            }
+        lines = "\n".join(f"• {i['category']} — {i['amount']:,.2f} BYN" for i in items[:8])
+        month_label = month or "последние месяцы"
+        return {
+            "message": f"Расходы по категориям за **{month_label}**:\n{lines}",
+            "charts": [to_chart_pie("Структура расходов", items)],
+            "sources": [{"index": 1, "label": "Аналитика PostgreSQL", "kind": "analytics", "url": "/services"}],
+            "action_buttons": [
+                {"label": "Сравнить с другим месяцем", "message": "Сравни февраль и март", "variant": "primary"},
+                {"label": "Прогноз остатка", "message": "Кассовый прогноз", "variant": "secondary"},
+                {"label": "Выписка", "url": "/statement", "variant": "secondary"},
+            ],
+            "suggested_chips": [
+                "Сравни февраль и март",
+                "Кассовый прогноз",
+                "Покажи источник №1",
+            ],
+        }
         month_m = re.search(r"(20\d{2}-\d{2})", message)
         month = month_m.group(1) if month_m else None
         items = await monthly_expenses(session, org_id, month)

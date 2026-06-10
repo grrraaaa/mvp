@@ -7,6 +7,7 @@ const HOME_CHIPS = [
   "Создать документ",
   "Повтори последний платёж",
   "Покажи выписку",
+  "📊 Графики",
 ];
 
 const PAYMENTS_CHIPS = [
@@ -42,6 +43,14 @@ const PRODUCTS_CHIPS = [
   "Сколько на счёте",
 ];
 
+const DOCUMENTS_CHIPS = [
+  "Покажи все документы",
+  "Документы на подпись",
+  "Документы за 2026 год",
+  "Документы за март 2026",
+  "Документы за квартал",
+];
+
 const SETTINGS_CHIPS = [
   "Счета организации",
   "Безопасность",
@@ -74,6 +83,7 @@ const DEFAULT_CHIPS = [
   "Создать документ",
   "Перейди в расчёты",
   "Покажи выписку",
+  "📊 Графики",
 ];
 
 const MOBILE_CHIP_LIMIT = 3;
@@ -92,6 +102,7 @@ export function getAssistantQuickChips(pathname: string, options?: QuickChipOpti
   else if (route === "/salary" || route.startsWith("/salary/")) chips = SALARY_CHIPS;
   else if (route === "/services" || route.startsWith("/services/")) chips = SERVICES_CHIPS;
   else if (route === "/products" || route.startsWith("/products/")) chips = PRODUCTS_CHIPS;
+  else if (route === "/other/documents" || route.startsWith("/other/documents")) chips = DOCUMENTS_CHIPS;
   else if (route === "/settings" || route.startsWith("/settings/")) chips = SETTINGS_CHIPS;
   else if (isPaymentFormRoute(pathname)) {
     chips = dedupeChips([...FORM_FILL_CHIPS, ...(FORM_FIELD_CHIPS[route] ?? [])]);

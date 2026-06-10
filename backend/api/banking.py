@@ -8,7 +8,7 @@ import uuid
 from datetime import datetime
 
 from fastapi import APIRouter, Depends, HTTPException, Query
-from sqlalchemy import select
+from sqlalchemy import or_, select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from core.dependencies import get_current_user, get_optional_user
@@ -134,15 +134,113 @@ async def list_documents(
     doc_type: str | None = Query(None, alias="doc_type"),
     doc_prefix: str | None = Query(None, alias="doc_prefix"),
     status: str | None = Query(None),
+    # Расширенные фильтры для /other/documents (дизайн в стиле web mobile)
+    statuses: str | None = Query(
+        None, description="CSV статусов: 'На подписи,Проведен'"
+    ),
+    year: int | None = Query(None, description="Фильтр по году (2026)"),
+    month: int | None = Query(
+        None, description="Месяц 1-12 (требует year)"
+    ),
+    date_from: str | None = Query(
+        None, description="Начало диапазона dd.mm.yyyy"
+    ),
+    date_to: str | None = Query(
+        None, description="Конец диапазона dd.mm.yyyy"
+    ),
+    counterparty: str | None = Query(
+        None, description="ILIKE-фильтр по контрагенту"
+    ),
+    q: str | None = Query(
+        None, description="Свободный поиск по номеру/назначению/контрагенту"
+    ),
+    min_amount: float | None = Query(None),
+    max_amount: float | None = Query(None),
+    limit: int | None = Query(None, ge=1, le=2000),
 ):
+    """Список документов организации с расширенными фильтрами.
+
+    Базовая выборка — все документы org_id. Фильтры комбинируются через AND.
+    """
     org_id = org_id or (user_org_id(current_user) if current_user else "demo")
     stmt = _org_filter(BankDocument, org_id)
+
     if doc_prefix:
         stmt = stmt.where(BankDocument.doc_type.startswith(doc_prefix))
     elif doc_type:
         stmt = stmt.where(BankDocument.doc_type == doc_type)
+
     if status:
         stmt = stmt.where(BankDocument.status == status)
+    elif statuses:
+        # CSV-режим: "На подписи,Проведен,Черновик"
+        wanted = [s.strip() for s in statuses.split(",") if s.strip()]
+        if wanted:
+            stmt = stmt.where(BankDocument.status.in_(wanted))
+
+    if year is not None:
+        if month is not None and 1 <= month <= 12:
+            # "MM.YYYY" внутри строки dd.mm.yyyy
+            mm = f"{month:02d}"
+            stmt = stmt.where(BankDocument.doc_date.like(f"%.{mm}.{year}"))
+        else:
+            stmt = stmt.where(BankDocument.doc_date.like(f"%.{year}"))
+
+    if date_from or date_to:
+        # doc_date — строка dd.mm.yyyy, сравниваем по компонентам
+        # через арифметику «dd*1000000 + mm*10000 + yyyy»
+        from sqlalchemy import func as sa_func
+
+        ymd_expr = sa_func.cast(
+            sa_func.split_part(BankDocument.doc_date, ".", 1), sa_func.Integer()
+        ) * 1000000 + sa_func.cast(
+            sa_func.split_part(BankDocument.doc_date, ".", 2), sa_func.Integer()
+        ) * 10000 + sa_func.cast(
+            sa_func.split_part(BankDocument.doc_date, ".", 3), sa_func.Integer()
+        )
+        if date_from:
+            try:
+                d, m, y = date_from.split(".")
+                ymd = int(d) * 1000000 + int(m) * 10000 + int(y)
+                stmt = stmt.where(ymd_expr >= ymd)
+            except (ValueError, AttributeError):
+                raise HTTPException(
+                    status_code=400,
+                    detail="date_from должен быть в формате dd.mm.yyyy",
+                )
+        if date_to:
+            try:
+                d, m, y = date_to.split(".")
+                ymd = int(d) * 1000000 + int(m) * 10000 + int(y)
+                stmt = stmt.where(ymd_expr <= ymd)
+            except (ValueError, AttributeError):
+                raise HTTPException(
+                    status_code=400,
+                    detail="date_to должен быть в формате dd.mm.yyyy",
+                )
+
+    if counterparty:
+        stmt = stmt.where(BankDocument.counterparty.ilike(f"%{counterparty}%"))
+
+    if q:
+        like = f"%{q}%"
+        stmt = stmt.where(
+            or_(
+                BankDocument.doc_number.ilike(like),
+                BankDocument.purpose.ilike(like),
+                BankDocument.counterparty.ilike(like),
+                BankDocument.doc_type.ilike(like),
+            )
+        )
+
+    if min_amount is not None:
+        stmt = stmt.where(BankDocument.amount >= min_amount)
+    if max_amount is not None:
+        stmt = stmt.where(BankDocument.amount <= max_amount)
+
+    if limit:
+        stmt = stmt.limit(limit)
+
     result = await db.execute(stmt)
     rows = result.scalars().all()
     return [
@@ -159,6 +257,53 @@ async def list_documents(
         )
         for d in rows
     ]
+
+
+@router.get("/documents/facets", response_model=dict)
+async def document_facets(
+    db: AsyncSession = Depends(get_db),
+    current_user: User | None = Depends(get_optional_user),
+    org_id: str | None = Query(None),
+):
+    """Список доступных значений для фильтров на /other/documents.
+
+    Возвращает: years, statuses, types, counterparties — без дублей.
+    Используется фронтом для построения дропдаунов.
+    """
+    from sqlalchemy import distinct
+
+    org_id = org_id or (user_org_id(current_user) if current_user else "demo")
+
+    rows = (
+        await db.execute(_org_filter(BankDocument, org_id))
+    ).scalars().all()
+
+    years: set[int] = set()
+    statuses: set[str] = set()
+    types: set[str] = set()
+    counterparties: set[str] = set()
+    for d in rows:
+        # doc_date формат dd.mm.yyyy
+        try:
+            parts = d.doc_date.split(".")
+            if len(parts) == 3:
+                years.add(int(parts[2]))
+        except (ValueError, AttributeError):
+            pass
+        if d.status:
+            statuses.add(d.status)
+        if d.doc_type:
+            types.add(d.doc_type)
+        if d.counterparty:
+            counterparties.add(d.counterparty.strip())
+
+    return {
+        "years": sorted(years, reverse=True),
+        "statuses": sorted(statuses),
+        "types": sorted(types),
+        "counterparties": sorted(counterparties)[:200],
+        "total": len(rows),
+    }
 
 
 @router.get("/employees", response_model=list[EmployeeOut])

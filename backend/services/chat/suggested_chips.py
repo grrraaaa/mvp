@@ -37,7 +37,21 @@ def suggest_chips(
 
     charts = response.get("charts") or []
     if charts:
-        chips.extend(["Кассовый разрыв", "Сравни февраль и март", "Риски по расходам"])
+        # Подсказки зависят от того, какой именно график только что показали
+        chart_titles = " ".join(
+            (c.get("title") if isinstance(c, dict) else getattr(c, "title", "")) or ""
+            for c in charts
+        ).lower()
+        if "прогноз" in chart_titles or "разрыв" in chart_titles or "поток" in chart_titles:
+            chips.extend(["Расходы за 2026-03", "Сравни февраль и март", "Сколько на счёте?"])
+        elif "расход" in chart_titles or "структур" in chart_titles:
+            chips.extend(["Кассовый прогноз", "Сравни февраль и март", "Выписка за месяц"])
+        elif "сравн" in chart_titles or "vs" in chart_titles:
+            chips.extend(["Расходы за 2026-04", "Кассовый прогноз", "Покажи диаграмму"])
+        elif "остатк" in chart_titles or "счет" in chart_titles:
+            chips.extend(["Кассовый прогноз", "Прогноз остатка", "Расходы за 2026-03"])
+        else:
+            chips.extend(["Кассовый разрыв", "Сравни февраль и март", "Риски по расходам"])
 
     if re.search(r"выписк", low):
         chips.extend(["Выписка за квартал", "Выписка за год", "Последние операции"])

@@ -80,6 +80,7 @@ interface AssistantState {
   setLastEmotion: (e: string | null) => void;
   setUseStreaming: (v: boolean) => void;
   loadMessages: (msgs: ChatMessage[]) => void;
+  switchSession: (id: string, msgs: ChatMessage[]) => void;
   clearSession: () => void;
 }
 
@@ -126,6 +127,16 @@ export const useAssistantStore = create<AssistantState>((set) => ({
   setUseStreaming: (v) => set({ useStreaming: v }),
 
   loadMessages: (msgs) => set({ messages: msgs, historyLoaded: true }),
+
+  switchSession: (id, msgs) =>
+    set({
+      sessionId: id,
+      messages: msgs,
+      historyLoaded: true,
+      suggestedChips: [],
+      navigationPath: null,
+      formActions: null,
+    }),
 
   clearSession: () =>
     set({
