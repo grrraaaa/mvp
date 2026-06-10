@@ -20,10 +20,10 @@ export function CharacterSettings() {
     <div
       className="absolute inset-0 z-30 flex flex-col bg-gradient-to-b from-white to-[#f4faf9] backdrop-blur-md border-l border-gray-200 shadow-xl"
       role="dialog"
-      aria-label="Настройки консультанта"
+      aria-label="Способности ИИ-консультанта"
     >
       <div className="flex items-center justify-between p-4 border-b border-gray-200 bg-white">
-        <h3 className="font-semibold text-[#1f1f22]">Консультант 3D</h3>
+        <h3 className="font-semibold text-[#1f1f22]">Способности ИИ</h3>
         <button
           type="button"
           onClick={() => setSettingsOpen(false)}
@@ -36,33 +36,56 @@ export function CharacterSettings() {
 
       <div className="flex-1 overflow-y-auto p-4 space-y-5">
         <p className="text-xs text-gray-500 leading-relaxed">
-          Выберите один из 3 образов консультанта. Голос подбирается автоматически
-          по полу персонажа (Qwen: мужской/женский).
+          Выберите набор способностей ИИ-консультанта. Под выбранный режим
+          автоматически подставятся 3D-модель и голос (мужской/женский).
         </p>
 
         <section>
-          <p className="text-xs text-gray-500 uppercase tracking-wide mb-2">Образ (1 из 3)</p>
+          <p className="text-xs text-gray-500 uppercase tracking-wide mb-2">
+            Режим ИИ
+          </p>
           <div className="grid grid-cols-1 gap-2">
-            {CHARACTER_PRESETS.map((preset) => (
-              <button
-                key={preset.id}
-                type="button"
-                onClick={() => applyPreset(preset.id)}
-                className={`text-left px-3 py-3 rounded-xl border text-sm transition-colors flex items-center gap-3 ${
-                  activePresetId === preset.id
-                    ? "border-sber-green bg-emerald-50 text-[#1f1f22] ring-1 ring-sber-green/30"
-                    : "border-gray-200 bg-white text-gray-700 hover:border-gray-300"
-                }`}
-              >
-                <span className="text-2xl shrink-0">{preset.config.emoji ?? "✨"}</span>
-                <span className="flex-1 min-w-0">
-                  <span className="block font-semibold">{preset.label}</span>
-                  <span className="block text-[10px] text-gray-500 mt-0.5">
-                    {preset.config.subtitle}
+            {CHARACTER_PRESETS.map((preset) => {
+              const active = activePresetId === preset.id;
+              return (
+                <button
+                  key={preset.id}
+                  type="button"
+                  onClick={() => applyPreset(preset.id)}
+                  className={`text-left px-3 py-3 rounded-xl border text-sm transition-colors flex items-start gap-3 ${
+                    active
+                      ? "border-sber-green bg-emerald-50 text-[#1f1f22] ring-1 ring-sber-green/30"
+                      : "border-gray-200 bg-white text-gray-700 hover:border-gray-300"
+                  }`}
+                >
+                  <span className="text-2xl shrink-0 mt-0.5">
+                    {preset.config.emoji ?? "✨"}
                   </span>
-                </span>
-              </button>
-            ))}
+                  <span className="flex-1 min-w-0">
+                    <span className="block font-semibold">{preset.label}</span>
+                    <span className="block text-[10px] text-gray-500 mt-0.5">
+                      {preset.config.subtitle}
+                    </span>
+                    <ul className="mt-1.5 space-y-0.5">
+                      {preset.abilities.map((line) => (
+                        <li
+                          key={line}
+                          className="flex items-start gap-1.5 text-[11px] leading-tight text-gray-600"
+                        >
+                          <span
+                            className={`mt-1 inline-block w-1 h-1 rounded-full shrink-0 ${
+                              active ? "bg-sber-green" : "bg-gray-400"
+                            }`}
+                            aria-hidden
+                          />
+                          <span>{line}</span>
+                        </li>
+                      ))}
+                    </ul>
+                  </span>
+                </button>
+              );
+            })}
           </div>
         </section>
 
@@ -73,11 +96,12 @@ export function CharacterSettings() {
               {config.name}
             </div>
             <p className="text-[10px] text-gray-400 mt-1">
-              Имя задаётся выбранным образом: Александр или Александра. Без фамилии.
+              Имя привязано к выбранному режиму (Александр / Александра) и не
+              редактируется руками.
             </p>
           </div>
           <label className="block">
-            <span className="text-xs text-gray-500">Подпись (роль)</span>
+            <span className="text-xs text-gray-500">Подпись (что умеет)</span>
             <input
               type="text"
               value={config.subtitle}

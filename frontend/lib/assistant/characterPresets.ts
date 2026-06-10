@@ -10,6 +10,9 @@ export interface CharacterPreset {
 
   label: string;
 
+  /** Краткое описание «что умеет этот режим ИИ» — показывается в карточке выбора. */
+  abilities: string[];
+
   config: AssistantCharacterConfig;
 
 }
@@ -23,7 +26,7 @@ const ALEXANDER_BASE: Omit<AssistantCharacterConfig, "subtitle" | "primaryColor"
 
   styleId: "human-m",
 
-  emoji: "✨",
+  emoji: "🧑‍💼",
 
   skinTone: "#f5d0b5",
 
@@ -40,7 +43,7 @@ const ALEXANDRA_BASE_1: Omit<AssistantCharacterConfig, "subtitle" | "primaryColo
 
   styleId: "human-f",
 
-  emoji: "✨",
+  emoji: "🧑‍💻",
 
   skinTone: "#f5d0b5",
 
@@ -57,7 +60,7 @@ const ALEXANDRA_BASE_2: Omit<AssistantCharacterConfig, "subtitle" | "primaryColo
 
   styleId: "human-f",
 
-  emoji: "✨",
+  emoji: "🧾",
 
   skinTone: "#f5d0b5",
 
@@ -70,10 +73,17 @@ const ALEXANDRA_BASE_2: Omit<AssistantCharacterConfig, "subtitle" | "primaryColo
 
 
 /**
- * Всего 3 образа консультанта:
- *   1. Александр     (мужской)  — personage.glb
- *   2. Александра    (женский) — textured_sasha_lady1.glb
- *   3. Александра    (женский) — textured_sasha_lady2.glb
+ * Три режима работы ИИ-консультанта — выбор СПОСОБНОСТЕЙ ассистента, а не
+ * просто «образа». Голос и 3D-модель подбираются под выбранный режим:
+ *
+ *   1. Руководитель         (Александр)     — personage.glb, qwen-male
+ *      → подписи, платежи, выплаты, открытие счетов и продуктов
+ *
+ *   2. Операционный админ   (Александра)    — textured_sasha_lady1.glb, qwen-female
+ *      → безопасность, IP/ЭЦП, API-ключи, сервисы, сотрудники
+ *
+ *   3. ИП                   (Александра)    — textured_sasha_lady2.glb, qwen-female
+ *      → черновики документов, проверка контрагентов, выписки
  *
  * Голос подбирается автоматически по полу: human-m → qwen-male, human-f → qwen-female.
  * Ручной выбор голоса в UI отключён.
@@ -81,77 +91,65 @@ const ALEXANDRA_BASE_2: Omit<AssistantCharacterConfig, "subtitle" | "primaryColo
 export const CHARACTER_PRESETS: CharacterPreset[] = [
 
   {
-
-    id: "banker-m",
-
-    label: "Александр",
-
+    id: "manager-abilities",
+    label: "Руководитель",
+    abilities: [
+      "Подписание финансовых документов",
+      "Платежи и выплаты (зарплата, контрагенты)",
+      "Открытие счетов и продуктов",
+    ],
     config: {
-
       ...ALEXANDER_BASE,
-
-      subtitle: "Помогу с кредитами, платежами и вкладами",
-
+      subtitle: "Полный доступ: подписи, платежи, счета",
       primaryColor: "#053517",
-
       accentColor: "#21A038",
-
     },
-
   },
 
   {
-
-    id: "banker-f",
-
-    label: "Александра",
-
+    id: "admin-abilities",
+    label: "Операционный админ",
+    abilities: [
+      "Безопасность, IP/ЭЦП, API-ключи",
+      "Управление сервисами и сотрудниками",
+      "Настройка и редактирование счетов",
+    ],
     config: {
-
       ...ALEXANDRA_BASE_1,
-
-      subtitle: "Подберу лучшее предложение банка",
-
+      subtitle: "Настройки, безопасность, команда",
       primaryColor: "#0f2f1c",
-
       accentColor: "#64D072",
-
     },
-
   },
 
   {
-
-    id: "vip",
-
-    label: "Александра",
-
+    id: "ip-abilities",
+    label: "ИП",
+    abilities: [
+      "Черновики документов и шаблоны",
+      "Проверка контрагентов",
+      "Просмотр выписок и аналитика",
+    ],
     config: {
-
       ...ALEXANDRA_BASE_2,
-
-      subtitle: "Премиальное обслуживание",
-
+      subtitle: "Черновики, контрагенты, выписки",
       primaryColor: "#1c1917",
-
       accentColor: "#d4af37",
-
     },
-
   },
 
 ];
 
 
 
-/** Роль в navbar → пресет 3D-консультанта */
+/** Роль в navbar → режим способностей ИИ в чате. */
 export const ROLE_PRESET_MAP: Record<string, string> = {
 
-  manager: "banker-m",
+  manager: "manager-abilities",
 
-  admin: "banker-f",
+  admin: "admin-abilities",
 
-  user: "vip",
+  user: "ip-abilities",
 
 };
 

@@ -46,7 +46,7 @@ export const useCharacterStore = create<CharacterState>()(
   persist(
     (set, get) => ({
       config: envDefault(),
-      activePresetId: process.env.NEXT_PUBLIC_CHARACTER_PRESET ?? "banker-m",
+      activePresetId: process.env.NEXT_PUBLIC_CHARACTER_PRESET ?? "manager-abilities",
       settingsOpen: false,
 
       setConfig: (patch) =>
@@ -70,24 +70,24 @@ export const useCharacterStore = create<CharacterState>()(
 
       resetCharacter: () => {
         // Через applyPreset — единая логика: и сброс конфига, и перевыбор голоса.
-        get().applyPreset("banker-m");
+        get().applyPreset("manager-abilities");
       },
 
       setSettingsOpen: (open) => set({ settingsOpen: open }),
     }),
     {
       name: "sber-ai-character",
-      version: 5,
+      version: 6,
       partialize: (state) => ({
         config: state.config,
         activePresetId: state.activePresetId,
       }),
       migrate: (persisted: unknown, version: number) => {
-        // v4 и раньше: полный сброс на новый дефолт (Александр, banker-m).
-        if (version < 5) {
+        // v5 и раньше: полный сброс на новый дефолт (Александр, manager-abilities).
+        if (version < 6) {
           return {
             config: { ...DEFAULT_CHARACTER },
-            activePresetId: "banker-m",
+            activePresetId: "manager-abilities",
           };
         }
         const p = persisted as {
@@ -96,11 +96,11 @@ export const useCharacterStore = create<CharacterState>()(
         };
         const modelPath = p?.config?.modelPath ?? DEFAULT_CHARACTER.modelPath;
         // Подстраховка: если в стейте залежался id, которого больше нет
-        // (например, ранее удалённый «casual»), подменяем на дефолтный.
+        // (например, ранее удалённые «banker-m» / «casual»), подменяем на дефолтный.
         const activePresetId =
           p?.activePresetId && CHARACTER_PRESETS.some((cp) => cp.id === p.activePresetId)
             ? p.activePresetId
-            : "banker-m";
+            : "manager-abilities";
         return {
           config: {
             ...DEFAULT_CHARACTER,
