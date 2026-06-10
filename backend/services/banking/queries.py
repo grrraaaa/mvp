@@ -10,6 +10,10 @@ from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from db.models import BankAccount, BankDocument, Counterparty, OrganizationProfile, StatementLine
+from services.ai.cash_forecast import (
+    build_cash_forecast,
+    forecast_to_assistant_response,
+)
 from services.banking.analytics import (
     cash_gap_forecast,
     compare_months,
@@ -456,6 +460,28 @@ def _parse_doc_period_from_text(message: str) -> dict:
         elif "четверт" in q_text or q_m.group(1) == "4":
             out["date_from"] = f"01.10.{out['year']}"
             out["date_to"] = f"31.12.{out['year']}"
+        return out
+
+    # 3a) «за квартал» без номера — текущий квартал (демо-год 2026)
+    if re.search(r"\bза\s+квартал\b|\bквартал\b", low):
+        from datetime import date
+        today = date.today()
+        # в демо фиксируем 2026 — берём 2-й квартал как «текущий»
+        year = 2026
+        cur_q = 2
+        out["year"] = year
+        if cur_q == 1:
+            out["date_from"] = f"01.01.{year}"
+            out["date_to"] = f"31.03.{year}"
+        elif cur_q == 2:
+            out["date_from"] = f"01.04.{year}"
+            out["date_to"] = f"30.06.{year}"
+        elif cur_q == 3:
+            out["date_from"] = f"01.07.{year}"
+            out["date_to"] = f"30.09.{year}"
+        else:
+            out["date_from"] = f"01.10.{year}"
+            out["date_to"] = f"31.12.{year}"
         return out
 
     # 4) Только год: "за 2026 год", "за год" / "за этот год"
@@ -1245,22 +1271,47 @@ async def handle_banking_query(
             "sources": [{"index": 1, "label": "Аналитика PostgreSQL", "kind": "analytics", "url": "/services"}],
         }
 
-    if re.search(r"кассов\w*\s+(?:разрыв|прогноз)|прогноз\s+остат", low):
+    # ── AI-прогноз остатков на N дней ─────────────────────────────────────
+    # Ловим: «кассовый разрыв», «прогноз остатков», «хватит ли денег на N дней»,
+    # «прогноз на следующую неделю / 2 недели / месяц». Горизонт по умолчанию 7.
+    if re.search(
+        r"кассов\w*\s+(?:разрыв|прогноз|дефицит)|"
+        r"прогноз\s+(?:остат|денег|баланс)|"
+        r"хватит\s+ли\s+денег|"
+        r"на\s+сколько\s+(?:хватит|хватит\s+денег)|"
+        r"денежн\w*\s+поток\s+на\s+ближайш",
+        low,
+    ):
+        horizon = 7
+        # пытаемся вытащить горизонт из текста
+        num_m = re.search(r"\b(\d{1,2})\s*(?:дн|дней|день)\b", low)
+        if num_m:
+            horizon = max(1, min(int(num_m.group(1)), 30))
+        elif re.search(r"\bдве\s+недел\w*|2\s*недел\w*\b", low):
+            horizon = 14
+        elif re.search(r"\bтри\s+недел\w*|3\s*недел\w*\b", low):
+            horizon = 21
+        elif re.search(r"\bнедел\w*\b|следующ\w*\s+недел", low):
+            horizon = 7
+        elif re.search(r"\bмесяц\w*\b|30\s*дн", low):
+            horizon = 30
+
+        forecast = await build_cash_forecast(session, org_id, horizon_days=horizon)
+        return forecast_to_assistant_response(forecast)
+
+    # Старый rule-based «кассовый разрыв» с длинным горизонтом — оставлен как
+    # fallback для случаев, когда LLM недоступен, но нужен общий сигнал «когда
+    # кончатся деньги». Используется из ветки анализа рисков ниже.
+    if re.search(r"когда\s+конч\w*тся\s+денег|законч\w*тся\s+средств", low):
         data = await cash_gap_forecast(session, org_id)
-        expl = (
-            f"На основе среднего оттока {data['avg_monthly_outflow']:,.0f} BYN/мес "
-            f"и текущего остатка {data['current_balance']:,.0f} BYN "
-            f"дефицит возможен примерно через {data['days_to_gap']} дн."
-        )
         return {
             "message": (
-                f"Текущий остаток BYN: **{data['current_balance']:,.2f}**\n"
-                f"Средний месячный отток: {data['avg_monthly_outflow']:,.2f} BYN\n"
-                f"Ориентировочно до дефицита: ~{data['days_to_gap']} дн.\n\n"
-                f"_{expl}_"
+                f"Остаток BYN сейчас: **{data['current_balance']:,.2f}**.\n"
+                f"Средний отток: {data['avg_monthly_outflow']:,.2f} BYN/мес.\n"
+                f"Ориентировочно до дефицита: ~{data['days_to_gap']} дн."
             ),
             "charts": [to_chart_line("Прогноз остатка", data["forecast"])],
-            "sources": [{"index": 1, "label": "Счета PostgreSQL", "kind": "account", "url": "/statement"}],
+            "sources": [{"index": 1, "label": "Счета и выписка", "kind": "account", "url": "/statement"}],
         }
 
     if is_balance_query(message):

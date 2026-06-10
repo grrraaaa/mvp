@@ -1,4 +1,5 @@
 import { create } from "zustand";
+import type { ChoiceCard } from "@/components/assistant/ChoiceCards";
 
 export interface NavigationStep {
   label: string;
@@ -46,6 +47,26 @@ export interface ChartSpec {
   currency?: string;
 }
 
+export interface ForecastPayload {
+  type: "forecast";
+  horizon_days: number;
+  as_of: string;
+  current_balance: number;
+  minimum: number;
+  minimum_day: number;
+  gap_detected: boolean;
+  recommendation: string;
+  x_labels: string[];
+  values: number[];
+  notes?: string[];
+  provider?: "openai" | "rule-based";
+}
+
+export interface ChartPayloadMap {
+  forecast?: ForecastPayload;
+  balance?: Record<string, unknown>;
+}
+
 export interface ChatMessage {
   role: "user" | "assistant";
   content: string;
@@ -56,6 +77,23 @@ export interface ChatMessage {
   formFillStatus?: string;
   sources?: SourceRef[];
   charts?: ChartSpec[];
+  /** Специализированные графики (forecast, balance и т.д.) — рендерим как карточки, а не PNG. */
+  chartPayload?: ChartPayloadMap | null;
+  streaming?: boolean;
+}
+
+export interface ChatMessage {
+  role: "user" | "assistant";
+  content: string;
+  products?: BankProduct[];
+  actionButtons?: ActionButton[];
+  navigationPath?: NavigationStep[];
+  pendingFormFields?: string[];
+  formFillStatus?: string;
+  sources?: SourceRef[];
+  charts?: ChartSpec[];
+  /** Структурированные карточки выбора (radio/чекбоксы + «Рекомендуем»). */
+  choiceCards?: ChoiceCard[];
   streaming?: boolean;
 }
 

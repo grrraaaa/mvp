@@ -851,7 +851,16 @@ def _normalize_route(page_route: Optional[str]) -> str:
 
 
 def _match_action(message: str, page_route: Optional[str]) -> Optional[dict]:
-    """Найти действие по фразе пользователя. Longest label match wins."""
+    """Найти действие по фразе пользователя.
+
+    Логика выбора:
+    1) Точный маршрут навигации → сразу navigate.
+    2) Из кандидатов текущей страницы + глобальных — выбираем самый длинный матч по label.
+    3) Если среди кандидатов есть ``filter-year/filter-month/filter-range`` И в сообщении
+       явно указан год / месяц / период, даём приоритет конкретному фильтру над
+       общим ``reset-filters`` (иначе «покажи все документы за 2026 год» ошибочно
+       шлёт ``reset-filters``, потому что «все документы» длиннее «за 2026»).
+    """
     msg = message.lower().strip()
 
     if not any(re.search(p, msg) for p in CLICK_PATTERNS):
@@ -871,16 +880,40 @@ def _match_action(message: str, page_route: Optional[str]) -> Optional[dict]:
     route = _normalize_route(page_route)
     candidates = PAGE_REGISTRY.get(route, []) + GLOBAL_ACTIONS
 
-    best: Optional[dict] = None
-    best_len = 0
+    # Признаки того, что в сообщении есть конкретный период — тогда year/month/range
+    # должен выиграть у reset-filters.
+    year_signal = bool(
+        re.search(r"20\d{2}|этот\s+год|прошл\w*\s+год|прошл\w*\s+месяц|январ|феврал|март|апрел|ма[йя]|июн|июл|август|сентябр|октябр|ноябр|декабр|квартал", msg)
+    )
+    range_signal = bool(
+        re.search(r"\d{1,2}[./]\d{1,2}|\bс\s+\d|\bпо\s+\d|за\s+период|между|диапазон|с\s+даты\s+по\s+дату", msg)
+    )
+
+    # Соберём ВСЕ матчи и затем выберем лучший с учётом приоритета фильтров.
+    matches: list[tuple[dict, int]] = []  # (item, label_length)
     for item in candidates:
         for label in item.get("labels", []):
-            if label in msg and len(label) > best_len:
-                best = item
-                best_len = len(label)
+            if label in msg:
+                matches.append((item, len(label)))
 
-    if best:
-        return best
+    if matches:
+        def _score(item_len: tuple[dict, int]) -> tuple[int, int]:
+            item, length = item_len
+            target = item.get("target", "")
+            # year/month/range — специфичные фильтры документов
+            if target in {"filter-year", "filter-month", "filter-range"}:
+                if year_signal or range_signal:
+                    return (2, length)  # приоритет 2
+                return (1, length)
+            if target == "reset-filters":
+                # reset — общий, его понижаем, если есть конкретный период
+                if year_signal or range_signal:
+                    return (0, length)
+                return (1, length)
+            return (1, length)
+
+        matches.sort(key=_score, reverse=True)
+        return matches[0][0]
 
     # 3) Fallback: ключевые слова без маршрута
     if re.search(r"создать документ|новый документ", msg):
@@ -920,6 +953,19 @@ def handle_page_ui_action(
 
     # Навигация
     if navigate:
+        # Если идём на /other/documents и в сообщении есть год/период —
+        # добавим query-параметры, чтобы сразу открыть с фильтром.
+        if navigate == "/other/documents" or navigate.startswith("/other/documents?"):
+            period = _extract_documents_query(message)
+            if period:
+                base = "/other/documents"
+                if "?" in navigate:
+                    # /other/documents?status=... — дополняем фильтры
+                    base, _, existing = navigate.partition("?")
+                    qs = existing + "&" + period
+                else:
+                    qs = period
+                navigate = f"{base}?{qs}"
         ui_actions.append(UiAction(type="navigate", target=navigate))
         label = DEMO_ROUTE_LABELS.get(navigate, navigate)
         if description:
@@ -944,13 +990,105 @@ def handle_page_ui_action(
         )
 
     # Клик по action target
-    ui_actions.append(UiAction(type="click", target=target))
+    click_value: Optional[str] = None
+    if target in {"filter-year", "filter-month", "filter-range"}:
+        click_value = _extract_filter_value(target, message)
+        if target == "filter-year" and not click_value:
+            click_value = _infer_default_year(message)
+    if click_value:
+        ui_actions.append(UiAction(type="click", target=target, value=click_value))
+    else:
+        ui_actions.append(UiAction(type="click", target=target))
     desc = ACTION_DESCRIPTIONS.get(target, description or f"Выполняю: {target}")
     return AssistantResponse(
         message=f"{desc}…",
         session_id=session_id,
         ui_actions=ui_actions,
     )
+
+
+def _extract_filter_value(target: str, message: str) -> Optional[str]:
+    """Извлечь значение фильтра (год / YYYY-MM / dd.mm.yyyy|dd.mm.yyyy) из текста."""
+    low = message.lower()
+    if target == "filter-year":
+        m = re.search(r"(20\d{2})", low)
+        if m:
+            return m.group(1)
+        return None
+    if target == "filter-month":
+        # формат YYYY-MM (фронт ожидает это)
+        m = re.search(
+            r"за\s+(январ[ья]?|феврал[ья]?|март[а]?|апрел[ья]?|ма[йя]|мая|"
+            r"июн[ья]?|июл[ья]?|август[а]?|сентябр[ья]?|октябр[ья]?|ноябр[ья]?|декабр[ья]?)"
+            r"(?:\s+(20\d{2}))?",
+            low,
+        )
+        if not m:
+            return None
+        month_stem = m.group(1)
+        year = m.group(2) or _infer_default_year(message) or "2026"
+        month_map = {
+            "январ": 1, "феврал": 2, "март": 3, "апрел": 4, "май": 5, "мая": 5,
+            "июн": 6, "июл": 7, "август": 8, "сентябр": 9, "октябр": 10, "ноябр": 11, "декабр": 12,
+        }
+        for stem, num in month_map.items():
+            if month_stem.startswith(stem[:4]) or month_stem.startswith(stem):
+                return f"{year}-{num:02d}"
+        return None
+    if target == "filter-range":
+        m = re.search(
+            r"(?:с|от)\s*(\d{1,2}[./]\d{1,2}(?:[./]\d{2,4})?)"
+            r"\s*(?:по|до)\s*(\d{1,2}[./]\d{1,2}(?:[./]\d{2,4})?)",
+            low,
+        )
+        if m:
+            return f"{_normalize_date(m.group(1))}|{_normalize_date(m.group(2))}"
+        return None
+    return None
+
+
+def _normalize_date(token: str) -> str:
+    t = token.replace("/", ".").strip()
+    parts = t.split(".")
+    if len(parts) == 2:
+        return f"{parts[0].zfill(2)}.{parts[1].zfill(2)}.2026"
+    if len(parts) == 3:
+        d, m, y = parts
+        if len(y) == 2:
+            y = f"20{y}"
+        return f"{d.zfill(2)}.{m.zfill(2)}.{y}"
+    return token
+
+
+def _infer_default_year(message: str) -> Optional[str]:
+    """Эвристика: если год явно не указан, берём текущий (2026) — для демо."""
+    return "2026"
+
+
+def _extract_documents_query(message: str) -> Optional[str]:
+    """Построить query string для /other/documents из текста (year / month / date_from / date_to).
+
+    Используем ТОЛЬКО если в сообщении есть явный период — иначе пусть URL остаётся
+    без параметров (т.е. сбрасывает фильтры).
+    """
+    try:
+        from services.banking.queries import _parse_doc_period_from_text
+    except Exception:
+        return None
+    period = _parse_doc_period_from_text(message)
+    if not any(period.get(k) for k in ("year", "month", "date_from", "date_to")):
+        return None
+    from urllib.parse import quote
+    parts: list[str] = []
+    if period.get("year"):
+        parts.append(f"year={period['year']}")
+    if period.get("month"):
+        parts.append(f"month={period['month']}")
+    if period.get("date_from"):
+        parts.append(f"date_from={quote(period['date_from'])}")
+    if period.get("date_to"):
+        parts.append(f"date_to={quote(period['date_to'])}")
+    return "&".join(parts) if parts else None
 
 
 def get_page_help(page_route: Optional[str]) -> str:

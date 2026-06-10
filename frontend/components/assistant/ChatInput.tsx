@@ -27,6 +27,8 @@ interface Props {
   showPhotoButton?: boolean;
   disabled?: boolean;
   compact?: boolean;
+  /** Упрощённый режим (mobile/embedded): скрыть меню быстрых графиков и сменить плейсхолдер. */
+  simplified?: boolean;
   suggestions?: string[];
   hideSuggestions?: boolean;
   highlightVoice?: boolean;
@@ -44,6 +46,7 @@ export function ChatInput({
   disabled,
   suggestions = [],
   compact = false,
+  simplified = false,
   hideSuggestions = false,
   highlightVoice = false,
   highlightCamera = false,
@@ -202,7 +205,8 @@ export function ChatInput({
           </button>
         )}
 
-        {/* Кнопка быстрого графика */}
+        {/* Кнопка быстрого графика (скрыта в simplified — мобильный/embedded режим) */}
+        {!simplified && (
         <div className="relative flex-shrink-0">
           <button
             ref={chartBtnRef}
@@ -264,12 +268,19 @@ export function ChatInput({
             </div>
           )}
         </div>
+        )}
 
         <textarea
           value={value}
           onChange={(e) => onChange(e.target.value)}
           onKeyDown={handleKey}
-          placeholder={compact ? "Спросите…" : "Спросите о СберБизнес: расчёты, выписка, зарплата…"}
+          placeholder={
+            simplified
+              ? "Напишите что нужно…"
+              : compact
+                ? "Спросите…"
+                : "Спросите о СберБизнес: расчёты, выписка, зарплата…"
+          }
           disabled={disabled}
           rows={1}
           className={`flex-1 bg-[#f2f4f7] border border-transparent rounded-2xl text-[#2c3e50] placeholder:text-[#9aa1a8] focus:outline-none focus:border-[#008064]/40 focus:bg-white focus:ring-2 focus:ring-[#008064]/10 resize-none disabled:opacity-50 transition-all ${

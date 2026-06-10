@@ -1,13 +1,14 @@
 "use client";
 
 import { useEffect, useRef, useState } from "react";
-import { Volume2, VolumeX, History } from "lucide-react";
+import { Volume2, VolumeX, History, MoreHorizontal, Sparkles, X } from "lucide-react";
 import { AssistantPanel } from "./AssistantPanel";
 import { ChatArchive } from "./ChatArchive";
-import { IconChat, IconClose } from "@/components/sbbol/SbbolIcons";
+import { IconChat } from "@/components/sbbol/SbbolIcons";
 import { useIsMobile } from "@/hooks/useIsMobile";
 import { useTtsStore } from "@/store/ttsStore";
 import { useAssistantStore } from "@/store/assistantStore";
+import { useCharacterStore } from "@/store/characterStore";
 
 interface Props {
   open: boolean;
@@ -20,6 +21,7 @@ export function AssistantFloatingChat({ open, onOpenChange }: Props) {
   const ttsEnabled = useTtsStore((s) => s.enabled);
   const toggleTts = useTtsStore((s) => s.toggleEnabled);
   const sessionId = useAssistantStore((s) => s.sessionId);
+  const characterName = useCharacterStore((s) => s.config.name);
   const [dragPos, setDragPos] = useState<{ x: number; y: number } | null>(null);
   const [archiveOpen, setArchiveOpen] = useState(false);
   const dragRef = useRef<{ startX: number; startY: number; origX: number; origY: number } | null>(null);
@@ -136,34 +138,34 @@ export function AssistantFloatingChat({ open, onOpenChange }: Props) {
 
           <div
             className={`flex items-center justify-between flex-shrink-0 border-b border-[#e4e8eb] bg-white ${
-              isMobile ? "px-3 py-2" : "px-4 py-3 cursor-move select-none"
+              isMobile ? "px-3 py-2" : "px-4 py-2.5 cursor-move select-none"
             }`}
             onPointerDown={onPointerDown}
             onPointerMove={onPointerMove}
             onPointerUp={onPointerUp}
           >
-            <div className="flex items-center gap-2 min-w-0">
-              <button
-                type="button"
-                onClick={(e) => {
-                  e.stopPropagation();
-                  resetChatPosition();
-                }}
-                className="w-8 h-8 flex items-center justify-center rounded text-[#107f8c] hover:bg-[#f2f4f7] shrink-0"
-                aria-label="Вернуть чат на место"
-                title="Вернуть чат на место"
+            <div className="flex items-center gap-2.5 min-w-0">
+              <div
+                className="w-9 h-9 rounded-lg bg-gradient-to-br from-[#1c8a82] to-[#0d6e68] flex items-center justify-center text-white shrink-0 shadow-sm"
+                aria-hidden
               >
-                <svg width="20" height="20" viewBox="0 0 24 24" fill="none" aria-hidden className="sm:w-6 sm:h-6">
-                  <path d="M7.18 7.18L17.08 17.08M17.08 17.08V10.72M17.08 17.08H10.72" stroke="#107F8C" strokeWidth="2" strokeLinecap="round" />
-                </svg>
-              </button>
-              <span className="text-sm font-semibold text-[#1f1f22] truncate">AI-консультант</span>
+                <Sparkles className="w-4 h-4" strokeWidth={2.2} />
+              </div>
+              <div className="flex flex-col min-w-0">
+                <span className="text-sm font-bold text-[#1f1f22] truncate leading-tight">
+                  Ассистент {characterName}
+                </span>
+                <span className="text-[11px] font-medium text-[#0a8064] flex items-center gap-1 leading-tight">
+                  <span className="w-1.5 h-1.5 rounded-full bg-[#10b981] inline-block" />
+                  Онлайн
+                </span>
+              </div>
             </div>
-            <div className="flex items-center gap-1 shrink-0">
+            <div className="flex items-center gap-0.5 shrink-0">
               <button
                 type="button"
                 onClick={() => setArchiveOpen(true)}
-                className="w-8 h-8 flex items-center justify-center rounded text-[#7d838a] hover:bg-[#f2f4f7] hover:text-[#107f8c]"
+                className="w-8 h-8 flex items-center justify-center rounded text-[#7d838a] hover:bg-[#f2f4f7] hover:text-[#0d6e68]"
                 aria-label="Архив сообщений"
                 title="Архив сообщений"
               >
@@ -173,21 +175,33 @@ export function AssistantFloatingChat({ open, onOpenChange }: Props) {
                 type="button"
                 onClick={toggleTts}
                 className={`w-8 h-8 flex items-center justify-center rounded ${
-                  ttsEnabled ? "text-[#107f8c] bg-[#e5fcf7]" : "text-[#7d838a] hover:bg-[#f2f4f7]"
+                  ttsEnabled ? "text-[#0d6e68] bg-[#e5fcf7]" : "text-[#7d838a] hover:bg-[#f2f4f7]"
                 }`}
                 aria-label={ttsEnabled ? "Выключить озвучку" : "Включить озвучку"}
                 title={ttsEnabled ? "Озвучка включена" : "Озвучка выключена"}
               >
-                {ttsEnabled ? <Volume2 className="w-5 h-5" aria-hidden /> : <VolumeX className="w-5 h-5" aria-hidden />}
+                {ttsEnabled ? <Volume2 className="w-4 h-4" aria-hidden /> : <VolumeX className="w-4 h-4" aria-hidden />}
+              </button>
+              <button
+                type="button"
+                onClick={(e) => {
+                  e.stopPropagation();
+                  resetChatPosition();
+                }}
+                className="hidden sm:flex w-8 h-8 items-center justify-center rounded text-[#7d838a] hover:bg-[#f2f4f7] hover:text-[#0d6e68]"
+                aria-label="Меню"
+                title="Меню"
+              >
+                <MoreHorizontal className="w-4 h-4" />
               </button>
               <button
                 type="button"
                 data-close
                 onClick={() => onOpenChange(false)}
-                className="w-8 h-8 flex items-center justify-center text-[#107f8c] hover:bg-[#f2f4f7] rounded"
+                className="w-8 h-8 flex items-center justify-center text-[#7d838a] hover:bg-[#f2f4f7] hover:text-[#1f1f22] rounded"
                 aria-label="Закрыть"
               >
-                <IconClose className="w-5 h-5" />
+                <X className="w-4 h-4" />
               </button>
             </div>
           </div>

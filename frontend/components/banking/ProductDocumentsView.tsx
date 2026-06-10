@@ -223,12 +223,21 @@ export default function ProductDocumentsView({
   const cpMenuRef = useRef<HTMLDivElement | null>(null);
   const filtersPanelRef = useRef<HTMLDivElement | null>(null);
 
-  const [initialUrlApplied, setInitialUrlApplied] = useState(false);
+  // Снимок URL → state (только для /other/documents).
+  // Перечитываем при КАЖДОМ изменении searchParams — это позволяет ассистенту
+  // повторно применять фильтры (например, присылая новый query-параметр year=2026),
+  // а не только при первом монтировании.
+  // Чтобы не было петель «state→URL→state», сравниваем текущее значение URL с
+  // последним уже применённым.
+  const lastAppliedUrlRef = useRef<string>("");
 
   // ── URL → state (только для /other/documents) ───────────────────────────
   useEffect(() => {
-    if (!isAllDocsPage || initialUrlApplied) return;
+    if (!isAllDocsPage) return;
     const sp = parseDocumentsSearchParams(searchParams);
+    const urlKey = searchParams.toString();
+    if (urlKey === lastAppliedUrlRef.current) return;
+    lastAppliedUrlRef.current = urlKey;
     const next: FilterState = {
       ...EMPTY_FILTERS,
       year: sp.year,
@@ -250,8 +259,7 @@ export default function ProductDocumentsView({
       setActiveTab("all");
     }
     setFilters(next);
-    setInitialUrlApplied(true);
-  }, [isAllDocsPage, initialUrlApplied, searchParams]);
+  }, [isAllDocsPage, searchParams]);
 
   // ── Закрытие дропдаунов по клику вне ──────────────────────────────────────
   useEffect(() => {

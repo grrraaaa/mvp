@@ -9,6 +9,7 @@ import { ProductCard } from "./ProductCard";
 import { ActionButtons } from "./ActionButtons";
 import { AssistantCharacter } from "./AssistantCharacter";
 import { CharacterSettings } from "./CharacterSettings";
+import { WelcomeScreen } from "./WelcomeScreen";
 import { useAssistantStore } from "@/store/assistantStore";
 import { useAuthStore } from "@/store/authStore";
 import { useCharacterStore } from "@/store/characterStore";
@@ -222,6 +223,7 @@ export function AssistantPanel({ variant = "default", compactMobile = false, onR
             formFillStatus: data.form_fill_status as never,
             sources: data.sources as never,
             charts: data.charts as never,
+            chartPayload: (data.chart_payload as never) ?? null,
           });
         } else {
           const chatPath = authHeaders().Authorization ? "/api/chat" : "/api/chat/guest";
@@ -244,6 +246,7 @@ export function AssistantPanel({ variant = "default", compactMobile = false, onR
             formFillStatus: data.form_fill_status,
             sources: data.sources,
             charts: data.charts,
+            chartPayload: data.chart_payload ?? null,
           });
         }
       } catch (err) {
@@ -405,28 +408,30 @@ export function AssistantPanel({ variant = "default", compactMobile = false, onR
     >
       <CharacterSettings />
 
-      <div
-        className={`flex-shrink-0 relative border-b ${embedded ? "border-gray-100" : "border-sber-border"}`}
-      >
-        <div className="absolute top-0 left-0 right-0 h-1 bg-gradient-to-r from-sber-green via-sber-gold to-sber-green" />
-        {!compactMobile && (
-          <button
-            type="button"
-            onClick={() => setSettingsOpen(true)}
-            className="absolute top-3 right-3 z-10 w-9 h-9 rounded-full bg-white border border-[#e4e8eb] text-[#7d838a] hover:text-[#008064] hover:border-[#008064]/40 flex items-center justify-center transition-colors"
-            title="Настроить консультанта"
-            aria-label="Настроить консультанта"
-          >
-            <Settings className="w-4 h-4" />
-          </button>
-        )}
-        <AssistantCharacter
-          isLoading={isLoading}
-          lastAssistantText={lastAssistantText}
-          compact={embedded}
-          compactMobile={inputCompact}
-        />
-      </div>
+      {!embedded && (
+        <div
+          className={`flex-shrink-0 relative border-b ${embedded ? "border-gray-100" : "border-sber-border"}`}
+        >
+          <div className="absolute top-0 left-0 right-0 h-1 bg-gradient-to-r from-sber-green via-sber-gold to-sber-green" />
+          {!compactMobile && (
+            <button
+              type="button"
+              onClick={() => setSettingsOpen(true)}
+              className="absolute top-3 right-3 z-10 w-9 h-9 rounded-full bg-white border border-[#e4e8eb] text-[#7d838a] hover:text-[#008064] hover:border-[#008064]/40 flex items-center justify-center transition-colors"
+              title="Настроить консультанта"
+              aria-label="Настроить консультанта"
+            >
+              <Settings className="w-4 h-4" />
+            </button>
+          )}
+          <AssistantCharacter
+            isLoading={isLoading}
+            lastAssistantText={lastAssistantText}
+            compact={embedded}
+            compactMobile={inputCompact}
+          />
+        </div>
+      )}
 
       <div ref={scrollRef} className={`flex-1 overflow-y-auto ${compactMobile ? "p-2" : "p-4"}`}>
         {notifications.length > 0 && (
@@ -438,7 +443,20 @@ export function AssistantPanel({ variant = "default", compactMobile = false, onR
             />
           </div>
         )}
-        {messages.length === 0 && (
+        {messages.length === 0 && inputCompact && (
+          <WelcomeScreen
+            compact={compactMobile}
+            onSendPrompt={(text) => void sendMessage(text)}
+            onFocusInput={() => {
+              const ta = document.querySelector<HTMLTextAreaElement>(
+                "[data-chat-panel] textarea",
+              );
+              ta?.focus();
+            }}
+          />
+        )}
+
+        {messages.length === 0 && !inputCompact && (
           <div
             className={`text-center px-2 ${inputCompact ? "mt-1 mb-2" : embedded ? "mt-4 px-4 text-gray-500" : "text-sber-muted mt-6 px-4"}`}
           >
@@ -586,7 +604,11 @@ export function AssistantPanel({ variant = "default", compactMobile = false, onR
 
         {messages.map((msg, i) => (
           <div key={i} className="mb-3">
-            <MessageBubble message={msg} compact={compactMobile} />
+            <MessageBubble
+              message={msg}
+              compact={compactMobile}
+              onChoice={(text) => void sendMessage(text)}
+            />
             {msg.products && msg.products.length > 0 && (
               <ProductCard products={msg.products} />
             )}
@@ -652,6 +674,7 @@ export function AssistantPanel({ variant = "default", compactMobile = false, onR
           highlightCamera={inputCompact && Boolean(pageContext.form_type)}
           disabled={isLoading}
           compact={inputCompact}
+          simplified={inputCompact}
           onVoiceComplete={sendMessage}
         />
       </div>

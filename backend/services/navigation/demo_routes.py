@@ -33,6 +33,7 @@ DEMO_ROUTE_LABELS: dict[str, str] = {
     "/services/analytics": "Бизнес-аналитика",
     "/services/exchange-rates": "Курсы валют",
     "/other/info-requests": "Запросы выписки, информации",
+    "/other/documents?status=На+подписи": "На подписании",
     "/other/documents/signing": "На подписании",
     "/settings": "Настройки",
 }
@@ -238,7 +239,7 @@ _ROUTE_RULES: list[tuple[str, list[str]]] = [
         [r"/services\b", r"сервис"],
     ),
     (
-        "/other/documents/signing",
+        "/other/documents?status=На+подписи",
         [r"на\s+подпис", r"подписан", r"/other/documents/signing"],
     ),
     (
