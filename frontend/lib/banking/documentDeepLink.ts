@@ -20,6 +20,22 @@ export function parseDocumentIdFromSearch(
   return null;
 }
 
+/**
+ * Like parseDocumentIdFromSearch, but also accepts seed/demo ids
+ * (info-demo-bulk-150, doc-42, …) — any reasonable id, not only UUID.
+ * Used on the document detail page itself.
+ */
+export function parseAnyDocumentIdFromSearch(
+  search: string | URLSearchParams,
+): string | null {
+  const params = typeof search === "string" ? new URLSearchParams(search) : search;
+  for (const key of DOC_ID_PARAMS) {
+    const raw = params.get(key)?.trim();
+    if (raw && /^[\w:.-]{1,128}$/u.test(raw)) return raw;
+  }
+  return null;
+}
+
 export function documentViewPath(docId: string): string {
   return `/other/documents/view?doc=${encodeURIComponent(docId)}`;
 }

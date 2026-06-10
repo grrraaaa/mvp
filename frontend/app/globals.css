@@ -111,30 +111,30 @@ body {
     @apply text-sber-green-light underline underline-offset-2 hover:text-sber-gold transition-colors;
   }
 
-  /* Светлая тема СБОЛ для встроенного AI-чата (teal = shell) */
+  /* Светлая тема ассистента — как Copilot в web mobile */
   .sbbol-theme .sber-bubble-assistant {
-    @apply bg-gray-50 text-gray-800 border-gray-200 rounded-2xl rounded-bl-sm;
+    @apply bg-white text-gray-800 border-gray-100 rounded-2xl rounded-bl-sm shadow-3xs;
   }
   .sbbol-theme .sber-bubble-user {
-    @apply bg-[#107F8C] text-white rounded-2xl rounded-br-sm;
+    @apply bg-[#008064] text-white rounded-2xl rounded-tr-none;
   }
   .sbbol-theme .sber-input {
-    @apply bg-gray-50 border-gray-200 text-gray-900 placeholder:text-gray-400 focus:border-[#107f8c] focus:ring-[#107f8c]/30;
+    @apply bg-[#f8fafc] border-gray-200 text-gray-900 placeholder:text-gray-400 focus:border-[#008064] focus:ring-[#008064]/5;
   }
   .sbbol-theme .sber-btn-ghost {
     @apply bg-gray-100 hover:bg-gray-200 text-gray-700 border-gray-200;
   }
   .sbbol-theme .sber-btn-primary {
-    @apply bg-[#107F8C] hover:bg-[#005E7F] text-white;
+    @apply bg-[#128e8b] hover:bg-[#107c79] text-white;
   }
   .sbbol-theme .sber-link {
-    @apply text-[#107F8C] hover:text-[#005E7F];
+    @apply text-[#128e8b] hover:text-[#107c79];
   }
   .sbbol-theme .product-card-link {
-    @apply bg-white border-gray-200 hover:border-[#107f8c] hover:bg-[#e5fcf7];
+    @apply bg-white border-gray-150 hover:border-[#008064]/30 hover:bg-emerald-50/40;
   }
   .sbbol-theme ::-webkit-scrollbar-thumb {
-    background: #107f8c;
+    background: #cbd5e1;
   }
 
   .sbbol-btn-primary {

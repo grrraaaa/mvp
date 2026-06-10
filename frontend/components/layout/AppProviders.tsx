@@ -40,6 +40,10 @@ function AppProvidersInner({ children, documentModalHtml }: Props) {
   useEffect(() => {
     if (!showBankingExtras) {
       setChatOpen(false);
+      return;
+    }
+    if (window.innerWidth >= 768) {
+      setChatOpen(true);
     }
   }, [showBankingExtras]);
 
@@ -53,12 +57,15 @@ function AppProvidersInner({ children, documentModalHtml }: Props) {
     () => ({
       openDocumentModal: () => setDocModalOpen(true),
       openChat: () => setChatOpen(true),
+      closeChat: () => setChatOpen(false),
+      toggleChat: () => setChatOpen((v) => !v),
+      chatOpen,
       openServiceApplication: (serviceName?: string) => {
         setServiceModalName(serviceName);
         setServiceModalOpen(true);
       },
     }),
-    [],
+    [chatOpen],
   );
 
   return (

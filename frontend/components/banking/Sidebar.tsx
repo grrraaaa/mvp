@@ -70,19 +70,19 @@ export default function Sidebar({ mobileOpen, setMobileOpen }: SidebarProps) {
                 onClick={() => setMobileOpen(false)}
                 className={`w-full group flex flex-col items-center justify-center py-4 px-2 border-l-[4px] font-sans transition-all relative ${
                   isActive
-                    ? "bg-[#f4fbfc] border-[#138d8a] text-[#138d8a]"
-                    : "bg-white hover:bg-gray-50 border-transparent text-gray-500 hover:text-[#138d8a]"
+                    ? "bg-emerald-50/40 border-sber-green text-sber-green"
+                    : "bg-white hover:bg-gray-50 border-transparent text-gray-500 hover:text-sber-green"
                 }`}
               >
                 {item.hasBadge && (
-                  <span className="absolute top-3.5 right-6 bg-[#138d8a] text-white font-bold rounded-full w-4 h-4 text-[9px] flex items-center justify-center border-2 border-white">
+                  <span className="absolute top-3.5 right-6 bg-sber-green text-white font-bold rounded-full w-4 h-4 text-[9px] flex items-center justify-center border-2 border-white">
                     {item.badgeText}
                   </span>
                 )}
-                <div className={`transition-transform duration-200 ${isActive ? "scale-105 text-[#138d8a]" : "text-gray-400 group-hover:text-[#138d8a]"}`}>
+                <div className={`transition-transform duration-200 ${isActive ? "scale-105 text-sber-green" : "text-gray-400 group-hover:text-sber-green"}`}>
                   <Icon className="w-6 h-6 stroke-[1.8]" />
                 </div>
-                <span className={`text-[11px] mt-2 text-center font-medium leading-tight max-w-[76px] ${isActive ? "text-gray-900 font-semibold" : "text-gray-500 group-hover:text-[#138d8a]"}`}>
+                <span className={`text-[11px] mt-2 text-center font-medium leading-tight max-w-[76px] ${isActive ? "text-gray-900 font-semibold" : "text-gray-500 group-hover:text-sber-green"}`}>
                   {item.name}
                 </span>
               </Link>
@@ -96,7 +96,7 @@ export default function Sidebar({ mobileOpen, setMobileOpen }: SidebarProps) {
           href={BANKING_ROUTES.settings}
           onClick={() => setMobileOpen(false)}
           className={`p-3 rounded-full transition-colors flex items-center justify-center hover:bg-slate-100 ${
-            activeTab === "settings" ? "text-[#138d8a] bg-[#f4fbfc]" : "text-gray-400 hover:text-[#138d8a]"
+            activeTab === "settings" ? "text-sber-green bg-emerald-50/40" : "text-gray-400 hover:text-sber-green"
           }`}
           title="Параметры и настройки"
         >

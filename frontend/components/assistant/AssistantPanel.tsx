@@ -467,7 +467,7 @@ export function AssistantPanel({ variant = "default", compactMobile = false, onR
                 Роль: {userRole === "accountant" ? "Бухгалтер" : userRole === "ip" ? "ИП" : "Бизнес"} · данные изолированы по организации
               </p>
             )}
-            {!orgName && messages.length === 0 && (
+            {messages.length === 0 && (
               <div className="mt-3 flex flex-wrap gap-2 justify-center">
                 <button
                   type="button"
@@ -475,6 +475,27 @@ export function AssistantPanel({ variant = "default", compactMobile = false, onR
                   className="text-xs px-3 py-1 rounded-full border border-sber-border text-sber-green-light hover:bg-sber-green/10"
                 >
                   Проверить остаток
+                </button>
+                <button
+                  type="button"
+                  onClick={() => void sendMessage("кассовый прогноз")}
+                  className="text-xs px-3 py-1 rounded-full border border-sber-border text-sber-green-light hover:bg-sber-green/10"
+                >
+                  График прогноза
+                </button>
+                <button
+                  type="button"
+                  onClick={() => void sendMessage("расходы за 2026-03")}
+                  className="text-xs px-3 py-1 rounded-full border border-sber-border text-sber-green-light hover:bg-sber-green/10"
+                >
+                  Диаграмма расходов
+                </button>
+                <button
+                  type="button"
+                  onClick={() => void sendMessage("сравни февраль и март")}
+                  className="text-xs px-3 py-1 rounded-full border border-sber-border text-sber-green-light hover:bg-sber-green/10"
+                >
+                  Сравнить месяцы
                 </button>
                 <button
                   type="button"

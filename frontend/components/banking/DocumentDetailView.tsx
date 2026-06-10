@@ -11,11 +11,16 @@ import {
   Banknote,
   ExternalLink,
   Copy,
+  Download,
+  PenLine,
 } from "lucide-react";
-import { fetchDocument } from "@/lib/api/banking";
-import { parseDocumentIdFromSearch } from "@/lib/banking/documentDeepLink";
+import { fetchDocument, signDocument } from "@/lib/api/banking";
+import { apiUrl } from "@/lib/api/baseUrl";
+import { authHeaders } from "@/lib/auth/tokenRef";
+import { parseAnyDocumentIdFromSearch } from "@/lib/banking/documentDeepLink";
 import type { BankDocument } from "@/lib/banking/types";
 import { bankingToast } from "@/lib/banking/toast";
+import { useBankingStore } from "@/store/bankingStore";
 
 const INFO_PREFIX = "INFO:";
 
@@ -37,10 +42,49 @@ function statusClass(status: string): string {
 export function DocumentDetailView() {
   const searchParams = useSearchParams();
   const router = useRouter();
-  const docId = parseDocumentIdFromSearch(searchParams) ?? searchParams.get("id") ?? "";
+  const docId = parseAnyDocumentIdFromSearch(searchParams) ?? searchParams.get("id") ?? "";
   const [doc, setDoc] = useState<BankDocument | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
+  const [signing, setSigning] = useState(false);
+  const [downloading, setDownloading] = useState(false);
+
+  const handleSign = async () => {
+    if (!doc || signing) return;
+    setSigning(true);
+    try {
+      const updated = await signDocument(doc.id);
+      setDoc(updated);
+      bankingToast(`Документ ${displayNumber(updated)} подписан`);
+      void useBankingStore.getState().loadAll();
+    } catch {
+      bankingToast("Не удалось подписать документ", "err");
+    } finally {
+      setSigning(false);
+    }
+  };
+
+  const handleDownloadPdf = async () => {
+    if (!doc || downloading) return;
+    setDownloading(true);
+    try {
+      const res = await fetch(apiUrl(`/api/banking/documents/${encodeURIComponent(doc.id)}/pdf`), {
+        headers: authHeaders(),
+      });
+      if (!res.ok) throw new Error("pdf");
+      const blob = await res.blob();
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement("a");
+      a.href = url;
+      a.download = `${displayNumber(doc).replace(/[^\wа-яёА-ЯЁ -]/gi, "").trim() || "document"}.pdf`;
+      a.click();
+      URL.revokeObjectURL(url);
+    } catch {
+      bankingToast("Не удалось сформировать PDF", "err");
+    } finally {
+      setDownloading(false);
+    }
+  };
 
   const load = useCallback(async () => {
     if (!docId) {
@@ -161,6 +205,26 @@ export function DocumentDetailView() {
             </div>
 
             <div className="flex flex-wrap gap-2">
+              {doc.status === "На подписи" && (
+                <button
+                  type="button"
+                  onClick={() => void handleSign()}
+                  disabled={signing}
+                  className="inline-flex items-center gap-2 px-4 py-2.5 rounded-lg bg-emerald-600 text-white text-sm font-medium hover:bg-emerald-700 disabled:opacity-60"
+                >
+                  <PenLine className="w-4 h-4" />
+                  {signing ? "Подписываю…" : "Подписать"}
+                </button>
+              )}
+              <button
+                type="button"
+                onClick={() => void handleDownloadPdf()}
+                disabled={downloading}
+                className="inline-flex items-center gap-2 px-4 py-2.5 rounded-lg border border-[#2d9494] bg-white text-sm font-medium text-[#2d9494] hover:bg-[#2d9494]/5 disabled:opacity-60"
+              >
+                <Download className="w-4 h-4" />
+                {downloading ? "Формирую PDF…" : "Скачать PDF"}
+              </button>
               {report ? (
                 <Link
                   href="/statement/account?period=month"

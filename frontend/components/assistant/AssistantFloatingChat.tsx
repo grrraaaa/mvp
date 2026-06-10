@@ -1,30 +1,28 @@
 "use client";
 
-import { useEffect, useRef, useState } from "react";
-import { Volume2, VolumeX } from "lucide-react";
+import { useEffect, useRef } from "react";
+import { Volume2, VolumeX, X } from "lucide-react";
 import { AssistantPanel } from "./AssistantPanel";
-import { IconChat, IconClose } from "@/components/sbbol/SbbolIcons";
+import { IconChat } from "@/components/sbbol/SbbolIcons";
 import { useIsMobile } from "@/hooks/useIsMobile";
 import { AssistantVoicePicker } from "./AssistantVoicePicker";
 import { useTtsStore } from "@/store/ttsStore";
+import { useRole } from "@/store/roleStore";
 
 interface Props {
   open: boolean;
   onOpenChange: (open: boolean) => void;
 }
 
-/** Плавающий AI-чат в стиле «Чат с банком» на демо СберБизнес */
+/** AI-ассистент: на десктопе — боковая панель как Copilot в web mobile */
 export function AssistantFloatingChat({ open, onOpenChange }: Props) {
   const isMobile = useIsMobile();
   const ttsEnabled = useTtsStore((s) => s.enabled);
   const toggleTts = useTtsStore((s) => s.toggleEnabled);
-  const [dragPos, setDragPos] = useState<{ x: number; y: number } | null>(null);
-  const dragRef = useRef<{ startX: number; startY: number; origX: number; origY: number } | null>(null);
+  const { role } = useRole();
   const resetChatRef = useRef<(() => void) | null>(null);
 
-  useEffect(() => {
-    if (!open) setDragPos(null);
-  }, [open]);
+  const assistantName = role.gender === "male" ? "Александр" : "Александра";
 
   useEffect(() => {
     if (!open || !isMobile) return;
@@ -35,69 +33,19 @@ export function AssistantFloatingChat({ open, onOpenChange }: Props) {
     };
   }, [open, isMobile]);
 
-  const onPointerDown = (e: React.PointerEvent) => {
-    if (isMobile) return;
-    if ((e.target as HTMLElement).closest("button")) return;
-    const panel = (e.currentTarget as HTMLElement).closest("[data-chat-panel]") as HTMLElement | null;
-    if (!panel) return;
-
-    const rect = panel.getBoundingClientRect();
-    const originX = dragPos?.x ?? rect.left;
-    const originY = dragPos?.y ?? rect.top;
-    if (!dragPos) setDragPos({ x: originX, y: originY });
-
-    dragRef.current = { startX: e.clientX, startY: e.clientY, origX: originX, origY: originY };
-    (e.currentTarget as HTMLElement).setPointerCapture(e.pointerId);
-  };
-
-  const onPointerMove = (e: React.PointerEvent) => {
-    if (isMobile || !dragRef.current) return;
-    setDragPos({
-      x: dragRef.current.origX + (e.clientX - dragRef.current.startX),
-      y: dragRef.current.origY + (e.clientY - dragRef.current.startY),
-    });
-  };
-
-  const onPointerUp = () => {
-    dragRef.current = null;
-  };
-
-  const resetChatPosition = () => {
-    setDragPos(null);
-    resetChatRef.current?.();
-  };
-
-  const desktopStyle = dragPos
-    ? {
-        left: dragPos.x,
-        top: dragPos.y,
-        width: 400,
-        height: 560,
-        minWidth: 360,
-        minHeight: 480,
-        maxHeight: "calc(100vh - 48px)",
-      }
-    : {
-        right: 20,
-        top: 76,
-        bottom: 20,
-        width: 400,
-        minWidth: 360,
-      };
-
   return (
     <>
-      {!open && (
+      {!open && isMobile && (
         <button
           type="button"
           onClick={() => onOpenChange(true)}
-          className="fixed z-50 flex flex-col items-center gap-1.5 group right-4 bottom-4 sm:right-6 sm:bottom-6"
-          aria-label="AI-консультант"
+          className="fixed z-50 flex flex-col items-center gap-1.5 group right-4 bottom-4"
+          aria-label="ИИ-ассистент"
         >
-          <span className="hidden sm:block opacity-0 group-hover:opacity-100 transition-opacity text-xs text-[#565b62] bg-white px-2 py-1 rounded shadow-sm whitespace-nowrap">
-            AI-консультант
+          <span className="opacity-0 group-hover:opacity-100 transition-opacity text-xs text-gray-550 bg-white px-2 py-1 rounded shadow-sm whitespace-nowrap">
+            ИИ-ассистент
           </span>
-          <span className="scale-90 sm:scale-100">
+          <span className="scale-90">
             <IconChat />
           </span>
         </button>
@@ -117,41 +65,35 @@ export function AssistantFloatingChat({ open, onOpenChange }: Props) {
           data-chat-panel
           className={
             isMobile
-              ? "fixed inset-x-0 bottom-0 z-50 flex flex-col bg-white border-t border-[#d0d7dd] overflow-hidden sbbol-theme rounded-t-2xl shadow-[0_-12px_48px_rgba(0,0,0,0.2)] h-[min(94dvh,780px)] max-h-[94dvh]"
-              : "fixed z-50 flex flex-col bg-white rounded-xl shadow-[0_12px_40px_rgba(0,0,0,0.16)] border border-[#d0d7dd] overflow-hidden sbbol-theme"
+              ? "fixed inset-x-0 bottom-0 z-50 flex flex-col bg-white border-t border-gray-200 overflow-hidden sbbol-theme rounded-t-2xl shadow-[0_-12px_48px_rgba(0,0,0,0.2)] h-[min(94dvh,780px)] max-h-[94dvh]"
+              : "fixed top-16 bottom-0 right-0 z-50 w-full sm:w-[410px] flex flex-col bg-white border-l border-gray-200 shadow-xl sbbol-theme"
           }
-          style={isMobile ? undefined : desktopStyle}
         >
           {isMobile && (
             <div className="flex justify-center pt-2 pb-1 flex-shrink-0" aria-hidden>
-              <div className="w-10 h-1 rounded-full bg-[#d0d7dd]" />
+              <div className="w-10 h-1 rounded-full bg-gray-150" />
             </div>
           )}
 
           <div
-            className={`flex items-center justify-between flex-shrink-0 border-b border-[#e4e8eb] bg-white ${
-              isMobile ? "px-3 py-2" : "px-4 py-3 cursor-move select-none"
+            className={`flex items-center justify-between flex-shrink-0 border-b border-gray-100 bg-white ${
+              isMobile ? "px-3 py-2" : "px-4 py-3"
             }`}
-            onPointerDown={onPointerDown}
-            onPointerMove={onPointerMove}
-            onPointerUp={onPointerUp}
           >
-            <div className="flex items-center gap-2 min-w-0">
-              <button
-                type="button"
-                onClick={(e) => {
-                  e.stopPropagation();
-                  resetChatPosition();
-                }}
-                className="w-8 h-8 flex items-center justify-center rounded text-[#107f8c] hover:bg-[#f2f4f7] shrink-0"
-                aria-label="Вернуть чат на место"
-                title="Вернуть чат на место"
-              >
-                <svg width="20" height="20" viewBox="0 0 24 24" fill="none" aria-hidden className="sm:w-6 sm:h-6">
-                  <path d="M7.18 7.18L17.08 17.08M17.08 17.08V10.72M17.08 17.08H10.72" stroke="#107F8C" strokeWidth="2" strokeLinecap="round" />
-                </svg>
-              </button>
-              <span className="text-sm font-semibold text-[#1f1f22] truncate">AI-консультант</span>
+            <div className="flex items-center gap-3 min-w-0">
+              <div className="relative w-10 h-10 rounded-xl overflow-hidden bg-[#008064] shrink-0">
+                <img
+                  src={role.portrait}
+                  alt={assistantName}
+                  className="absolute inset-0 w-full h-full object-cover"
+                  style={{ objectPosition: "50% 18%" }}
+                />
+                <span className="absolute bottom-0.5 right-0.5 w-2 h-2 bg-emerald-500 border border-white rounded-full" />
+              </div>
+              <div className="min-w-0">
+                <div className="text-sm font-bold text-gray-805 truncate">Ассистент {assistantName}</div>
+                <div className="text-[10px] text-emerald-505 font-semibold">онлайн</div>
+              </div>
             </div>
             <div className="flex items-center gap-1 shrink-0">
               <AssistantVoicePicker theme="embedded" />
@@ -159,32 +101,25 @@ export function AssistantFloatingChat({ open, onOpenChange }: Props) {
                 type="button"
                 onClick={toggleTts}
                 className={`w-8 h-8 flex items-center justify-center rounded ${
-                  ttsEnabled
-                    ? "text-[#107f8c] bg-[#e5fcf7]"
-                    : "text-[#7d838a] hover:bg-[#f2f4f7]"
+                  ttsEnabled ? "text-[#008064] bg-emerald-50" : "text-gray-450 hover:bg-gray-50"
                 }`}
                 aria-label={ttsEnabled ? "Выключить озвучку" : "Включить озвучку"}
                 title={ttsEnabled ? "Озвучка включена" : "Озвучка выключена"}
               >
-                {ttsEnabled ? (
-                  <Volume2 className="w-5 h-5" aria-hidden />
-                ) : (
-                  <VolumeX className="w-5 h-5" aria-hidden />
-                )}
+                {ttsEnabled ? <Volume2 className="w-5 h-5" aria-hidden /> : <VolumeX className="w-5 h-5" aria-hidden />}
               </button>
               <button
                 type="button"
-                data-close
                 onClick={() => onOpenChange(false)}
-                className="w-8 h-8 flex items-center justify-center text-[#107f8c] hover:bg-[#f2f4f7] rounded"
+                className="w-8 h-8 flex items-center justify-center text-gray-450 hover:bg-gray-50 rounded"
                 aria-label="Закрыть"
               >
-                <IconClose className="w-5 h-5" />
+                <X className="w-5 h-5" />
               </button>
             </div>
           </div>
 
-          <div className="flex-1 min-h-0 flex flex-col overflow-hidden">
+          <div className="flex-1 min-h-0 flex flex-col overflow-hidden bg-[#F7F9FB]">
             <AssistantPanel
               variant="embedded"
               compactMobile={isMobile}

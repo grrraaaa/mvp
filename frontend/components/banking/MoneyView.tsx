@@ -24,6 +24,8 @@ import {
 } from "lucide-react";
 import type { BankDocument } from "@/lib/banking/types";
 import { useBankingStore } from "@/store/bankingStore";
+import { patchAccountNote } from "@/lib/api/banking";
+import { bankingToast } from "@/lib/banking/toast";
 import { useAuthStore } from "@/store/authStore";
 import { useSbbolUi } from "@/components/layout/SbbolUiContext";
 
@@ -114,8 +116,12 @@ export default function MoneyView() {
   };
 
   const handleSaveNote = (accId: string) => {
-    setAccounts(prev => prev.map(acc => acc.id === accId ? { ...acc, label: noteEditText } : acc));
+    const note = noteEditText;
+    setAccounts(prev => prev.map(acc => acc.id === accId ? { ...acc, label: note } : acc));
     setNoteEditId(null);
+    patchAccountNote(accId, note)
+      .then(() => bankingToast('Заметка к счёту сохранена в БД'))
+      .catch(() => bankingToast('Не удалось сохранить заметку', 'err'));
   };
 
   const handleToggleHide = (accId: string) => {

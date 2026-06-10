@@ -1,7 +1,7 @@
 ﻿"use client";
 
 import Link from "next/link";
-import { BookOpen, Scale, HelpCircle, FileSearch, ChevronRight } from "lucide-react";
+import { BookOpen, Scale, HelpCircle, FileSearch, ChevronRight, GraduationCap } from "lucide-react";
 
 export default function OtherView() {
   return (
@@ -12,6 +12,24 @@ export default function OtherView() {
           Документы, справочники и запросы информации по счетам
         </p>
       </div>
+
+      <Link
+        href="/learning"
+        data-assistant-action="open-learning"
+        className="flex items-center gap-4 rounded-2xl p-5 text-white shadow-sm hover:opacity-95 transition-opacity"
+        style={{ background: "linear-gradient(100deg, #138d8a 0%, #2c9faf 60%, #5bb5c9 100%)" }}
+      >
+        <span className="p-2.5 bg-white/15 rounded-xl shrink-0">
+          <GraduationCap className="w-6 h-6" />
+        </span>
+        <span className="flex-1">
+          <span className="block font-extrabold text-sm uppercase tracking-wide">Обучающий модуль</span>
+          <span className="block text-xs text-white/85 mt-0.5">
+            Интерактивный курс: платежи, выписка, зарплата, безопасность — с прогрессом и подсказками консультанта
+          </span>
+        </span>
+        <ChevronRight className="w-5 h-5 shrink-0" />
+      </Link>
 
       <div className="bg-white rounded-2xl border border-gray-150 p-6 shadow-xs">
         <div className="flex items-center gap-3 border-b pb-3.5 mb-4">
@@ -66,7 +84,7 @@ export default function OtherView() {
           <p className="text-xs text-gray-500 leading-relaxed">
             Часто задаваемые вопросы по работе интернет-банкинга, настройке ЭЦП подписи, ключей аутентификации.
           </p>
-          <Link href="/services/help" className="text-xs font-bold text-sky-700 hover:underline inline-block">
+          <Link href="/learning" className="text-xs font-bold text-sky-700 hover:underline inline-block">
             Обучение и помощь →
           </Link>
         </div>

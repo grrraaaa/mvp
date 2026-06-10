@@ -238,6 +238,16 @@ class CreateDocumentRequest(BaseModel):
     status: str | None = None
 
 
+class UpdateDocumentRequest(BaseModel):
+    """Частичное обновление документа (CRUD). Все поля опциональны."""
+    type: str | None = None
+    counterparty: str | None = None
+    amount: float | None = None
+    currency: str | None = None
+    purpose: str | None = None
+    status: str | None = None
+
+
 class OneCConnectRequest(BaseModel):
     server_url: str = "http://1c-emulator.local/sber"
     access_token: str = "demo-1c-token"

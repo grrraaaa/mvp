@@ -41,8 +41,6 @@ async def _find_doc_by_number(
 
 
 def _doc_action_url(doc: BankDocument | None, fallback: str | None) -> str:
-    if doc and doc.status == "На подписи":
-        return "/other/documents/signing"
     if doc:
         return document_view_url(doc.id)
     return fallback or "/payments"

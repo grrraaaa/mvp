@@ -1,6 +1,8 @@
 from __future__ import annotations
 
+import asyncio
 import os
+from functools import wraps
 
 from sqlalchemy.ext.asyncio import AsyncSession, async_sessionmaker, create_async_engine
 from sqlalchemy.orm import DeclarativeBase
@@ -29,6 +31,30 @@ AsyncSessionLocal = async_sessionmaker(engine, class_=AsyncSession, expire_on_co
 
 class Base(DeclarativeBase):
     pass
+
+
+# Per-seed timeout (seconds) — prevents one slow/blocked seed from hanging the whole init
+_SEED_TIMEOUT = 30
+
+
+def _timed(coro):
+    """Wrap an async coroutine with asyncio.wait_for; log warning on timeout."""
+
+    @wraps(coro)
+    async def wrapper(*args, **kwargs):
+        name = coro.__name__
+
+        @wraps(coro)
+        async def _run():
+            return await coro(*args, **kwargs)
+
+        try:
+            return await asyncio.wait_for(_run(), timeout=_SEED_TIMEOUT)
+        except asyncio.TimeoutError:
+            print(f"[init_db] WARNING: {name} timed out after {_SEED_TIMEOUT}s — skipping")
+            return None
+
+    return wrapper
 
 
 async def init_db():
@@ -66,20 +92,23 @@ async def init_db():
     from db.seed_notification_links import seed_notification_links
     from db.seed_features import seed_features
 
+    # Migrations: no timeout — should always succeed
     await run_migrations()
-    await seed_products()
-    await seed_users()
-    await seed_tenants()
-    await seed_extended()
-    await seed_onec()
-    await seed_rich()
-    await seed_comprehensive()
-    await seed_corpo_cards()
-    await seed_info_requests()
-    await seed_statement_accounts()
-    await seed_statement_recent()
-    await seed_notification_links()
-    await seed_features()
+
+    # Seeds: each has its own timeout so one slow/blocked seed doesn't hang the rest
+    await _timed(seed_products)()
+    await _timed(seed_users)()
+    await _timed(seed_tenants)()
+    await _timed(seed_extended)()
+    await _timed(seed_onec)()
+    await _timed(seed_rich)()
+    await _timed(seed_comprehensive)()
+    await _timed(seed_corpo_cards)()
+    await _timed(seed_info_requests)()
+    await _timed(seed_statement_accounts)()
+    await _timed(seed_statement_recent)()
+    await _timed(seed_notification_links)()
+    await _timed(seed_features)()
 
 
 async def get_db():

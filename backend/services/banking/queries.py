@@ -273,6 +273,80 @@ async def _statement_reply(
     }
 
 
+async def _account_note_reply(
+    session: AsyncSession, message: str, org_id: str
+) -> dict | None:
+    """«Измени заметку счёта 2222 на "основной"» / «переименуй счёт крутой в резервный»."""
+    low = message.lower()
+    if not re.search(r"заметк|переимен\w+\s+сч[её]т|подпиш\w+\s+сч[её]т", low):
+        return None
+
+    result = await session.execute(
+        select(BankAccount).where(BankAccount.org_id == org_id, BankAccount.hidden.is_(False))
+    )
+    accounts = list(result.scalars().all())
+    if not accounts:
+        return None
+
+    # Новый текст заметки: в кавычках, либо после «на/в» в конце фразы
+    new_note: str | None = None
+    m = re.search(r"[«\"']([^«»\"']{1,60})[»\"']", message)
+    if m:
+        new_note = m.group(1).strip()
+    else:
+        m = re.search(r"\s(?:на|в)\s+([^.!?]{1,60})[.!?]?\s*$", message, re.IGNORECASE)
+        if m:
+            new_note = m.group(1).strip()
+
+    # Счёт: по 4 последним цифрам IBAN, затем по текущей заметке/названию
+    target: BankAccount | None = None
+    digits = set(re.findall(r"\d{4}", message))
+    for acc in accounts:
+        tail = re.sub(r"\D", "", acc.iban)[-4:]
+        if tail and tail in digits:
+            target = acc
+            break
+    if not target:
+        for acc in accounts:
+            lbl = (acc.label or acc.note or "").strip().lower()
+            if lbl and lbl in low and (not new_note or lbl != new_note.lower()):
+                target = acc
+                break
+    if not target and len(accounts) == 1:
+        target = accounts[0]
+
+    if not target or not new_note:
+        listing = "\n".join(
+            f"• …{re.sub(r'[^0-9]', '', a.iban)[-4:]} ({a.currency}) — «{a.label or a.note or 'без заметки'}»"
+            for a in accounts[:6]
+        )
+        return {
+            "message": (
+                "Могу изменить заметку счёта. Уточните счёт и новый текст, например: "
+                "«измени заметку счёта 2222 на \"основной\"».\n\nВаши счета:\n" + listing
+            ),
+            "suggested_chips": ["Измени заметку счёта 2222 на \"основной\""],
+        }
+
+    old = target.label or target.note or "без заметки"
+    target.label = new_note
+    target.note = new_note
+    await session.commit()
+
+    tail = re.sub(r"\D", "", target.iban)[-4:]
+    return {
+        "message": (
+            f"Готово! Заметка счёта **…{tail} ({target.currency})** изменена: "
+            f"«{old}» → **«{new_note}»**. Сохранено в БД."
+        ),
+        "ui_actions": [{"type": "click", "target": "reload-banking"}],
+        "action_buttons": [
+            {"label": "Деньги и события", "url": "/", "variant": "primary"},
+        ],
+        "severity": "success",
+    }
+
+
 async def handle_banking_query(
     session: AsyncSession, message: str, org_id: str = "demo", session_id: str | None = None
 ) -> dict | None:
@@ -282,6 +356,10 @@ async def handle_banking_query(
     import uuid as _uuid
 
     low = message.lower()
+
+    note_reply = await _account_note_reply(session, message, org_id)
+    if note_reply:
+        return note_reply
 
     statement_reply = await _statement_reply(session, message, org_id)
     if statement_reply:
@@ -681,7 +759,7 @@ async def handle_banking_query(
             "sources": [{"index": 1, "label": "Аналитика PostgreSQL", "kind": "analytics", "url": "/services"}],
         }
 
-    if re.search(r"кассов\w*\s+разрыв|прогноз\s+остат", low):
+    if re.search(r"кассов\w*\s+(?:разрыв|прогноз)|прогноз\s+остат", low):
         data = await cash_gap_forecast(session, org_id)
         expl = (
             f"На основе среднего оттока {data['avg_monthly_outflow']:,.0f} BYN/мес "

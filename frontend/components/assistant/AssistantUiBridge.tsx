@@ -5,6 +5,7 @@ import { useRouter } from "next/navigation";
 import { ASSISTANT_ACTION_EVENT, type AssistantActionDetail } from "@/lib/assistant/uiBridge";
 import { useSbbolUi } from "@/components/layout/SbbolUiContext";
 import { PRODUCT_ROUTES } from "@/lib/banking/productCatalog";
+import { useBankingStore } from "@/store/bankingStore";
 
 const ROUTE_BY_ACTION: Record<string, string> = {
   "open-payments": "/payments",
@@ -22,6 +23,7 @@ const ROUTE_BY_ACTION: Record<string, string> = {
   "open-deposits": "/products/deposits",
   "open-cards": "/products/cards",
   "open-info-requests": "/other/info-requests",
+  "open-learning": "/learning",
   "open-onec-import": "/services/onec",
   "run-payroll": "/salary",
   "statement-month": "/statement/account",
@@ -42,6 +44,11 @@ export function AssistantUiBridge() {
 
       if (action === "open-doc-modal" || action === "create-document") {
         openDocumentModal();
+        return;
+      }
+
+      if (action === "reload-banking") {
+        void useBankingStore.getState().loadAll();
         return;
       }
 

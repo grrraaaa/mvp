@@ -1,6 +1,7 @@
 """Банковские данные по организациям (multi-tenant demo)."""
 from __future__ import annotations
 
+import re
 import uuid
 
 from sqlalchemy import select
@@ -34,7 +35,8 @@ TENANT_PACKAGES: dict[str, dict] = {
         ],
         "notifications": [
             {"title": "Платёж поставщику", "body": "Через 3 дня платёж ООО «АльфаИнвест».", "severity": "info", "category": "payment", "action_url": "/payments/paydocbyn", "action_label": "Подготовить платёж", "due_date": "08.06.2026"},
-            {"title": "Документ на подписи", "body": "Платёжное поручение №105 ожидает подписи.", "severity": "warn", "category": "document", "action_url": "/other/documents/signing", "action_label": "Открыть на подпись", "due_date": None},
+            {"title": "Документ на подписи", "body": "Платёжное поручение №105 ожидает подписи.", "severity": "warn", "category": "document", "action_url": "/other/documents/signing", "action_label": "Открыть", "due_date": None},
+            {"title": "Кассовый прогноз", "body": "Прогноз остатка показывает возможный дефицит через 7 дней.", "severity": "warn", "category": "analytics", "action_url": "/statement", "action_label": "Выписка", "due_date": "12.06.2026"},
         ],
     },
     "ip_ivanov": {
@@ -114,7 +116,9 @@ async def seed_tenants():
                 continue
 
             for row in pkg.get("documents", []):
-                session.add(BankDocument(id=str(uuid.uuid4()), org_id=org_id, **row))
+                num = re.sub(r"\D", "", row.get("doc_number", ""))
+                doc_id = f"doc-{org_id}-{num}" if num else str(uuid.uuid4())
+                session.add(BankDocument(id=doc_id, org_id=org_id, **row))
 
             for row in pkg.get("employees", []):
                 session.add(Employee(org_id=org_id, **row))

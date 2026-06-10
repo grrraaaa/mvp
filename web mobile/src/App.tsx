@@ -19,6 +19,7 @@ import SettingsView from './components/SettingsView';
 import CreateDocumentModal from './components/CreateDocumentModal';
 
 import { BankAccount, BankDocument, EmployeeSalary } from './types';
+import { loadBankData } from './api';
 
 export default function App() {
   // Navigation / Tab layout coordinator
@@ -27,7 +28,8 @@ export default function App() {
   const [isCreateDocumentOpen, setIsCreateDocumentOpen] = useState(false);
 
   // Unread badge states
-  const [notificationCount, setNotificationCount] = useState(2);
+  const [notificationCount, setNotificationCount] = useState(0);
+  const [companyName, setCompanyName] = useState('Пятая команда');
   const [unreadEmails, setUnreadEmails] = useState(1);
   const [phoneAlertModal, setPhoneAlertModal] = useState(false);
   const [notificationModalOpen, setNotificationModalOpen] = useState(false);
@@ -143,6 +145,27 @@ export default function App() {
     }
   ]);
 
+  // Данные из PostgreSQL (логин demo/demo проверяется по БД); хардкод выше —
+  // мгновенный фолбэк на время загрузки или при недоступном бэкенде.
+  useEffect(() => {
+    let cancelled = false;
+    loadBankData()
+      .then((data) => {
+        if (cancelled) return;
+        if (data.accounts.length) setAccounts(data.accounts);
+        if (data.documents.length) setDocuments(data.documents);
+        if (data.employees.length) setEmployees(data.employees);
+        if (data.notifications.length) setNotificationCount(data.notifications.length);
+        if (data.orgName) setCompanyName(data.orgName);
+      })
+      .catch(() => {
+        /* офлайн-демо остаётся на встроенных данных */
+      });
+    return () => {
+      cancelled = true;
+    };
+  }, []);
+
   // Translate tab ID to localized screen header title string
   const getSubHeaderTitle = () => {
     switch (activeTab) {
@@ -192,7 +215,7 @@ export default function App() {
       <Navbar 
         notificationsCount={notificationCount}
         messagesCount={unreadEmails}
-        companyName="Пятая команда"
+        companyName={companyName}
         onOpenPhoneSupport={handleOpenPhoneSupport}
         onOpenNotifications={handleOpenNotifications}
         onOpenMessages={handleOpenMessages}

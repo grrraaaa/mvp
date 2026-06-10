@@ -1,10 +1,18 @@
 "use client";
 
-import { useCallback, useEffect, useMemo, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
-import { ArrowLeft, ChevronDown, MoreVertical, Pencil } from "lucide-react";
-import { fetchDocuments, createDocument } from "@/lib/api/banking";
+import {
+  ArrowLeft,
+  ChevronDown,
+  MoreVertical,
+  Pencil,
+  Search,
+  Star,
+  X,
+} from "lucide-react";
+import { fetchDocuments, createDocument, signDocument } from "@/lib/api/banking";
 import type { BankDocument } from "@/lib/banking/types";
 import { bankingToast } from "@/lib/banking/toast";
 
@@ -40,6 +48,35 @@ function formatAmount(amount: number, currency: string): string {
 function parseDocDate(date: string): number {
   const [d, m, y] = date.split(".").map(Number);
   return new Date(y, m - 1, d).getTime();
+}
+
+type PeriodKey = "all" | "today" | "week" | "month" | "quarter" | "year";
+
+const PERIODS: { key: PeriodKey; label: string; days?: number }[] = [
+  { key: "all", label: "За все время" },
+  { key: "today", label: "Сегодня", days: 1 },
+  { key: "week", label: "За неделю", days: 7 },
+  { key: "month", label: "За месяц", days: 31 },
+  { key: "quarter", label: "За квартал", days: 92 },
+  { key: "year", label: "За год", days: 366 },
+];
+
+function inPeriod(docDate: string, period: PeriodKey): boolean {
+  const def = PERIODS.find((p) => p.key === period);
+  if (!def?.days) return true;
+  const diffMs = Date.now() - parseDocDate(docDate);
+  return diffMs <= def.days * 24 * 60 * 60 * 1000 && diffMs > -24 * 60 * 60 * 1000;
+}
+
+const FAV_STORAGE_KEY = "sbbol_fav_docs";
+
+function loadFavorites(): Set<string> {
+  if (typeof window === "undefined") return new Set();
+  try {
+    return new Set(JSON.parse(window.localStorage.getItem(FAV_STORAGE_KEY) ?? "[]"));
+  } catch {
+    return new Set();
+  }
 }
 
 function statusLabel(status: string): string {
@@ -94,6 +131,42 @@ export default function ProductDocumentsView({
   const [activeTab, setActiveTab] = useState<TabKey>(defaultTab);
   const [selected, setSelected] = useState<Set<string>>(new Set());
   const [favoritesOnly, setFavoritesOnly] = useState(false);
+  const [searchQuery, setSearchQuery] = useState("");
+  const [period, setPeriod] = useState<PeriodKey>("all");
+  const [periodMenuOpen, setPeriodMenuOpen] = useState(false);
+  const [sortDesc, setSortDesc] = useState(true);
+  const [favorites, setFavorites] = useState<Set<string>>(() => loadFavorites());
+  const [signing, setSigning] = useState(false);
+  const periodMenuRef = useRef<HTMLDivElement | null>(null);
+
+  useEffect(() => {
+    if (!periodMenuOpen) return;
+    const close = (e: MouseEvent) => {
+      if (!periodMenuRef.current?.contains(e.target as Node)) setPeriodMenuOpen(false);
+    };
+    window.addEventListener("mousedown", close);
+    return () => window.removeEventListener("mousedown", close);
+  }, [periodMenuOpen]);
+
+  const toggleFavorite = (docId: string) => {
+    setFavorites((prev) => {
+      const next = new Set(prev);
+      if (next.has(docId)) next.delete(docId);
+      else next.add(docId);
+      try {
+        window.localStorage.setItem(FAV_STORAGE_KEY, JSON.stringify([...next]));
+      } catch {
+        /* quota */
+      }
+      return next;
+    });
+  };
+
+  const resetFilters = () => {
+    setSearchQuery("");
+    setPeriod("all");
+    setFavoritesOnly(false);
+  };
 
   const load = useCallback(async () => {
     setLoading(true);
@@ -140,8 +213,24 @@ export default function ProductDocumentsView({
     if (tab?.status) {
       rows = rows.filter((d) => d.status === tab.status);
     }
-    return [...rows].sort((a, b) => parseDocDate(b.date) - parseDocDate(a.date));
-  }, [documents, activeTab]);
+    if (period !== "all") {
+      rows = rows.filter((d) => inPeriod(d.date, period));
+    }
+    if (favoritesOnly) {
+      rows = rows.filter((d) => favorites.has(d.id));
+    }
+    const q = searchQuery.trim().toLowerCase();
+    if (q) {
+      rows = rows.filter((d) =>
+        [d.doc_number ?? "", d.id, d.type, d.counterparty ?? "", d.purpose ?? "", d.status, String(d.amount)]
+          .join(" ")
+          .toLowerCase()
+          .includes(q),
+      );
+    }
+    const dir = sortDesc ? -1 : 1;
+    return [...rows].sort((a, b) => dir * (parseDocDate(a.date) - parseDocDate(b.date)));
+  }, [documents, activeTab, period, favoritesOnly, favorites, searchQuery, sortDesc]);
 
   const toggleAll = () => {
     if (selected.size === filtered.length) {
@@ -175,6 +264,30 @@ export default function ProductDocumentsView({
     } catch {
       bankingToast("Ошибка создания документа", "err");
     }
+  };
+
+  const handleBulkSign = async () => {
+    if (selected.size === 0) return;
+    setSigning(true);
+    let ok = 0;
+    let failed = 0;
+    for (const id of selected) {
+      try {
+        await signDocument(id);
+        ok++;
+      } catch {
+        failed++;
+      }
+    }
+    setSigning(false);
+    setSelected(new Set());
+    bankingToast(
+      failed === 0
+        ? `Подписано документов: ${ok}`
+        : `Подписано: ${ok}, с ошибкой: ${failed}`,
+      failed === 0 ? "ok" : "err",
+    );
+    await load();
   };
 
   const showBulkBar = activeTab === "to_sign" && filtered.length > 0;
@@ -214,14 +327,73 @@ export default function ProductDocumentsView({
       {/* Filters */}
       <div className="bg-[#f4f6f8] border-b border-gray-200 px-4 sm:px-6 py-3">
         <div className="max-w-6xl mx-auto flex flex-wrap items-center gap-3 text-sm text-gray-700">
-          <button type="button" className="flex items-center gap-1 px-3 py-1.5 bg-white border border-gray-200 rounded-full">
-            За все время <ChevronDown className="w-4 h-4 text-gray-400" />
+          {/* Search with magnifier */}
+          <div className="relative flex-1 min-w-[220px] max-w-md">
+            <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-400 pointer-events-none" />
+            <input
+              type="search"
+              value={searchQuery}
+              onChange={(e) => setSearchQuery(e.target.value)}
+              placeholder="Поиск: номер, контрагент, назначение…"
+              className="w-full pl-9 pr-8 py-2 bg-white border border-gray-200 rounded-full text-sm placeholder:text-gray-400 focus:outline-none focus:ring-2 focus:ring-[#2d9494]/30 focus:border-[#2d9494] transition-shadow"
+            />
+            {searchQuery && (
+              <button
+                type="button"
+                onClick={() => setSearchQuery("")}
+                className="absolute right-2.5 top-1/2 -translate-y-1/2 p-0.5 text-gray-400 hover:text-gray-600"
+                aria-label="Очистить поиск"
+              >
+                <X className="w-4 h-4" />
+              </button>
+            )}
+          </div>
+
+          {/* Period dropdown */}
+          <div className="relative" ref={periodMenuRef}>
+            <button
+              type="button"
+              onClick={() => setPeriodMenuOpen((v) => !v)}
+              className={`flex items-center gap-1 px-3 py-1.5 bg-white border rounded-full transition-colors ${
+                period !== "all" ? "border-[#2d9494] text-[#2d9494] font-medium" : "border-gray-200"
+              }`}
+            >
+              {PERIODS.find((p) => p.key === period)?.label}
+              <ChevronDown className={`w-4 h-4 transition-transform ${periodMenuOpen ? "rotate-180" : ""} ${period !== "all" ? "text-[#2d9494]" : "text-gray-400"}`} />
+            </button>
+            {periodMenuOpen && (
+              <div className="absolute z-20 mt-1.5 w-44 bg-white border border-gray-200 rounded-xl shadow-lg py-1 overflow-hidden">
+                {PERIODS.map((p) => (
+                  <button
+                    key={p.key}
+                    type="button"
+                    onClick={() => {
+                      setPeriod(p.key);
+                      setPeriodMenuOpen(false);
+                    }}
+                    className={`block w-full text-left px-4 py-2 text-sm hover:bg-gray-50 ${
+                      period === p.key ? "text-[#2d9494] font-semibold bg-teal-50/50" : "text-gray-700"
+                    }`}
+                  >
+                    {p.label}
+                  </button>
+                ))}
+              </div>
+            )}
+          </div>
+
+          <button type="button" className="hidden sm:block px-3 py-1.5 bg-white border border-gray-200 rounded-full text-gray-500 cursor-default">
+            {filter2Label}
           </button>
-          <button type="button" className="flex items-center gap-1 px-3 py-1.5 bg-white border border-gray-200 rounded-full">
-            {filter2Label} <ChevronDown className="w-4 h-4 text-gray-400" />
+          <button
+            type="button"
+            onClick={resetFilters}
+            className={`hover:underline ${
+              searchQuery || period !== "all" || favoritesOnly ? "text-[#2d9494] font-medium" : "text-gray-500"
+            }`}
+          >
+            Сбросить фильтры
           </button>
-          <button type="button" className="text-sky-700 hover:underline">Другие фильтры</button>
-          <button type="button" className="text-gray-500 hover:underline">Сбросить фильтры</button>
           <label className="ml-auto flex items-center gap-2 cursor-pointer">
             <span className="text-gray-600">Избранное</span>
             <input
@@ -260,17 +432,29 @@ export default function ProductDocumentsView({
 
       {/* Sort + bulk */}
       <div className="bg-white px-4 sm:px-6 py-2 border-b border-gray-100">
-        <div className="max-w-6xl mx-auto flex items-center justify-between text-sm">
+        <div className="max-w-6xl mx-auto flex items-center justify-between gap-3 text-sm">
           {showBulkBar ? (
-            <label className="flex items-center gap-2 text-[#2d9494] font-medium cursor-pointer">
-              <input
-                type="checkbox"
-                checked={selected.size === filtered.length && filtered.length > 0}
-                onChange={toggleAll}
-                className="rounded accent-[#2d9494]"
-              />
-              Выбрать все
-            </label>
+            <div className="flex items-center gap-4">
+              <label className="flex items-center gap-2 text-[#2d9494] font-medium cursor-pointer">
+                <input
+                  type="checkbox"
+                  checked={selected.size === filtered.length && filtered.length > 0}
+                  onChange={toggleAll}
+                  className="rounded accent-[#2d9494]"
+                />
+                Выбрать все
+              </label>
+              {selected.size > 0 && (
+                <button
+                  type="button"
+                  disabled={signing}
+                  onClick={() => void handleBulkSign()}
+                  className="px-3.5 py-1.5 rounded-full bg-[#2d9494] text-white text-xs font-semibold hover:bg-[#267a7a] disabled:opacity-60"
+                >
+                  {signing ? "Подписание…" : `Подписать (${selected.size})`}
+                </button>
+              )}
+            </div>
           ) : (
             <p className="text-gray-500 text-xs">
               {activeTab === "draft"
@@ -278,8 +462,13 @@ export default function ProductDocumentsView({
                 : "\u00a0"}
             </p>
           )}
-          <button type="button" className="flex items-center gap-1 text-gray-600">
-            По дате документа (по убыванию) <ChevronDown className="w-4 h-4" />
+          <button
+            type="button"
+            onClick={() => setSortDesc((v) => !v)}
+            className="flex items-center gap-1 text-gray-600 hover:text-gray-900"
+          >
+            По дате документа ({sortDesc ? "по убыванию" : "по возрастанию"})
+            <ChevronDown className={`w-4 h-4 transition-transform ${sortDesc ? "" : "rotate-180"}`} />
           </button>
         </div>
       </div>
@@ -370,6 +559,21 @@ export default function ProductDocumentsView({
                       ) : (
                         <span className="w-8" />
                       )}
+                      <button
+                        type="button"
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          toggleFavorite(doc.id);
+                        }}
+                        className={`p-1 transition-colors ${
+                          favorites.has(doc.id)
+                            ? "text-amber-400 hover:text-amber-500"
+                            : "text-gray-300 hover:text-amber-400"
+                        }`}
+                        aria-label="В избранное"
+                      >
+                        <Star className="w-4 h-4" fill={favorites.has(doc.id) ? "currentColor" : "none"} />
+                      </button>
                       <button type="button" className="p-1 text-gray-400 hover:text-gray-600" aria-label="Меню">
                         <MoreVertical className="w-4 h-4" />
                       </button>

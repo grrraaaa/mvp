@@ -6,6 +6,10 @@ const nextConfig = {
   // Корень трассировки — папка frontend (не родительский mvp с вторым lockfile)
   outputFileTracingRoot: path.join(__dirname),
   transpilePackages: ["three", "@react-three/fiber", "@react-three/drei"],
+  async rewrites() {
+    // Мобильная версия (сборка "web mobile") лежит в public/m
+    return [{ source: "/m", destination: "/m/index.html" }];
+  },
   webpack: (config, { dev }) => {
     if (dev) {
       config.watchOptions = {

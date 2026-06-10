@@ -11,7 +11,7 @@ from fastapi import APIRouter, Depends, HTTPException, Query
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from core.dependencies import get_current_user
+from core.dependencies import get_current_user, get_optional_user
 from core.tenant import user_org_id
 from db.database import get_db
 from db.models import (
@@ -45,6 +45,7 @@ from models.schemas import (
     SmartNotificationOut,
     SourceRef,
     StatementLineOut,
+    UpdateDocumentRequest,
 )
 from services.banking.analytics import (
     cash_gap_forecast,
@@ -102,9 +103,10 @@ async def _resolve_document(db: AsyncSession, org_id: str, doc_id: str) -> BankD
 async def get_document(
     doc_id: str,
     db: AsyncSession = Depends(get_db),
-    current_user: User = Depends(get_current_user),
+    current_user: User | None = Depends(get_optional_user),
+    org_id: str | None = Query(None),
 ):
-    org_id = user_org_id(current_user)
+    org_id = org_id or (user_org_id(current_user) if current_user else "demo")
     doc = await _resolve_document(db, org_id, doc_id)
     if not doc:
         raise HTTPException(status_code=404, detail="Документ не найден")
@@ -124,12 +126,13 @@ async def get_document(
 @router.get("/documents", response_model=list[BankDocumentOut])
 async def list_documents(
     db: AsyncSession = Depends(get_db),
-    current_user: User = Depends(get_current_user),
+    current_user: User | None = Depends(get_optional_user),
+    org_id: str | None = Query(None),
     doc_type: str | None = Query(None, alias="doc_type"),
     doc_prefix: str | None = Query(None, alias="doc_prefix"),
     status: str | None = Query(None),
 ):
-    org_id = user_org_id(current_user)
+    org_id = org_id or (user_org_id(current_user) if current_user else "demo")
     stmt = _org_filter(BankDocument, org_id)
     if doc_prefix:
         stmt = stmt.where(BankDocument.doc_type.startswith(doc_prefix))
@@ -363,6 +366,114 @@ async def sign_document(
     )
 
 
+def _doc_out(doc: BankDocument) -> BankDocumentOut:
+    return BankDocumentOut(
+        id=doc.id,
+        date=doc.doc_date,
+        type=doc.doc_type,
+        counterparty=doc.counterparty,
+        amount=doc.amount,
+        currency=doc.currency,
+        status=doc.status,
+        purpose=doc.purpose,
+        doc_number=doc.doc_number,
+    )
+
+
+@router.patch("/documents/{doc_id}", response_model=BankDocumentOut)
+async def update_document(
+    doc_id: str,
+    body: UpdateDocumentRequest,
+    db: AsyncSession = Depends(get_db),
+    current_user: User = Depends(get_current_user),
+):
+    """CRUD: частичное обновление документа (тип, контрагент, сумма, назначение, статус)."""
+    org_id = user_org_id(current_user)
+    doc = await _resolve_document(db, org_id, doc_id)
+    if not doc:
+        raise HTTPException(status_code=404, detail="Документ не найден")
+    if body.type is not None:
+        doc.doc_type = body.type
+    if body.counterparty is not None:
+        doc.counterparty = body.counterparty
+    if body.amount is not None:
+        doc.amount = body.amount
+    if body.currency is not None:
+        doc.currency = body.currency
+    if body.purpose is not None:
+        doc.purpose = body.purpose
+    if body.status is not None:
+        doc.status = body.status
+    await db.commit()
+    await db.refresh(doc)
+    return _doc_out(doc)
+
+
+@router.delete("/documents/{doc_id}", response_model=BankDocumentOut)
+async def delete_document(
+    doc_id: str,
+    hard: bool = Query(False),
+    db: AsyncSession = Depends(get_db),
+    current_user: User = Depends(get_current_user),
+):
+    """CRUD: удаление. По умолчанию мягкое (статус «Удален»), hard=true — из БД."""
+    org_id = user_org_id(current_user)
+    doc = await _resolve_document(db, org_id, doc_id)
+    if not doc:
+        raise HTTPException(status_code=404, detail="Документ не найден")
+    out = _doc_out(doc)
+    if hard or doc.status == "Удален":
+        await db.delete(doc)
+    else:
+        doc.status = "Удален"
+        out.status = "Удален"
+    await db.commit()
+    return out
+
+
+@router.get("/documents/{doc_id}/pdf")
+async def download_document_pdf(
+    doc_id: str,
+    db: AsyncSession = Depends(get_db),
+    current_user: User | None = Depends(get_optional_user),
+    org_id: str | None = Query(None),
+):
+    """Сформировать и отдать PDF документа."""
+    from fastapi import Response
+
+    from services.banking.pdf_export import render_document_pdf
+
+    org_id = org_id or (user_org_id(current_user) if current_user else "demo")
+    doc = await _resolve_document(db, org_id, doc_id)
+    if not doc:
+        raise HTTPException(status_code=404, detail="Документ не найден")
+
+    org = await db.get(OrganizationProfile, org_id)
+    pdf_bytes = render_document_pdf(
+        {
+            "id": doc.id,
+            "doc_number": doc.doc_number,
+            "doc_date": doc.doc_date,
+            "doc_type": doc.doc_type,
+            "counterparty": doc.counterparty,
+            "amount": doc.amount,
+            "currency": doc.currency,
+            "status": doc.status,
+            "purpose": doc.purpose,
+        },
+        org_name=org.org_name if org else "DEMO ЮРИДИЧЕСКОЕ ЛИЦО",
+    )
+    safe_name = re.sub(r"[^\w-]+", "_", doc.doc_number or doc.id)
+    return Response(
+        content=pdf_bytes,
+        media_type="application/pdf",
+        headers={
+            "Content-Disposition": f'inline; filename="document_{safe_name}.pdf"',
+            "Cache-Control": "no-store",
+        },
+    )
+
+
 @router.post("/notifications/{notification_id}/read")
 async def mark_notification_read(
     notification_id: str,
@@ -575,7 +686,9 @@ async def patch_account_note(
     acc = await db.get(BankAccount, account_id)
     if not acc or acc.org_id != org_id:
         raise HTTPException(status_code=404, detail="Счёт не найден")
+    # «Заметка» в UI — видимый бейдж счёта: храним в обоих полях
     acc.note = body.note
+    acc.label = body.note
     await db.commit()
     await db.refresh(acc)
     return BankAccountOut(
