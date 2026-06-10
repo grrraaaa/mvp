@@ -9,7 +9,7 @@ interface ModelCapabilitiesState {
 }
 
 const portraitDefault =
-  process.env.NEXT_PUBLIC_CHARACTER_HEAD_PORTRAIT !== "false";
+  process.env.NEXT_PUBLIC_CHARACTER_HEAD_PORTRAIT === "true";
 
 export const useModelCapabilitiesStore = create<ModelCapabilitiesState>((set) => ({
   isStaticMesh: true,

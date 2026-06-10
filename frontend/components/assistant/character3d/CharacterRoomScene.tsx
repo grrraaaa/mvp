@@ -47,22 +47,19 @@ function SceneContent({
   const target: [number, number, number] = faceFraming
     ? [0, lookY, 0]
     : [0, 1.05, 0];
-  const bg = faceFraming
-    ? light
-      ? PORTRAIT_BG_EMBEDDED
-      : PORTRAIT_BG_DARK
-    : light
-      ? sberTheme.studioLightBg
-      : sberTheme.bg;
+  // Светлый фон всегда — gradient teal-50 → white, как в web mobile.
+  // Никаких "тёмных провалов" (#030a08, #0a1512, #081810) больше нет.
+  const bg = light ? "#eef7f5" : "#f4faf9";
 
   return (
     <>
       <color attach="background" args={[bg]} />
-      <ambientLight intensity={faceFraming ? (light ? 0.55 : 0.48) : light ? 0.95 : 0.72} />
-      <directionalLight position={[0.4, 2.4, 1.4]} intensity={light ? 1.15 : 1.4} />
-      <directionalLight position={[-1.4, 1.9, 0.6]} intensity={0.5} color={sberTheme.greenLight} />
-      <directionalLight position={[0, 1.6, 2.2]} intensity={light ? 0.5 : 0.4} color="#ffffff" />
-      <pointLight position={[0.3, headY + 0.35, 1.2]} intensity={0.55} distance={4} />
+      {/* Свет: ярче и без зелёного акцента, чтобы лицо не казалось болотным */}
+      <ambientLight intensity={light ? 1.05 : 0.95} />
+      <directionalLight position={[0.4, 2.4, 1.4]} intensity={light ? 1.4 : 1.5} />
+      <directionalLight position={[-1.4, 1.9, 0.6]} intensity={0.45} color="#fff4e0" />
+      <directionalLight position={[0, 1.6, 2.2]} intensity={light ? 0.7 : 0.6} color="#ffffff" />
+      <pointLight position={[0.3, headY + 0.35, 1.2]} intensity={0.6} distance={4} />
 
       <PortraitCamera active={faceFraming} compact={compact} />
       <CharacterAvatar3D config={config} />
@@ -98,13 +95,10 @@ export function CharacterRoomScene(props: Props) {
       : "h-[380px] sm:h-[520px] min-h-[320px]";
 
   const borderClass = compact ? "border-gray-100" : "border-sber-border";
-  const wrapperBg = faceFraming
-    ? compact
-      ? "bg-[#0a1512]"
-      : "bg-[#030a08]"
-    : compact
-      ? "bg-gradient-to-b from-[#eef7f5] via-[#f4faf9] to-[#f2f4f7]"
-      : "bg-[#081810]";
+  // Светлый фон (teal-50 → white) — как в web mobile Copilot, без тёмных пятен
+  const wrapperBg = compact
+    ? "bg-gradient-to-b from-[#eef7f5] via-[#f4faf9] to-[#f2f4f7]"
+    : "bg-gradient-to-b from-[#e6f4f1] via-[#eef7f5] to-[#f2f4f7]";
 
   return (
     <div className={`relative w-full ${height} border-b ${borderClass} overflow-hidden ${wrapperBg} shrink-0`}>
@@ -128,18 +122,10 @@ export function CharacterRoomScene(props: Props) {
 
       {!compactMobile && (
         <div className="absolute bottom-2 left-0 right-0 text-center pointer-events-none px-3">
-          <p
-            className={`text-sm font-semibold drop-shadow-md ${
-              faceFraming || !compact ? "text-white" : "text-[#1f1f22]"
-            }`}
-          >
+          <p className="text-sm font-semibold text-[#1f1f22] drop-shadow-sm">
             {config.name}
           </p>
-          <p
-            className={`text-[10px] drop-shadow-md ${
-              faceFraming || !compact ? "text-sber-muted" : "text-[#7d838a]"
-            }`}
-          >
+          <p className="text-[10px] text-[#5a6470] drop-shadow-sm">
             {config.subtitle}
           </p>
         </div>

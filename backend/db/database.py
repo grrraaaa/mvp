@@ -34,7 +34,7 @@ class Base(DeclarativeBase):
 
 
 # Per-seed timeout (seconds) — prevents one slow/blocked seed from hanging the whole init
-_SEED_TIMEOUT = 30
+_SEED_TIMEOUT = 10
 
 
 def _timed(coro):

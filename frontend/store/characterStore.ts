@@ -32,15 +32,43 @@ export const useCharacterStore = create<CharacterState>()(
       settingsOpen: false,
 
       setConfig: (patch) =>
-        set((state) => ({
-          config: { ...state.config, ...patch },
-          activePresetId: null,
-        })),
+        // Запрещаем менять `name` через setConfig — имя ассистента фиксировано
+        // пресетом (Александр / Александра) и не должно редактироваться руками.
+        set((state) => {
+          const { name: _ignored, ...rest } = patch;
+          return {
+            config: { ...state.config, ...rest },
+            activePresetId: null,
+          };
+        }),
 
       applyPreset: (presetId) => {
         const preset = CHARACTER_PRESETS.find((p) => p.id === presetId);
         if (!preset) return;
         set({ config: { ...preset.config }, activePresetId: presetId });
+        // Автоподбор голоса по полу модели: human-m → qwen-male, human-f → qwen-female.
+        // Если такого голоса нет (группы ещё не загрузились) — следующий useEffect догонит.
+        if (typeof window !== "undefined") {
+          try {
+            const gender = preset.config.styleId === "human-m" ? "male" : preset.config.styleId === "human-f" ? "female" : null;
+            if (gender) {
+              // динамический импорт, чтобы не тянуть ttsStore в SSR
+              void import("@/store/ttsStore").then(({ useTtsStore }) => {
+                const tts = useTtsStore.getState();
+                const groups = tts.voiceGroups;
+                if (groups.length === 0) return;
+                // Приоритет: qwen-группа, потом edge
+                const preferred = groups.find((g) => g.id === "qwen") ?? groups[0];
+                const voice = preferred.voices.find((v) => v.gender === gender) ?? preferred.voices[0];
+                if (voice && tts.voiceId !== voice.id) {
+                  tts.setVoiceId(voice.id);
+                }
+              });
+            }
+          } catch {
+            /* ignore */
+          }
+        }
       },
 
       resetCharacter: () =>

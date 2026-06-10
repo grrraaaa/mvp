@@ -1,0 +1,34 @@
+﻿{
+    "message":  "ÐÐ»Ð°ÑÑÐ¶Ð½Ð¾Ðµ Ð¿Ð¾ÑÑÑÐµÐ½Ð¸Ðµ BYN â ÑÑÐ°Ð½Ð´Ð°ÑÑÐ½ÑÐ¹ Ð¿ÐµÑÐµÐ²Ð¾Ð´ Ð² Ð±ÐµÐ»Ð¾ÑÑÑÑÐºÐ¸Ñ\u0085 ÑÑÐ±Ð»ÑÑ\u0085. ÐÑÐºÑÑÐ²Ð°Ñ.",
+    "session_id":  "f4f4c918-7a71-452a-aebf-957ddf092f53",
+    "navigation_path":  null,
+    "products":  null,
+    "action_buttons":  [
+                           {
+                               "label":  "ÐÐµÑÐµÐ¹ÑÐ¸: ÐÐ»Ð°ÑÐµÐ¶Ð½Ð¾Ðµ Ð¿Ð¾ÑÑÑÐµÐ½Ð¸Ðµ BYN",
+                               "url":  "/payments/paydocbyn",
+                               "message":  null,
+                               "variant":  "primary"
+                           }
+                       ],
+    "form_actions":  null,
+    "ui_actions":  [
+                       {
+                           "type":  "navigate",
+                           "target":  "/payments/paydocbyn",
+                           "value":  null
+                       }
+                   ],
+    "pending_form_fields":  null,
+    "form_fill_status":  null,
+    "sources":  null,
+    "charts":  null,
+    "suggested_chips":  [
+                            "Ð¡Ð¾Ð·Ð´Ð°Ð¹ Ð¿Ð»Ð°ÑÑÐ¶",
+                            "ÐÑÑÐ°ÑÐ¾Ðº Ð½Ð° ÑÑÑÑÐµ",
+                            "Ð¡Ð¸Ð½Ñ\u0085ÑÐ¾Ð½Ð¸Ð·Ð¸ÑÐ¾Ð²Ð°ÑÑ Ñ 1Ð¡"
+                        ],
+    "response_tone":  "neutral",
+    "character_emotion":  "idle",
+    "stream":  false
+}

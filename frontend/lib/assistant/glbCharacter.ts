@@ -39,20 +39,20 @@ export const GLB_Y_OFFSET = Number(process.env.NEXT_PUBLIC_CHARACTER_GLB_Y ?? "0
 
 /** Доп. масштаб в режиме крупного плана лица */
 export const PORTRAIT_FACE_SCALE = Number(
-  process.env.NEXT_PUBLIC_CHARACTER_PORTRAIT_SCALE ?? "3"
+  process.env.NEXT_PUBLIC_CHARACTER_PORTRAIT_SCALE ?? "1.6"
 );
 
 /** Мировая высота центра головы в портретном режиме */
-export const PORTRAIT_HEAD_WORLD_Y = 1.52;
+export const PORTRAIT_HEAD_WORLD_Y = 1.45;
 
 /** Смещение камеры по Y от центра головы (отрицательное = камера ниже) */
 export const PORTRAIT_CAMERA_Y_OFFSET = Number(
-  process.env.NEXT_PUBLIC_PORTRAIT_CAMERA_Y_OFFSET ?? "-0.30",
+  process.env.NEXT_PUBLIC_PORTRAIT_CAMERA_Y_OFFSET ?? "-0.20",
 );
 
 /** Точка взгляда OrbitControls по Y от центра головы */
 export const PORTRAIT_TARGET_Y_OFFSET = Number(
-  process.env.NEXT_PUBLIC_PORTRAIT_TARGET_Y_OFFSET ?? "-0.22",
+  process.env.NEXT_PUBLIC_PORTRAIT_TARGET_Y_OFFSET ?? "-0.15",
 );
 
 /**
@@ -60,13 +60,13 @@ export const PORTRAIT_TARGET_Y_OFFSET = Number(
  * Переопределение: NEXT_PUBLIC_PORTRAIT_CAMERA_Z / NEXT_PUBLIC_PORTRAIT_CAMERA_Z_COMPACT
  */
 export const PORTRAIT_CAMERA_Z = Number(
-  process.env.NEXT_PUBLIC_PORTRAIT_CAMERA_Z ?? "7.8",
+  process.env.NEXT_PUBLIC_PORTRAIT_CAMERA_Z ?? "5.0",
 );
 export const PORTRAIT_CAMERA_Z_COMPACT = Number(
-  process.env.NEXT_PUBLIC_PORTRAIT_CAMERA_Z_COMPACT ?? "8.5",
+  process.env.NEXT_PUBLIC_PORTRAIT_CAMERA_Z_COMPACT ?? "5.4",
 );
 export const PORTRAIT_CAMERA_FOV = Number(
-  process.env.NEXT_PUBLIC_PORTRAIT_CAMERA_FOV ?? "36",
+  process.env.NEXT_PUBLIC_PORTRAIT_CAMERA_FOV ?? "42",
 );
 
 /** Фон канваса в портретном режиме */
@@ -76,7 +76,8 @@ export const PORTRAIT_BG_EMBEDDED = "#0a1512";
 /** @deprecated используйте GLB_SCALE_MULTIPLIER */
 export const GLB_SCALE = GLB_SCALE_MULTIPLIER;
 
-/** Подстроки имён morph target (порядок: более специфичные раньше). */
+/** Подстроки имён morph target (порядок: более специфичные раньше).
+ *  НЕ включаем brow/eye/cheek/... — иначе лип-синк будет дёргать брови. */
 export const LIP_MORPH_NAMES = [
   "jawopen",
   "jaw_open",
@@ -100,6 +101,9 @@ export const LIP_MORPH_NAMES = [
   "jaw",
   "mouth",
 ];
+
+/** Имена morph target, которые НЕ являются ртом — фильтруем на этапе collect. */
+const LIP_MORPH_EXCLUDE = ["brow", "eye", "cheek", "blink", "squint", "nose"];
 
 export const ANIM_IDLE_HINTS = ["idle", "standing", "breath"];
 export const ANIM_WALK_HINTS = ["walk", "walking"];
@@ -135,6 +139,8 @@ export function collectLipBindings(
     for (const key of Object.keys(dict)) {
       const lower = key.toLowerCase();
       if (!LIP_MORPH_NAMES.some((hint) => lower.includes(hint))) continue;
+      // Не считаем брови/глаза/etc. частью рта
+      if (LIP_MORPH_EXCLUDE.some((ex) => lower.includes(ex))) continue;
 
       const morphIndex = dict[key];
       const token = `${meshIndex}:${morphIndex}`;

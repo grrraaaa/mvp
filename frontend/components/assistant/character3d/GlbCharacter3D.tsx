@@ -156,6 +156,12 @@ export function GlbCharacter3D({
   useEffect(() => {
     morphMeshesRef.current = collectMorphMeshes(clone);
     lipBindingsRef.current = collectLipBindings(morphMeshesRef.current);
+    // Сбрасываем ВСЕ morph influences на случай, если GLB приехал с дефолтными
+    // значениями (типично для скачанных Sketchfab-моделей: jawopen=1.0 и т.п.).
+    for (const m of morphMeshesRef.current) {
+      const inf = m.morphTargetInfluences;
+      if (inf) for (let i = 0; i < inf.length; i++) inf[i] = 0;
+    }
     const morphLip = lipBindingsRef.current.length > 0;
     const vertexLip = mouthRig.active;
     mouthRigRef.current = mouthRig;
@@ -259,6 +265,14 @@ export function GlbCharacter3D({
         if (influences && morphIndex < influences.length) {
           influences[morphIndex] = openness;
         }
+      }
+    }
+    // Доп. защита: в idle/walk/think сбрасываем ВСЕ morph influences
+    // (не только lip-binding), чтобы дефолтный jawopen из GLB не "залипал".
+    if (action !== "talk") {
+      for (const m of morphMeshesRef.current) {
+        const inf = m.morphTargetInfluences;
+        if (inf) for (let i = 0; i < inf.length; i++) inf[i] = 0;
       }
     } else if (mouthRigRef.current?.active) {
       if (action === "talk" && openness > 0.01) {

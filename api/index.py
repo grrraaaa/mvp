@@ -113,14 +113,26 @@ async def vercel_lazy_db_init(request, call_next):
                 try:
                     reseeded = False
                     if not _db_state["reseed_checked"]:
+                        # По умолчанию НЕ пересеваем на cold start — это занимает
+                        # 10+ секунд (DROP SCHEMA + 12 сидов) и режет прод через 504.
+                        # Если очень нужно — явно: RESEED_ON_DEPLOY=1.
                         if os.getenv("RESEED_ON_DEPLOY") == "1":
                             from db.reset import reset_and_seed
 
                             logger.info("RESEED_ON_DEPLOY=1 → full schema reset + seed")
                             await reset_and_seed()
                             reseeded = True
-                        else:
-                            reseeded = await _reseed_once_per_deploy()
+                        elif os.getenv("FORCE_RESEED") == "1":
+                            # Алиас — оставлено для совместимости со старыми деплоями
+                            from db.reset import reset_and_seed
+
+                            logger.info("FORCE_RESEED=1 → full schema reset + seed")
+                            await reset_and_seed()
+                            reseeded = True
+                        # _reseed_once_per_deploy пропускаем на cold start: даже
+                        # advisory-lock + pg_catalog запросы добавляют 2-3 с.
+                        # Если init_db() ниже упадёт из-за отсутствующих таблиц —
+                        # fallback на _reseed_once_per_deploy всё-таки сработает.
                         _db_state["reseed_checked"] = True
                     if not reseeded:
                         await init_db()
