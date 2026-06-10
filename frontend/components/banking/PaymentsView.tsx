@@ -18,7 +18,9 @@ import {
   CalendarDays,
 } from "lucide-react";
 import { runBankingAction } from "@/lib/banking/actionRegistry";
+import { isPaymentFormAction } from "@/lib/assistant/formFillRunner";
 import { useBankingStore } from "@/store/bankingStore";
+import { useAssistantStore } from "@/store/assistantStore";
 
 export default function PaymentsView() {
   const accounts = useBankingStore((s) => s.accounts);
@@ -26,6 +28,7 @@ export default function PaymentsView() {
   const createPayment = useBankingStore((s) => s.createPayment);
   const loadAll = useBankingStore((s) => s.loadAll);
   const { openDocumentModal } = useSbbolUi();
+  const formActions = useAssistantStore((s) => s.formActions);
   const [activeModal, setActiveModal] = useState<string | null>(null);
 
   // Form states - Перевод в BYN
@@ -48,6 +51,12 @@ export default function PaymentsView() {
   const [fxAmount, setFxAmount] = useState('1000');
 
   const bynAccounts = accounts.filter(acc => acc.currency === 'BYN');
+
+  useEffect(() => {
+    if (formActions?.some(isPaymentFormAction)) {
+      setActiveModal("payout_byn");
+    }
+  }, [formActions]);
 
   useEffect(() => {
     const handler = (e: Event) => {

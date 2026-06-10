@@ -155,8 +155,19 @@ export function AssistantPanel({ variant = "default", compactMobile = false, onR
         if (target?.startsWith("/")) router.push(target);
       }
       if (data.session_id) setSessionId(data.session_id as string);
-      if (data.form_actions && (data.form_actions as unknown[]).length) {
-        applyFormActions(data.form_actions as never);
+      const pendingFormActions = data.form_actions as never;
+      if (pendingFormActions && (pendingFormActions as unknown[]).length) {
+        const hasNav = Boolean(
+          (data.navigation_path as unknown[] | undefined)?.length ||
+            (data.ui_actions as { type: string; target: string }[] | undefined)?.some(
+              (a) => a.type === "navigate" && a.target?.startsWith("/"),
+            ),
+        );
+        if (hasNav) {
+          window.setTimeout(() => applyFormActions(pendingFormActions), 120);
+        } else {
+          applyFormActions(pendingFormActions);
+        }
       }
       if (data.ui_actions && (data.ui_actions as unknown[]).length) {
         for (const a of data.ui_actions as { type: string; target: string }[]) {

@@ -75,3 +75,17 @@ export const ROLES: Record<RoleId, Role> = {
 };
 
 export const ROLE_ORDER: RoleId[] = ["manager", "admin", "user"];
+
+export const PERMISSION_LABEL: Record<Permission, string> = {
+  sign_document: "подписание документов",
+  create_document: "создание документов",
+  pay_payroll: "выплата зарплаты",
+  manage_employees: "управление сотрудниками",
+  open_account: "открытие счетов",
+  manage_products: "управление продуктами",
+  edit_account: "редактирование счетов",
+  manage_security: "настройки безопасности",
+  manage_services: "управление сервисами",
+  verify_counterparty: "проверка контрагентов",
+  order_cash: "кассовые операции",
+};

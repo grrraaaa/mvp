@@ -1,4 +1,4 @@
-import { NextResponse, userAgent } from "next/server";
+import { NextResponse } from "next/server";
 import type { NextRequest } from "next/server";
 
 const DOC_UUID =
@@ -28,15 +28,6 @@ export function middleware(request: NextRequest) {
     const url = request.nextUrl.clone();
     url.pathname = "/other/documents/view";
     url.search = `?doc=${encodeURIComponent(docId)}`;
-    return NextResponse.redirect(url);
-  }
-
-  // Телефоны (не планшеты) видят мобильную версию из public/m (сборка "web mobile")
-  const { device } = userAgent(request);
-  if (device.type === "mobile" && !request.nextUrl.pathname.startsWith("/m")) {
-    const url = request.nextUrl.clone();
-    url.pathname = "/m";
-    url.search = "";
     return NextResponse.redirect(url);
   }
 

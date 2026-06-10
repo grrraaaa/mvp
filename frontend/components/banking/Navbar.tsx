@@ -27,7 +27,7 @@ export default function Navbar({
   onLogout,
 }: NavbarProps) {
   const { role, roleId, setRoleId } = useRole();
-  const { toggleChat } = useSbbolUi();
+  const { openChat } = useSbbolUi();
   const [roleMenuOpen, setRoleMenuOpen] = useState(false);
   const menuRef = useRef<HTMLDivElement>(null);
 
@@ -48,7 +48,7 @@ export default function Navbar({
 
       <div className="flex items-center gap-2 sm:gap-4">
         <button
-          onClick={toggleChat}
+          onClick={openChat}
           className="flex items-center gap-1.5 px-2 sm:px-3.5 py-1.5 border border-gray-200 hover:border-gray-300 bg-white hover:bg-gray-50 text-gray-700 rounded-full transition-all text-xs font-semibold focus:outline-none shrink-0 cursor-pointer shadow-sm"
           title="Интеллектуальный ИИ-ассистент"
         >
