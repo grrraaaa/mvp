@@ -1,8 +1,16 @@
 "use client";
 
 import { useEffect, useMemo, useRef, useState } from "react";
-import { Check, Mic, UserCircle2, X, RotateCcw, Play, Square } from "lucide-react";
-import { IconMoreVertical } from "@/components/sbbol/SbbolIcons";
+import {
+  Check,
+  Mic,
+  UserCircle2,
+  X,
+  RotateCcw,
+  Play,
+  Square,
+  Ellipsis,
+} from "lucide-react";
 import {
   PERSONALIZATION_GLB_CATALOG,
   resolveModelPath,
@@ -134,13 +142,13 @@ export function PersonalizationMenu({ onOpenAbilities, compact }: Props) {
         type="button"
         onClick={() => setOpen((p) => !p)}
         className={`${
-          compact ? "w-7 h-7" : "w-9 h-9"
-        } rounded-full bg-white border border-[#e4e8eb] text-[#7d838a] hover:text-[#008064] hover:border-[#008064]/40 flex items-center justify-center transition-colors`}
-        title="Персонализация ассистента"
-        aria-label="Персонализация ассистента"
+          compact ? "w-8 h-8" : "w-8 h-8"
+        } flex items-center justify-center rounded text-[#7d838a] hover:bg-[#f2f4f7] hover:text-[#0d6e68] transition-colors`}
+        title="Меню"
+        aria-label="Меню"
         aria-expanded={open}
       >
-        <IconMoreVertical className={compact ? "w-3.5 h-3.5" : "w-4 h-4"} />
+        <Ellipsis className="w-4 h-4" aria-hidden />
       </button>
 
       {open && (
