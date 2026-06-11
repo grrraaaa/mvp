@@ -1857,7 +1857,7 @@ async def handle_banking_query(
 
         accs = data["accounts"]
         text = (
-            f"💰 **Остатки на счетах:**\n"
+            f"**Остатки на счетах:**\n"
             f"  • BYN: **{byn:,.2f}**\n"
             f"  • USD: {usd:,.2f}\n"
             f"  • EUR: {eur:,.2f}\n"

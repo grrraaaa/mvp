@@ -253,6 +253,7 @@ def _payment_hints_from_state(
             amount = float(str(amount_raw).replace(",", ".").replace(" ", ""))
         except ValueError:
             pass
+    form_type = (schema or {}).get("formType", "") if schema else ""
     hints = hints_for_payment(
         unp=unp,
         iban=iban,
@@ -262,6 +263,7 @@ def _payment_hints_from_state(
         counterparty_name=counterparty_name,
         exec_date=exec_date,
         currency=currency,
+        form_type=form_type,
     )
     lines = [f"{_HINT_MARKER.get(h.level, '•')} {h.message}" for h in hints if h.level != "ok"]
     ok_lines = [h for h in hints if h.level == "ok"]
@@ -365,6 +367,13 @@ def _ocr_photo_payment_reply(
         ],
         suggested_chips=["Сумма 1500", "Назначение — услуги"],
     )
+
+
+def _wants_payment_validation(message: str) -> bool:
+    low = message.lower().strip()
+    if re.search(r"провер\w*\s+реквизит|провер\w*\s+платеж", low):
+        return True
+    return bool(re.match(r"^провер(?:ь|ить|ка|ьте)$", low))
 
 
 _FIELD_HINT_PATTERNS = (
@@ -1244,7 +1253,7 @@ class AssistantService:
 
         state = _get_form_session(session_id, form_type)
 
-        if re.search(r"провер\w*\s+реквизит|провер\w*\s+платеж", message.lower()):
+        if _wants_payment_validation(message):
             daily_limit = 5000.0
             async with AsyncSessionLocal() as _db:
                 org_profile = await get_org_profile(_db, org_id)

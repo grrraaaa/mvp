@@ -31,7 +31,11 @@ function validateField(el: HTMLInputElement | HTMLTextAreaElement): "ok" | "warn
     if (amt > 5000) return "warn";
     return "ok";
   }
-  if (name.includes("PURPOSE") && val.length < 5) return "warn";
+  if (name.includes("PURPOSE")) {
+    const minLen = name.includes("INSTANT") ? 2 : 5;
+    if (!val) return "warn";
+    if (val.length < minLen) return "warn";
+  }
   return "ok";
 }
 

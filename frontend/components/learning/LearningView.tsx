@@ -35,7 +35,9 @@ import { useSbbolUi } from "@/components/layout/SbbolUiContext";
 import { useAssistantStore } from "@/store/assistantStore";
 import {
   AI_COMMANDS,
+  AI_REAL_CAPABILITIES,
   CATEGORY_SUBLABEL,
+  DEMO_QUICK_START,
   LEARNING_MODULES,
   type AiCategory,
   type AiCommand,
@@ -126,7 +128,7 @@ export default function LearningView() {
   const setSuggestedChips = useAssistantStore((s) => s.setSuggestedChips);
   const [done, setDone] = useState<Record<string, boolean>>({});
   const [openModule, setOpenModule] = useState<string>(LEARNING_MODULES[0].id);
-  const [tab, setTab] = useState<Tab>("modules");
+  const [tab, setTab] = useState<Tab>("commands");
   const [query, setQuery] = useState("");
   const [activeCategory, setActiveCategory] = useState<AiCategory | "Все">("Все");
 
@@ -206,9 +208,9 @@ export default function LearningView() {
               <GraduationCap className="w-6 h-6" />
             </div>
             <div>
-              <h1 className="text-lg font-semibold leading-tight">Обучающий модуль СберБизнес</h1>
+              <h1 className="text-lg font-semibold leading-tight">ИИ-консультант СберБизнес</h1>
               <p className="text-xs text-white/80">
-                Курс по работе с банком + каталог команд ИИ-консультанта
+                Реальные возможности демо-проекта — готовые запросы для чата справа
               </p>
             </div>
           </div>
@@ -240,6 +242,16 @@ export default function LearningView() {
           <div className="mt-3 flex gap-1 bg-white/10 rounded-xl p-1 backdrop-blur">
             <button
               type="button"
+              onClick={() => setTab("commands")}
+              className={`flex-1 text-xs font-semibold py-1.5 px-3 rounded-lg transition-colors flex items-center justify-center gap-1.5 ${
+                tab === "commands" ? "bg-white text-[#1d7a7a] shadow-sm" : "text-white/90 hover:bg-white/10"
+              }`}
+            >
+              <Sparkles className="w-3.5 h-3.5" />
+              Попробовать ({DEMO_QUICK_START.length} шагов)
+            </button>
+            <button
+              type="button"
               onClick={() => setTab("modules")}
               className={`flex-1 text-xs font-semibold py-1.5 px-3 rounded-lg transition-colors flex items-center justify-center gap-1.5 ${
                 tab === "modules" ? "bg-white text-[#1d7a7a] shadow-sm" : "text-white/90 hover:bg-white/10"
@@ -247,16 +259,6 @@ export default function LearningView() {
             >
               <GraduationCap className="w-3.5 h-3.5" />
               Уроки ({LEARNING_MODULES.length})
-            </button>
-            <button
-              type="button"
-              onClick={() => setTab("commands")}
-              className={`flex-1 text-xs font-semibold py-1.5 px-3 rounded-lg transition-colors flex items-center justify-center gap-1.5 ${
-                tab === "commands" ? "bg-white text-[#1d7a7a] shadow-sm" : "text-white/90 hover:bg-white/10"
-              }`}
-            >
-              <Sparkles className="w-3.5 h-3.5" />
-              Команды ИИ ({AI_COMMANDS.length})
             </button>
           </div>
         </div>
@@ -304,6 +306,22 @@ function ModulesTab({
 }) {
   return (
     <div className="space-y-4">
+      <div className="rounded-2xl border border-[#138d8a]/30 bg-[#138d8a]/5 p-4 flex flex-col sm:flex-row sm:items-center gap-3 justify-between">
+        <div>
+          <p className="text-sm font-bold text-gray-900">Сначала попробуйте готовые запросы</p>
+          <p className="text-xs text-gray-600 mt-1">
+            На вкладке «Попробовать» — 10 шагов с кнопкой «Спросить» и полный каталог из {AI_COMMANDS.length} команд.
+          </p>
+        </div>
+        <button
+          type="button"
+          onClick={() => onAsk(DEMO_QUICK_START[0].ask)}
+          className="shrink-0 inline-flex items-center gap-1.5 px-4 py-2 rounded-lg bg-[#138d8a] text-white text-xs font-semibold hover:bg-[#0e6b69]"
+        >
+          <MessageSquare className="w-3.5 h-3.5" />
+          {DEMO_QUICK_START[0].ask}
+        </button>
+      </div>
       {LEARNING_MODULES.map((mod) => {
         const modDone = mod.lessons.filter((l) => done[l.id]).length;
         const modPct = Math.round((modDone / mod.lessons.length) * 100);
@@ -454,12 +472,13 @@ function CommandsTab({
             Каталог команд ИИ
           </div>
           <h2 className="mt-2 text-xl sm:text-2xl font-bold text-gray-900 leading-tight">
-            Что умеет ИИ-консультант и&nbsp;как с&nbsp;ним общаться
+            Что уже работает в&nbsp;этом демо
           </h2>
           <p className="mt-2 text-sm text-gray-600 leading-relaxed max-w-2xl">
-            Все команды работают на естественном языке. ИИ понимает синонимы, падежи
-            и неполные фразы. Нажмите <b className="text-gray-900">«Спросить»</b> — чат
-            откроется с готовым сообщением, либо скопируйте пример и допишите свой.
+            Не абстрактный чат-бот: консультант читает счета, документы и выписку вашей
+            организации, открывает разделы, заполняет формы, строит графики PNG и проверяет
+            реквизиты. Нажмите <b className="text-gray-900">«Спросить»</b> — запрос уйдёт
+            в чат справа; можно копировать и менять под себя.
           </p>
         </div>
 
@@ -503,13 +522,87 @@ function CommandsTab({
         </div>
       </section>
 
+      {/* REAL CAPABILITIES */}
+      {activeCategory === "Все" && !query && (
+        <section className="bg-white rounded-2xl border border-gray-200 shadow-sm p-5">
+          <div className="flex items-center gap-2 mb-4">
+            <span className="w-1 h-4 bg-[#138d8a] rounded-sm" />
+            <h3 className="text-sm font-bold text-gray-900">Реальные возможности проекта</h3>
+          </div>
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
+            {AI_REAL_CAPABILITIES.map((cap) => (
+              <div
+                key={cap.id}
+                className="rounded-xl border border-gray-100 bg-gray-50/50 p-4"
+              >
+                <p className="text-sm font-semibold text-gray-900">{cap.title}</p>
+                <p className="text-xs text-gray-600 mt-1.5 leading-relaxed">{cap.detail}</p>
+                <div className="flex flex-wrap gap-1.5 mt-2.5">
+                  {cap.examples.map((ex) => (
+                    <button
+                      key={ex}
+                      type="button"
+                      onClick={() => onAsk(ex)}
+                      className="text-[11px] font-semibold px-2.5 py-1 rounded-md bg-white border border-gray-200 text-[#138d8a] hover:border-[#138d8a] hover:bg-[#138d8a]/5 transition-colors"
+                    >
+                      {ex}
+                    </button>
+                  ))}
+                </div>
+              </div>
+            ))}
+          </div>
+        </section>
+      )}
+
+      {/* DEMO QUICK START — приёмочный сценарий */}
+      {activeCategory === "Все" && !query && (
+        <section className="bg-white rounded-2xl border border-[#138d8a]/25 shadow-sm overflow-hidden">
+          <div className="px-5 py-4 border-b border-gray-100 bg-[#138d8a]/5">
+            <h3 className="text-sm font-bold text-gray-900 flex items-center gap-2">
+              <Zap className="w-4 h-4 text-[#138d8a]" />
+              Попробуйте сейчас — по шагам
+            </h3>
+            <p className="text-xs text-gray-600 mt-1">
+              Скопируйте порядок из приёмочного workflow: каждая кнопка отправляет готовый запрос в чат.
+            </p>
+          </div>
+          <ol className="divide-y divide-gray-100">
+            {DEMO_QUICK_START.map((step, idx) => (
+              <li key={step.id} className="px-5 py-3.5 flex flex-col sm:flex-row sm:items-center gap-2 sm:gap-4">
+                <div className="flex items-start gap-3 flex-1 min-w-0">
+                  <span className="shrink-0 w-7 h-7 rounded-full bg-[#138d8a] text-white text-xs font-bold flex items-center justify-center">
+                    {idx + 1}
+                  </span>
+                  <div className="min-w-0">
+                    <p className="text-sm font-semibold text-gray-900">{step.title}</p>
+                    <p className="text-xs text-gray-500 mt-0.5">{step.result}</p>
+                    <p className="text-[11px] text-gray-400 mt-1 font-mono truncate" title={step.ask}>
+                      {step.ask}
+                    </p>
+                  </div>
+                </div>
+                <button
+                  type="button"
+                  onClick={() => onAsk(step.ask)}
+                  className="shrink-0 inline-flex items-center gap-1.5 px-3 py-2 rounded-lg bg-[#138d8a] text-white text-xs font-semibold hover:bg-[#0e6b69] transition-colors self-start sm:self-center"
+                >
+                  <MessageSquare className="w-3.5 h-3.5" />
+                  Спросить
+                </button>
+              </li>
+            ))}
+          </ol>
+        </section>
+      )}
+
       {/* QUICK START — featured commands */}
       {activeCategory === "Все" && !query && (
         <section>
           <div className="flex items-baseline justify-between mb-3">
             <h3 className="text-sm font-bold text-gray-900 flex items-center gap-2">
               <Bookmark className="w-4 h-4 text-[#138d8a]" />
-              Часто используемые команды
+              Ещё частые команды
             </h3>
             <span className="text-[11px] text-gray-500">
               {featured.length} из {AI_COMMANDS.length}

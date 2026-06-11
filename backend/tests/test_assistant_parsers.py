@@ -169,6 +169,8 @@ def test_validate_amount_limit():
 def test_validate_purpose():
     assert pv.validate_purpose("").level == "warn"
     assert pv.validate_purpose("Оплата по договору №45").level == "ok"
+    assert pv.validate_purpose("тест", form_type="instant").level == "ok"
+    assert pv.validate_purpose("тест").level == "warn"
 
 
 def test_validate_exec_date_weekend():
@@ -271,6 +273,14 @@ def test_ocr_photo_payment_navigates_to_instant():
     assert resp.ui_actions[0].target == "/payments/instant"
 
 
+def test_wants_payment_validation_short_command():
+    from services.ai.assistant import _wants_payment_validation
+
+    assert _wants_payment_validation("проверь")
+    assert _wants_payment_validation("Проверь реквизиты платежа")
+    assert not _wants_payment_validation("проверь контрагента")
+
+
 def test_payment_hints_read_filled_by_field_name():
     from services.ai.assistant import _payment_hints_from_state
     from services.ai.form_schemas import load_form_schema
@@ -283,8 +293,8 @@ def test_payment_hints_read_filled_by_field_name():
         "forms.INSTANT_PAYMENT_ORDER.COMMON_COLUMNS_CUSTOMER_ACCOUNT": "крутой",
     }
     hints = _payment_hints_from_state(filled, schema=schema)
-    assert hints
-    assert "🟡" in hints or "🟢" in hints
+    assert "🟢" in hints
+    assert "назначение" in hints.lower() or "Назначение" in hints
 
 
 def test_ocr_photo_payment_on_form_page_no_navigate():

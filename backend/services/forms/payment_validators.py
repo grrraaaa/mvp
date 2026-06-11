@@ -129,13 +129,33 @@ def validate_amount(amount: float, daily_limit: float = 5000.0) -> FieldHint | N
     return FieldHint("amount", "ok", f"Сумма {amount:.2f} BYN в пределах лимита.")
 
 
-def validate_purpose(purpose: str, required: bool = True) -> FieldHint | None:
+def validate_purpose(
+    purpose: str,
+    required: bool = True,
+    *,
+    form_type: str = "",
+) -> FieldHint | None:
     text = (purpose or "").strip()
-    if required and len(text) < 5:
+    instant = form_type == "instant"
+    min_len = 2 if instant else 5
+
+    if not text:
+        if required:
+            return FieldHint("purpose", "warn", "Укажите назначение платежа.")
+        return None
+    if len(text) < min_len:
         return FieldHint(
             "purpose",
             "warn",
-            "Добавьте назначение платежа — номер договора или счёта (обязательно для данного типа).",
+            f"Назначение слишком короткое — укажите не менее {min_len} символов.",
+        )
+    if not instant and len(text) < 15 and not re.search(
+        r"договор|счёт|счет|№|акт|услуг|оплат", text, re.I
+    ):
+        return FieldHint(
+            "purpose",
+            "warn",
+            "Добавьте в назначение номер договора или счёта (рекомендуется для платёжного поручения).",
         )
     return FieldHint("purpose", "ok", "Назначение платежа заполнено.")
 
@@ -151,6 +171,7 @@ def hints_for_payment(
     exec_date: str = "",
     currency: str = "BYN",
     counterparty_country: str = "BY",
+    form_type: str = "",
 ) -> list[FieldHint]:
     out: list[FieldHint] = []
     if unp:
@@ -168,7 +189,7 @@ def hints_for_payment(
         if h:
             out.append(h)
     if purpose or unp:
-        h = validate_purpose(purpose)
+        h = validate_purpose(purpose, form_type=form_type)
         if h:
             out.append(h)
     cur_hint = validate_currency_residency(currency, counterparty_country)
