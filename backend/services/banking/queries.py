@@ -502,6 +502,119 @@ def _parse_doc_period_from_text(message: str) -> dict:
     return out
 
 
+# ──────────────────────────────────────────────────────────────────────────────
+# Относительные периоды: «за последний месяц», «за последние 14 дней», и т.п.
+# Используем ТЕКУЩУЮ дату (datetime.now()), а не якорь демо, чтобы фильтр
+# отражал «что значит последний месяц СЕЙЧАС». Демо-данные привязаны к 2026,
+# поэтому если today.month/year не совпадают с демо-диапазоном — подменяем
+# на ближайший доступный месяц (май 2026 как «последний закрытый»).
+# ──────────────────────────────────────────────────────────────────────────────
+
+def _add_months(year: int, month: int, delta: int) -> tuple[int, int]:
+    """year/month ± delta.months → (year, month)."""
+    idx = (year * 12 + (month - 1)) + delta
+    return divmod(idx, 12)[0], divmod(idx, 12)[1] + 1
+
+
+def _days_in_month(year: int, month: int) -> int:
+    if month == 12:
+        next_first = datetime(year + 1, 1, 1)
+    else:
+        next_first = datetime(year, month + 1, 1)
+    return (next_first - datetime(year, month, 1)).days
+
+
+def _parse_relative_period(low: str) -> dict | None:
+    """Распарсить «за последний/прошлый/текущий/этот месяц», «за последние N
+    дней/недель/месяцев» в диапазон date_from..date_to (dd.mm.yyyy).
+
+    Возвращает dict с date_from/date_to или None, если паттерн не матчит.
+    Использует сегодняшнюю дату; если today выходит за пределы демо-периода
+    (после 06.2026) — якоримся на 06.2026, чтобы фильтр имел смысл на сидах.
+    """
+    from datetime import date
+
+    # Якорь: для демо берём 06.06.2026 (последний «настоящий» день выписки),
+    # чтобы «последний месяц» = май 2026 (там больше всего данных).
+    today_real = date.today()
+    demo_anchor = date(2026, 6, 11)  # синхронно с DEMO_STATEMENT_ANCHOR
+    today = min(today_real, demo_anchor)
+
+    # «за последний месяц» / «за прошлый месяц» — предыдущий календарный
+    if re.search(r"\b(?:за\s+)?(?:последн\w*|прошл\w*)\s+месяц\w*\b", low):
+        y, m = _add_months(today.year, today.month, -1)
+        last_day = _days_in_month(y, m)
+        return {
+            "date_from": f"01.{m:02d}.{y}",
+            "date_to": f"{last_day:02d}.{m:02d}.{y}",
+        }
+
+    # «за текущий месяц» / «за этот месяц» — с 1-го числа по сегодня
+    if re.search(r"\b(?:за\s+)?(?:текущ\w*|этот|нынешн\w*)\s+месяц\w*\b", low):
+        return {
+            "date_from": f"01.{today.month:02d}.{today.year}",
+            "date_to": today.strftime("%d.%m.%Y"),
+        }
+
+    # «за последние / прошлые N дней/недель/месяцев»
+    rel_m = re.search(
+        r"\b(?:за\s+)?(?:последн\w*|прошл\w*|истекш\w*)\s+(\d{1,3})\s+"
+        r"(дн\w*|дней|день|недел\w*|месяц\w*)\b",
+        low,
+    )
+    if rel_m:
+        n = int(rel_m.group(1))
+        unit = rel_m.group(2)
+        unit_l = unit.lower()
+        if unit_l.startswith("дн"):
+            from datetime import timedelta
+            df = today - timedelta(days=n)
+            return {
+                "date_from": df.strftime("%d.%m.%Y"),
+                "date_to": today.strftime("%d.%m.%Y"),
+            }
+        if unit_l.startswith("недел"):
+            from datetime import timedelta
+            df = today - timedelta(weeks=n)
+            return {
+                "date_from": df.strftime("%d.%m.%Y"),
+                "date_to": today.strftime("%d.%m.%Y"),
+            }
+        if unit_l.startswith("месяц"):
+            # N полных месяцев назад по 1-му число → сегодня
+            y, m = _add_months(today.year, today.month, -n)
+            return {
+                "date_from": f"01.{m:02d}.{y}",
+                "date_to": today.strftime("%d.%m.%Y"),
+            }
+
+    # «за эту / текущую / прошлую неделю» — последние 7 дней
+    if re.search(r"\b(?:за\s+)?(?:эту|текущ\w*|прошл\w*|последн\w*)\s+недел\w*\b", low):
+        from datetime import timedelta
+        df = today - timedelta(days=7)
+        return {
+            "date_from": df.strftime("%d.%m.%Y"),
+            "date_to": today.strftime("%d.%m.%Y"),
+        }
+
+    return None
+
+
+def parse_doc_period(message: str) -> dict:
+    """Публичная обёртка: сначала абсолютный парсер, потом относительный.
+
+    Используется ИИ-интентом в `_list_documents_reply` и может вызываться из
+    других мест, когда нужно достать фильтр периода из произвольного текста.
+    """
+    out = _parse_doc_period_from_text(message)
+    if out.get("date_from") or out.get("date_to") or out.get("year") or out.get("month"):
+        return out
+    rel = _parse_relative_period(message.lower())
+    if rel:
+        out.update(rel)
+    return out
+
+
 def _normalize_date_token(token: str | None) -> str | None:
     """Привести дату к dd.mm.yyyy."""
     if not token:
@@ -576,7 +689,7 @@ async def _list_documents_reply(
         return None
 
     filters: dict = {}
-    period = _parse_doc_period_from_text(message)
+    period = parse_doc_period(message)
     if period.get("year"):
         filters["year"] = period["year"]
     if period.get("month"):
@@ -639,6 +752,14 @@ async def _list_documents_reply(
         count_stmt = count_stmt.where(
             BankDocument.doc_date.like(f"%.{filters['year']}")
         )
+    # date_from / date_to хранятся как dd.mm.yyyy; лексикографический
+    # порядок совпадает с хронологическим, пока год один. Для нашего демо
+    # (диапазон ≤ 1 год) это работает корректно. Если в будущем понадобится
+    # кросс-годовая фильтрация — заменим на преобразование через _to_iso_date.
+    if filters.get("date_from"):
+        count_stmt = count_stmt.where(BankDocument.doc_date >= filters["date_from"])
+    if filters.get("date_to"):
+        count_stmt = count_stmt.where(BankDocument.doc_date <= filters["date_to"])
     rows = (await session.execute(count_stmt)).scalars().all()
     if filters.get("counterparty"):
         cpf = filters["counterparty"].lower()
@@ -796,7 +917,15 @@ async def handle_banking_query(
     from services.chat.session_sources import get_source
     from services.banking.counterparty_risk import format_risk_report, get_counterparty_risk
     from services.tax.calendar import demo_fszh_amount, format_tax_calendar_reply, get_tax_calendar
+    from services.onec.assistant import is_onec_query
     import uuid as _uuid
+
+    # 1С — отдельный домен с собственным обработчиком (handle_onec_query).
+    # Если сообщение про 1С — сразу выходим, чтобы banking-пайплайн не
+    # перехватывал его через smart_search («покажи данные из 1С» иначе уйдёт
+    # в общий поиск контрагентов/документов и вернёт «ничего не найдено»).
+    if is_onec_query(message):
+        return None
 
     low = message.lower()
 

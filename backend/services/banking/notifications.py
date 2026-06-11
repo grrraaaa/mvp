@@ -7,6 +7,7 @@ from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from db.models import BankDocument, SmartNotification
+from services.banking.dynamic_notifications import compute_dynamic_notifications
 from services.banking.search import document_view_url
 
 _DOC_NUM_RE = re.compile(r"№\s*(\d+)")
@@ -99,7 +100,19 @@ async def handle_notification_query(
         .where(SmartNotification.org_id == org_id, SmartNotification.is_read == False)
         .order_by(SmartNotification.title)
     )
-    notifs = result.scalars().all()
+    # Подмешиваем динамические напоминания (cash forecast, signing docs, drafts)
+    # — иначе баннер их показывает, а ассистент по запросу не находит.
+    static_notifs = list(result.scalars().all())
+    dynamic_notifs = await compute_dynamic_notifications(session, org_id)
+    # Дедупликация по (org_id, title): динамические приоритетнее (свежее).
+    seen_keys: set[tuple[str, str]] = set()
+    notifs: list[SmartNotification] = []
+    for n in dynamic_notifs + static_notifs:
+        key = (n.org_id, n.title)
+        if key in seen_keys:
+            continue
+        seen_keys.add(key)
+        notifs.append(n)
     if not notifs:
         return {
             "message": "Активных напоминаний нет — всё под контролем.",

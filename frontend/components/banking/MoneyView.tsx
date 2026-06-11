@@ -1,6 +1,6 @@
 ﻿"use client";
 
-import { useState, type FormEvent } from "react";
+import { useEffect, useState, type FormEvent } from "react";
 import { useRouter } from "next/navigation";
 import {
   X,
@@ -24,7 +24,7 @@ import {
 } from "lucide-react";
 import type { BankDocument } from "@/lib/banking/types";
 import { useBankingStore } from "@/store/bankingStore";
-import { patchAccountNote } from "@/lib/api/banking";
+import { fetchBalanceSummary, patchAccountNote, type BalanceHistoryMonth } from "@/lib/api/banking";
 import { bankingToast } from "@/lib/banking/toast";
 import { useAuthStore } from "@/store/authStore";
 import { useRole } from "@/store/roleStore";
@@ -62,7 +62,23 @@ export default function MoneyView() {
   const [filterCurrency, setFilterCurrency] = useState<'all' | 'BYN' | 'USD' | 'EUR' | 'RUB'>('all');
   const [showHiddenAccounts, setShowHiddenAccounts] = useState(false);
   const [isRefreshing, setIsRefreshing] = useState(false);
-  
+
+  // Реальные обороты по счетам по месяцам — для блока «Динамика оборотов».
+  const [turnoverHistory, setTurnoverHistory] = useState<BalanceHistoryMonth[]>([]);
+  useEffect(() => {
+    let cancelled = false;
+    fetchBalanceSummary(6)
+      .then((data) => {
+        if (!cancelled) setTurnoverHistory(data.history ?? []);
+      })
+      .catch(() => {
+        if (!cancelled) setTurnoverHistory([]);
+      });
+    return () => {
+      cancelled = true;
+    };
+  }, []);
+
   // Collapsible panels state
   const [dynamicsOpen, setDynamicsOpen] = useState(true);
   const [movementOpen, setMovementOpen] = useState(true);
@@ -570,78 +586,22 @@ export default function MoneyView() {
 
             {dynamicsOpen && (
               <div className="p-6 bg-white animate-fadeIn">
-                {/* High fidelity inline SVG bar chart with responsive grid design */}
+                {/* Реальные данные из PostgreSQL: агрегат statement_lines за 6 мес. */}
                 <div className="w-full">
                   <div className="flex items-center justify-between text-xs text-gray-500 mb-6 bg-slate-50 p-2.5 rounded-lg border border-gray-100">
-                    <span className="font-medium">Период: <strong>Январь — Июнь 2026</strong></span>
+                    <span className="font-medium">
+                      Период: <strong>{turnoverHistory[0]?.label ?? "—"} — {turnoverHistory[turnoverHistory.length - 1]?.label ?? "—"}</strong>
+                    </span>
                     <span className="flex items-center gap-2 font-semibold">
                       <span className="w-2.5 h-2.5 bg-[#138d8a] rounded" /> Поступления (дебет)
                       <span className="w-2.5 h-2.5 bg-yellow-400 rounded" /> Расходы (кредит)
                     </span>
                   </div>
 
-                  {/* The exact representation of Sber style bar charts in visual SVG */}
-                  <svg viewBox="0 0 600 240" className="w-full h-auto">
-                    {/* SVG grid lines */}
-                    <line x1="40" y1="30" x2="580" y2="30" stroke="#f1f5f9" strokeWidth="1" />
-                    <line x1="40" y1="80" x2="580" y2="80" stroke="#f1f5f9" strokeWidth="1" />
-                    <line x1="40" y1="130" x2="580" y2="130" stroke="#f1f5f9" strokeWidth="1" />
-                    <line x1="40" y1="180" x2="580" y2="180" stroke="#f1f5f9" strokeWidth="1" />
-                    <line x1="40" y1="200" x2="580" y2="200" stroke="#94a3b8" strokeWidth="1.5" />
+                  <TurnoverSvgChart history={turnoverHistory} />
 
-                    {/* Left vertical Y Axis indicators */}
-                    <text x="30" y="34" fill="#94a3b8" fontSize="10" textAnchor="end">10k</text>
-                    <text x="30" y="84" fill="#94a3b8" fontSize="10" textAnchor="end">5k</text>
-                    <text x="30" y="134" fill="#94a3b8" fontSize="10" textAnchor="end">2.5k</text>
-                    <text x="30" y="184" fill="#94a3b8" fontSize="10" textAnchor="end">500</text>
-                    <text x="30" y="204" fill="#94a3b8" fontSize="10" textAnchor="end">0</text>
-
-                    {/* Sber bank corporate bars group for 6 months */}
-                    {/* Jan */}
-                    <g className="cursor-pointer hover:opacity-85 transition-opacity">
-                      <rect x="75" y="60" width="18" height="140" fill="#138d8a" rx="2" />
-                      <rect x="96" y="90" width="18" height="110" fill="#facc15" rx="2" />
-                      <text x="94" y="218" fill="#475569" fontSize="10" textAnchor="middle" fontWeight="bold">Янв</text>
-                    </g>
-
-                    {/* Feb */}
-                    <g className="cursor-pointer hover:opacity-85 transition-opacity">
-                      <rect x="155" y="80" width="18" height="120" fill="#138d8a" rx="2" />
-                      <rect x="176" y="110" width="18" height="90" fill="#facc15" rx="2" />
-                      <text x="174" y="218" fill="#475569" fontSize="10" textAnchor="middle" fontWeight="bold">Фев</text>
-                    </g>
-
-                    {/* Mar */}
-                    <g className="cursor-pointer hover:opacity-85 transition-opacity">
-                      <rect x="235" y="45" width="18" height="155" fill="#138d8a" rx="2" />
-                      <rect x="256" y="70" width="18" height="130" fill="#facc15" rx="2" />
-                      <text x="254" y="218" fill="#475569" fontSize="10" textAnchor="middle" fontWeight="bold">Мар</text>
-                    </g>
-
-                    {/* Apr */}
-                    <g className="cursor-pointer hover:opacity-85 transition-opacity">
-                      <rect x="315" y="95" width="18" height="105" fill="#138d8a" rx="2" />
-                      <rect x="336" y="125" width="18" height="75" fill="#facc15" rx="2" />
-                      <text x="334" y="218" fill="#475569" fontSize="10" textAnchor="middle" fontWeight="bold">Апр</text>
-                    </g>
-
-                    {/* May */}
-                    <g className="cursor-pointer hover:opacity-85 transition-opacity">
-                      <rect x="395" y="55" width="18" height="145" fill="#138d8a" rx="2" />
-                      <rect x="416" y="85" width="18" height="115" fill="#facc15" rx="2" />
-                      <text x="414" y="218" fill="#475569" fontSize="10" textAnchor="middle" fontWeight="bold">Май</text>
-                    </g>
-
-                    {/* Jun */}
-                    <g className="cursor-pointer hover:opacity-85 transition-opacity">
-                      <rect x="475" y="30" width="18" height="170" fill="#138d8a" rx="2" />
-                      <rect x="496" y="50" width="18" height="150" fill="#facc15" rx="2" />
-                      <text x="494" y="218" fill="#475569" fontSize="10" textAnchor="middle" fontWeight="bold">Июн</text>
-                    </g>
-                  </svg>
-                  
                   <div className="mt-4 text-[11px] text-gray-405 text-center font-medium italic">
-                    * Наведите курсор на интересующий месяц для глубокого финансового анализа оборотов. Данные обновляются в реальном времени.
+                    * Данные из PostgreSQL: суммы поступлений и расходов по орг-ии за последние 6 месяцев.
                   </div>
                 </div>
               </div>
@@ -1072,5 +1032,109 @@ export default function MoneyView() {
       )}
 
     </div>
+  );
+}
+
+const RU_MONTH_SHORT_DYN = [
+  "Янв", "Фев", "Мар", "Апр", "Май", "Июн",
+  "Июл", "Авг", "Сен", "Окт", "Ноя", "Дек",
+];
+
+function TurnoverSvgChart({ history }: { history: BalanceHistoryMonth[] }) {
+  // Дозаполняем 6 месяцев подряд (текущий − 5 … текущий).
+  const today = new Date();
+  const months: BalanceHistoryMonth[] = [];
+  const idxByKey = new Map(history.map((h) => [h.month, h]));
+  for (let i = 5; i >= 0; i--) {
+    const d = new Date(today.getFullYear(), today.getMonth() - i, 1);
+    const key = `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}`;
+    months.push(
+      idxByKey.get(key) ?? {
+        month: key,
+        label: `${RU_MONTH_SHORT_DYN[d.getMonth()]} ${d.getFullYear()}`,
+        amount: 0,
+        debit: 0,
+        credit: 0,
+      },
+    );
+  }
+
+  // Лог-подобная шкала как в Sber-UI: 500, 2.5k, 5k, 10k → ticks 0/500/2500/5000/10000.
+  const TICKS = [10_000, 5_000, 2_500, 500, 0];
+  const MAX = 10_000;
+  const Y_TOP = 30;
+  const Y_BOTTOM = 200;
+  const Y_RANGE = Y_BOTTOM - Y_TOP;
+  const yFor = (v: number) => {
+    const clamped = Math.max(0, Math.min(MAX, v));
+    return Y_BOTTOM - (clamped / MAX) * Y_RANGE;
+  };
+
+  if (months.every((m) => m.debit === 0 && m.credit === 0)) {
+    return (
+      <div className="h-48 flex items-center justify-center text-xs text-gray-500">
+        Нет данных по оборотам за последние 6 месяцев
+      </div>
+    );
+  }
+
+  return (
+    <svg viewBox="0 0 600 240" className="w-full h-auto">
+      {/* Сетка */}
+      <line x1="40" y1={yFor(10_000)} x2="580" y2={yFor(10_000)} stroke="#f1f5f9" strokeWidth="1" />
+      <line x1="40" y1={yFor(5_000)} x2="580" y2={yFor(5_000)} stroke="#f1f5f9" strokeWidth="1" />
+      <line x1="40" y1={yFor(2_500)} x2="580" y2={yFor(2_500)} stroke="#f1f5f9" strokeWidth="1" />
+      <line x1="40" y1={yFor(500)} x2="580" y2={yFor(500)} stroke="#f1f5f9" strokeWidth="1" />
+      <line x1="40" y1={Y_BOTTOM} x2="580" y2={Y_BOTTOM} stroke="#94a3b8" strokeWidth="1.5" />
+
+      <text x="30" y={yFor(10_000) + 4} fill="#94a3b8" fontSize="10" textAnchor="end">10k</text>
+      <text x="30" y={yFor(5_000) + 4} fill="#94a3b8" fontSize="10" textAnchor="end">5k</text>
+      <text x="30" y={yFor(2_500) + 4} fill="#94a3b8" fontSize="10" textAnchor="end">2.5k</text>
+      <text x="30" y={yFor(500) + 4} fill="#94a3b8" fontSize="10" textAnchor="end">500</text>
+      <text x="30" y={Y_BOTTOM + 4} fill="#94a3b8" fontSize="10" textAnchor="end">0</text>
+
+      {/* Бары по 6 месяцам. credit = поступления (зелёный), debit = расходы (жёлтый). */}
+      {months.map((m, i) => {
+        const groupX = 60 + i * 90; // 60, 150, 240, 330, 420, 510
+        const creditH = m.credit > 0 ? Math.max(Y_BOTTOM - yFor(m.credit), 2) : 0;
+        const debitH = m.debit > 0 ? Math.max(Y_BOTTOM - yFor(m.debit), 2) : 0;
+        return (
+          <g key={m.month} className="cursor-pointer">
+            <title>
+              {m.label}: поступления {m.credit.toLocaleString("ru-RU", { maximumFractionDigits: 0 })} BYN,
+              расходы {m.debit.toLocaleString("ru-RU", { maximumFractionDigits: 0 })} BYN
+            </title>
+            <rect
+              x={groupX}
+              y={Y_BOTTOM - creditH}
+              width="18"
+              height={creditH}
+              fill="#138d8a"
+              rx="2"
+              className="hover:opacity-85 transition-opacity"
+            />
+            <rect
+              x={groupX + 21}
+              y={Y_BOTTOM - debitH}
+              width="18"
+              height={debitH}
+              fill="#facc15"
+              rx="2"
+              className="hover:opacity-85 transition-opacity"
+            />
+            <text
+              x={groupX + 10}
+              y="218"
+              fill="#475569"
+              fontSize="10"
+              textAnchor="middle"
+              fontWeight="bold"
+            >
+              {RU_MONTH_SHORT_DYN[Number(m.month.split("-")[1]) - 1]}
+            </text>
+          </g>
+        );
+      })}
+    </svg>
   );
 }

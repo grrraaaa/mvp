@@ -1,7 +1,7 @@
 "use client";
 
 import Link from "next/link";
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import {
   IconMoreVertical,
   IconRefresh,
@@ -14,6 +14,7 @@ import { DASHBOARD_QUICK_LINKS } from "@/lib/sbbol/navigation";
 import { showStubToast } from "@/lib/sbbol/stubToast";
 import { useBankingStore } from "@/store/bankingStore";
 import { useAuthStore } from "@/store/authStore";
+import { fetchBalanceSummary, type BalanceHistoryMonth } from "@/lib/api/banking";
 
 export function DashboardHome() {
   const { openDocumentModal } = useSbbolUi();
@@ -24,6 +25,10 @@ export function DashboardHome() {
   const accounts = useBankingStore((s) => s.accounts);
   const loadAll = useBankingStore((s) => s.loadAll);
   const orgName = useAuthStore((s) => s.user?.org_name) ?? "DEMO ЮРИДИЧЕСКОЕ ЛИЦО";
+
+  // Реальные обороты по счетам по месяцам (из /api/banking/balance/summary)
+  const [turnoverHistory, setTurnoverHistory] = useState<BalanceHistoryMonth[]>([]);
+  const [turnoverLoading, setTurnoverLoading] = useState(true);
 
   const sumByn = accounts
     .filter((a) => a.currency === "BYN" && !a.hidden)
@@ -39,6 +44,25 @@ export function DashboardHome() {
     .reduce((sum, a) => sum + a.balance, 0);
 
   const fmt = (n: number) => n.toLocaleString("ru-RU", { minimumFractionDigits: 2 });
+
+  // Подгружаем реальные обороты по счетам из БД (агрегат из statement_lines).
+  useEffect(() => {
+    let cancelled = false;
+    setTurnoverLoading(true);
+    fetchBalanceSummary(6)
+      .then((data) => {
+        if (!cancelled) setTurnoverHistory(data.history ?? []);
+      })
+      .catch(() => {
+        if (!cancelled) setTurnoverHistory([]);
+      })
+      .finally(() => {
+        if (!cancelled) setTurnoverLoading(false);
+      });
+    return () => {
+      cancelled = true;
+    };
+  }, []);
 
   return (
     <div className="sbbol-dashboard sbbol-page-wrap w-full">
@@ -204,22 +228,116 @@ export function DashboardHome() {
       </div>
 
       <section className="mt-8 sbbol-card p-6">
-        <h3 className="text-base font-semibold text-[#1f1f22] mb-4">Динамика оборотов по счетам, BYN</h3>
-        <div className="h-48 flex items-end gap-2 px-2">
-          {[40, 65, 45, 80, 55, 70, 50, 85, 60, 75, 48, 90].map((h, i) => (
-            <div
-              key={i}
-              className="flex-1 bg-[#90d0cc] rounded-t-sm hover:bg-[#107f8c] transition-colors"
-              style={{ height: `${h}%` }}
-            />
-          ))}
+        <div className="flex items-center justify-between mb-4">
+          <h3 className="text-base font-semibold text-[#1f1f22]">Динамика оборотов по счетам, BYN</h3>
+          <span className="text-[11px] text-[#7d838a] flex items-center gap-1.5">
+            <span className="w-2.5 h-2.5 bg-[#107f8c] rounded" /> Поступления
+            <span className="w-2.5 h-2.5 bg-amber-400 rounded ml-2" /> Расходы
+          </span>
         </div>
-        <div className="flex justify-between mt-3 text-[10px] text-[#7d838a] px-1">
-          {["Янв", "Фев", "Мар", "Апр", "Май", "Июн", "Июл", "Авг", "Сен", "Окт", "Ноя", "Дек"].map((m) => (
-            <span key={m}>{m}</span>
-          ))}
-        </div>
+        <TurnoverBars history={turnoverHistory} loading={turnoverLoading} />
+        <p className="mt-3 text-[10px] text-[#7d838a]">
+          * Данные из PostgreSQL: агрегат statement_lines по орг-ии за последние 6 месяцев.
+        </p>
       </section>
+    </div>
+  );
+}
+
+const RU_MONTH_SHORT = [
+  "Янв", "Фев", "Мар", "Апр", "Май", "Июн",
+  "Июл", "Авг", "Сен", "Окт", "Ноя", "Дек",
+];
+
+function TurnoverBars({
+  history,
+  loading,
+}: {
+  history: BalanceHistoryMonth[];
+  loading: boolean;
+}) {
+  // Дозаполняем пустые месяцы нулями, чтобы было ровно 6 столбцов подряд.
+  const today = new Date();
+  const months: BalanceHistoryMonth[] = [];
+  const idxByKey = new Map(history.map((h) => [h.month, h]));
+  for (let i = 5; i >= 0; i--) {
+    const d = new Date(today.getFullYear(), today.getMonth() - i, 1);
+    const key = `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}`;
+    months.push(
+      idxByKey.get(key) ?? {
+        month: key,
+        label: `${RU_MONTH_SHORT[d.getMonth()]} ${d.getFullYear()}`,
+        amount: 0,
+        debit: 0,
+        credit: 0,
+      },
+    );
+  }
+  const maxVal = Math.max(
+    1,
+    ...months.map((m) => Math.max(m.debit, m.credit)),
+  );
+  // Лог-шкала снизу: 500, 2.5k, 5k, 10k — ступени как на исходном Sber-UI.
+  const ticks = [10_000, 5_000, 2_500, 500, 0];
+  const maxTick = 10_000;
+
+  if (loading) {
+    return (
+      <div className="h-48 flex items-center justify-center text-xs text-[#7d838a]">
+        Загрузка данных…
+      </div>
+    );
+  }
+
+  if (months.every((m) => m.debit === 0 && m.credit === 0)) {
+    return (
+      <div className="h-48 flex items-center justify-center text-xs text-[#7d838a]">
+        Нет данных по оборотам за выбранный период
+      </div>
+    );
+  }
+
+  return (
+    <div>
+      <div className="h-48 flex items-end gap-2 px-1 relative">
+        {/* Горизонтальные сетки */}
+        {ticks.map((t) => (
+          <div
+            key={t}
+            className="absolute left-0 right-0 border-t border-dashed border-[#e4e8eb] text-[9px] text-[#94a3b8] px-1"
+            style={{ bottom: `${(t / maxTick) * 100}%` }}
+          >
+            <span className="absolute -top-2 right-1 bg-white px-0.5">
+              {t >= 1000 ? `${t / 1000}k` : t}
+            </span>
+          </div>
+        ))}
+        {months.map((m) => {
+          const inH = (m.credit / maxTick) * 100;
+          const outH = (m.debit / maxTick) * 100;
+          return (
+            <div key={m.month} className="flex-1 flex flex-col items-center justify-end gap-0.5 z-10">
+              <div
+                title={`Поступления: ${m.credit.toLocaleString("ru-RU", { maximumFractionDigits: 0 })} BYN`}
+                className="w-3 bg-[#107f8c] rounded-t-sm hover:opacity-80 transition-opacity"
+                style={{ height: `${Math.max(inH, m.credit > 0 ? 2 : 0)}%` }}
+              />
+              <div
+                title={`Расходы: ${m.debit.toLocaleString("ru-RU", { maximumFractionDigits: 0 })} BYN`}
+                className="w-3 bg-amber-400 rounded-t-sm hover:opacity-80 transition-opacity"
+                style={{ height: `${Math.max(outH, m.debit > 0 ? 2 : 0)}%` }}
+              />
+            </div>
+          );
+        })}
+      </div>
+      <div className="flex justify-between mt-3 text-[10px] text-[#7d838a] px-1">
+        {months.map((m) => (
+          <span key={m.month} className="flex-1 text-center">
+            {RU_MONTH_SHORT[Number(m.month.split("-")[1]) - 1]}
+          </span>
+        ))}
+      </div>
     </div>
   );
 }

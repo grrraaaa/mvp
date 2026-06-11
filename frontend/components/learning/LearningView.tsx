@@ -6,9 +6,11 @@ import {
   ArrowLeft,
   Award,
   Banknote,
+  Bell,
   CheckCircle2,
   ChevronDown,
   Circle,
+  Database,
   ExternalLink,
   FileText,
   GraduationCap,
@@ -27,6 +29,7 @@ import { useAssistantStore } from "@/store/assistantStore";
 import {
   AI_COMMANDS,
   LEARNING_MODULES,
+  type AiCategory,
   type AiCommand,
   type LearningModule,
 } from "./learningContent";
@@ -44,9 +47,11 @@ const ICONS: Record<LearningModule["iconKey"], React.ReactNode> = {
   form: <Wand2 className="w-5 h-5" />,
   search: <Search className="w-5 h-5" />,
   voice: <Sparkles className="w-5 h-5" />,
+  onec: <Database className="w-5 h-5" />,
+  bell: <Bell className="w-5 h-5" />,
 };
 
-const CATEGORY_ACCENT: Record<AiCommand["category"], string> = {
+const CATEGORY_ACCENT: Record<AiCategory, string> = {
   Платежи: "#138d8a",
   Документы: "#2c9faf",
   Графики: "#7b3fbe",
@@ -54,9 +59,11 @@ const CATEGORY_ACCENT: Record<AiCommand["category"], string> = {
   Навигация: "#e9a23b",
   Сервисы: "#d9534f",
   Формы: "#9b5de5",
+  "1С": "#0a8064",
+  Напоминания: "#c2560d",
 };
 
-const CATEGORY_BG: Record<AiCommand["category"], string> = {
+const CATEGORY_BG: Record<AiCategory, string> = {
   Платежи: "from-[#138d8a]/10 to-[#138d8a]/5",
   Документы: "from-[#2c9faf]/10 to-[#2c9faf]/5",
   Графики: "from-[#7b3fbe]/10 to-[#7b3fbe]/5",
@@ -64,7 +71,30 @@ const CATEGORY_BG: Record<AiCommand["category"], string> = {
   Навигация: "from-[#e9a23b]/10 to-[#e9a23b]/5",
   Сервисы: "from-[#d9534f]/10 to-[#d9534f]/5",
   Формы: "from-[#9b5de5]/10 to-[#9b5de5]/5",
+  "1С": "from-[#0a8064]/10 to-[#0a8064]/5",
+  Напоминания: "from-[#c2560d]/10 to-[#c2560d]/5",
 };
+
+/** Монограмма в кружочке — строгая замена эмодзи в карточках команд. */
+function CategoryBadge({ category, size = 40 }: { category: AiCategory; size?: number }) {
+  const accent = CATEGORY_ACCENT[category];
+  const letter = category === "1С" ? "1" : category.charAt(0);
+  return (
+    <div
+      className="rounded-xl flex items-center justify-center shrink-0 shadow-sm text-white font-bold"
+      style={{
+        width: size,
+        height: size,
+        background: accent,
+        fontSize: size * 0.4,
+        lineHeight: 1,
+      }}
+      aria-hidden
+    >
+      {letter}
+    </div>
+  );
+}
 
 function loadProgress(): Record<string, boolean> {
   if (typeof window === "undefined") return {};
@@ -84,7 +114,7 @@ export default function LearningView() {
   const [openModule, setOpenModule] = useState<string>(LEARNING_MODULES[0].id);
   const [tab, setTab] = useState<Tab>("modules");
   const [query, setQuery] = useState("");
-  const [activeCategory, setActiveCategory] = useState<AiCommand["category"] | "Все">("Все");
+  const [activeCategory, setActiveCategory] = useState<AiCategory | "Все">("Все");
 
   useEffect(() => {
     setDone(loadProgress());
@@ -137,7 +167,7 @@ export default function LearningView() {
 
   const categories = useMemo(() => {
     const seen = new Set<string>();
-    const out: (AiCommand["category"] | "Все")[] = ["Все"];
+    const out: (AiCategory | "Все")[] = ["Все"];
     for (const c of AI_COMMANDS) {
       if (!seen.has(c.category)) {
         seen.add(c.category);
@@ -384,9 +414,9 @@ function CommandsTab({
 }: {
   query: string;
   setQuery: (s: string) => void;
-  activeCategory: AiCommand["category"] | "Все";
-  setActiveCategory: (c: AiCommand["category"] | "Все") => void;
-  categories: (AiCommand["category"] | "Все")[];
+  activeCategory: AiCategory | "Все";
+  setActiveCategory: (c: AiCategory | "Все") => void;
+  categories: (AiCategory | "Все")[];
   filtered: AiCommand[];
   onAsk: (q: string) => void;
 }) {
@@ -410,7 +440,7 @@ function CommandsTab({
               7 категорий
             </span>
             <span className="px-2.5 py-1 rounded-full bg-white/15 text-[11px] font-semibold backdrop-blur">
-              📊 4 типа графиков
+              4 типа графиков
             </span>
           </div>
         </div>
@@ -444,7 +474,7 @@ function CommandsTab({
           {categories.map((cat) => {
             const isActive = activeCategory === cat;
             const count = cat === "Все" ? AI_COMMANDS.length : AI_COMMANDS.filter((c) => c.category === cat).length;
-            const accent = cat === "Все" ? "#138d8a" : CATEGORY_ACCENT[cat as AiCommand["category"]];
+            const accent = cat === "Все" ? "#138d8a" : CATEGORY_ACCENT[cat as AiCategory];
             return (
               <button
                 key={cat}
@@ -472,7 +502,9 @@ function CommandsTab({
       {/* Results */}
       {filtered.length === 0 ? (
         <div className="bg-white rounded-2xl border border-gray-200 p-8 text-center">
-          <div className="text-4xl mb-2">🤷</div>
+          <div className="w-12 h-12 rounded-full bg-gray-100 flex items-center justify-center text-gray-400 mx-auto mb-2 font-bold">
+            0
+          </div>
           <p className="text-sm text-gray-700 font-semibold">Ничего не нашлось</p>
           <p className="text-xs text-gray-500 mt-1">
             Попробуйте другое слово или сбросьте фильтр категории
@@ -498,7 +530,7 @@ function CommandsTab({
 
       {/* Hint footer */}
       <div className="bg-amber-50 border border-amber-200 rounded-2xl p-4 text-xs text-amber-900 leading-relaxed">
-        <p className="font-semibold mb-1">💡 Совет</p>
+        <p className="font-semibold mb-1">Совет</p>
         ИИ понимает синонимы и падежи: «Иванову», «Иванова», «Иванов» — найдёт того же контрагента.
         Не помните точную команду — опишите задачу своими словами, ассистент уточнит.
       </div>
@@ -513,12 +545,7 @@ function CommandCard({ cmd, onAsk }: { cmd: AiCommand; onAsk: (q: string) => voi
       className={`relative bg-gradient-to-br ${CATEGORY_BG[cmd.category]} rounded-2xl border border-gray-200 shadow-sm p-3.5 hover:shadow-md transition-shadow group overflow-hidden`}
     >
       <div className="flex items-start gap-3">
-        <div
-          className="w-10 h-10 rounded-xl flex items-center justify-center text-xl shrink-0 shadow-sm"
-          style={{ background: accent, color: "white" }}
-        >
-          {cmd.emoji}
-        </div>
+        <CategoryBadge category={cmd.category} size={40} />
         <div className="flex-1 min-w-0">
           <div className="flex items-start justify-between gap-2">
             <p className="text-sm font-bold text-gray-900 leading-tight">{cmd.cmd}</p>

@@ -17,6 +17,34 @@ export interface BankingSummary {
   total_accounts: number;
 }
 
+export interface BalanceHistoryMonth {
+  /** YYYY-MM */
+  month: string;
+  /** «Май 2026» */
+  label: string;
+  /** Чистый поток за месяц: credit − debit */
+  amount: number;
+  /** Расходы */
+  debit: number;
+  /** Поступления */
+  credit: number;
+}
+
+export interface BalanceSummaryDetail {
+  total_byn: number;
+  total_eur: number;
+  total_usd: number;
+  total_rub: number;
+  accounts: {
+    iban: string;
+    label: string;
+    currency: string;
+    balance: number;
+    account_type: string;
+  }[];
+  history: BalanceHistoryMonth[];
+}
+
 async function fetchJson<T>(path: string): Promise<T> {
   const res = await fetch(apiUrl(path), {
     credentials: "include",
@@ -154,6 +182,16 @@ export function fetchCounterparties(): Promise<Counterparty[]> {
 
 export function fetchSummary(): Promise<BankingSummary> {
   return fetchJson<BankingSummary>("/api/banking/summary");
+}
+
+/** Полная сводка для «Сколько на счёте?» — реальные данные из PostgreSQL.
+ *  Возвращает totals по валютам, счета и помесячную историю debit/credit. */
+export function fetchBalanceSummary(
+  historyMonths = 6,
+): Promise<BalanceSummaryDetail> {
+  return fetchJson<BalanceSummaryDetail>(
+    `/api/banking/balance/summary?history_months=${historyMonths}`,
+  );
 }
 
 export interface OrgProfile {

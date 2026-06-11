@@ -3,9 +3,11 @@ from __future__ import annotations
 
 import re
 
+from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from models.schemas import ActionButton, AssistantResponse, SourceRef
+from db.models import BankDocument
+from models.schemas import ActionButton, AssistantResponse, SourceRef, UiAction
 from services.onec.connector import DOC_KIND_LABELS, format_onec_doc_line, list_onec_documents, sync_from_1c
 
 _ONEC_PATTERNS = [
@@ -44,7 +46,9 @@ async def handle_onec_query(
                 session_id=session_id,
                 action_buttons=[
                     ActionButton(label="Открыть коннектор 1С", url="/services", variant="primary"),
+                    ActionButton(label="Все документы", url="/other/documents", variant="secondary"),
                 ],
+                ui_actions=[UiAction(type="navigate", target="/other/documents")],
             )
         lines = [format_onec_doc_line(d) for d in docs[:8]]
         return AssistantResponse(
@@ -59,35 +63,80 @@ async def handle_onec_query(
             ],
             action_buttons=[
                 ActionButton(label="Импортировать все", url="/services", variant="primary"),
-                ActionButton(label="Показать на подписи", url="/", variant="secondary"),
+                ActionButton(label="Все документы", url="/other/documents", variant="secondary"),
             ],
         )
 
-    docs = await list_onec_documents(db, org_id, status="pending")
-    if not docs:
-        imported = await list_onec_documents(db, org_id, status="imported")
+    # «Покажи данные из 1С» / «документы из 1С» / «реестр 1С» — без явного
+    # глагола синхронизации. Показываем pending-документы и ведём в общий
+    # журнал документов организации, чтобы пользователь видел ВСЕ документы
+    # (включая те, что уже импортированы и проведены).
+    pending = await list_onec_documents(db, org_id, status="pending")
+    imported = await list_onec_documents(db, org_id, status="imported")
+    docs_count = (await db.execute(
+        select(BankDocument).where(BankDocument.org_id == org_id)
+    )).scalars().all()
+    total_in_bank = len(docs_count)
+
+    if not pending and not imported:
+        # Ничего не приходило из 1С — просто откроем общий журнал
         return AssistantResponse(
             message=(
-                "Все документы из 1С уже импортированы в банк."
-                + (f" Импортировано: {len(imported)}." if imported else "")
+                "Из 1С пока не поступало документов.\n\n"
+                "Откройте коннектор и подключите вашу базу 1С — документы к оплате "
+                "появятся здесь автоматически."
             ),
             session_id=session_id,
             action_buttons=[
-                ActionButton(label="Синхронизировать с 1С", message="Синхронизировать с 1С"),
+                ActionButton(label="Все документы", url="/other/documents", variant="primary"),
+                ActionButton(label="Синхронизировать с 1С", message="Синхронизировать с 1С", variant="secondary"),
             ],
+            ui_actions=[UiAction(type="navigate", target="/other/documents")],
         )
 
+    if not pending:
+        # Все уже импортированы — отдаём сводку и переходим к журналу
+        return AssistantResponse(
+            message=(
+                f"Из 1С импортировано **{len(imported)}** документов, новых нет.\n\n"
+                f"Всего в банке по организации: {total_in_bank} документов. "
+                "Открываю журнал, чтобы были видны и платежи из 1С, и обычные."
+            ),
+            session_id=session_id,
+            sources=[SourceRef(index=1, label="Реестр 1С", kind="onec", url="/services/onec")],
+            action_buttons=[
+                ActionButton(label="Все документы", url="/other/documents", variant="primary"),
+                ActionButton(label="Синхронизировать с 1С", message="Синхронизировать с 1С", variant="secondary"),
+            ],
+            ui_actions=[UiAction(type="navigate", target="/other/documents")],
+        )
+
+    # Есть pending — показываем их + переход ко всем документам
     lines = []
-    for i, d in enumerate(docs[:6], 1):
+    for i, d in enumerate(pending[:6], 1):
         kind = DOC_KIND_LABELS.get(d.doc_kind, d.doc_kind)
         lines.append(f"{i}. **{kind}** — {d.counterparty}, {d.amount:.2f} {d.currency}")
+    extra = ""
+    if imported:
+        extra = f"\n\nУже импортировано ранее: **{len(imported)}** документов."
+    if total_in_bank:
+        extra += f"\nВсего в банке: **{total_in_bank}** документов."
 
     return AssistantResponse(
-        message="Документы из 1С, ожидающие импорта:\n\n" + "\n".join(lines),
+        message=(
+            f"Документы из 1С, ожидающие импорта ({len(pending)}):\n\n"
+            + "\n".join(lines)
+            + extra
+        ),
         session_id=session_id,
-        sources=[SourceRef(index=1, label="Реестр 1С", kind="onec", url="/services/onec")],
+        sources=[
+            SourceRef(index=1, label="Реестр 1С", kind="onec", url="/services/onec"),
+            SourceRef(index=2, label="Журнал документов банка", kind="documents", url="/other/documents"),
+        ],
         action_buttons=[
-            ActionButton(label="Импортировать пакетом", url="/services", variant="primary"),
+            ActionButton(label="Все документы", url="/other/documents", variant="primary"),
+            ActionButton(label="Импортировать пакетом", url="/services", variant="secondary"),
             ActionButton(label="Синхронизировать", message="Синхронизировать с 1С", variant="secondary"),
         ],
+        ui_actions=[UiAction(type="navigate", target="/other/documents")],
     )
