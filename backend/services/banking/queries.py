@@ -466,19 +466,44 @@ _RU_MONTH_STEMS = (
 
 
 def _month_num_from_stem(stem: str) -> int | None:
-    """Сопоставить стем названия месяца с номером 1–12."""
+    """Сопоставить стем названия месяца с номером 1–12 (именительный/родительный)."""
     s = (stem or "").strip().lower()
     if not s:
         return None
     for m_num, name in _RU_MONTH_NAME.items():
         if s.startswith(name[:4]) or name.startswith(s[:4]):
             return m_num
+    for m_num, name in _RU_MONTH_NAME.items():
+        root = name[:3]
+        if len(root) >= 3 and s.startswith(root):
+            return m_num
     return None
 
 
-def is_banking_document_command(message: str) -> bool:
-    """Команды журнала документов — обрабатывает banking, не page_actions."""
-    low = (message or "").lower()
+_MONTH_NEG = (
+    r"(?:январ|феврал|март|апрел|ма[йя]|июн|июл|август|сентябр|октябр|ноябр|декабр)"
+)
+
+
+def _on_documents_journal_route(page_route: str | None) -> bool:
+    path = (page_route or "").split("?")[0].rstrip("/") or "/"
+    return path == "/other/documents" or path.startswith("/other/documents/")
+
+
+def is_banking_document_command(message: str, page_route: str | None = None) -> bool:
+    """Команды журнала документов — обрабатывает banking, не page_actions / навигация."""
+    low = (message or "").lower().strip()
+
+    if _on_documents_journal_route(page_route):
+        if re.search(
+            r"сумм\w*\s*(?:от|более|больше|>=?|свыше|до|меньше|<=?)|"
+            r"контрагент\w*|"
+            rf"(?:с|от)\s+(?:\d{{1,2}}[./]|{_RU_MONTH_STEMS})|"
+            r"на\s+подпис|проведен|черновик",
+            low,
+        ):
+            return True
+
     if not re.search(r"документ\w*|журнал\w*", low):
         return False
     if re.search(r"документ\w*\s*(?:№|номер\w*)", low):
@@ -531,6 +556,20 @@ def _parse_doc_period_from_text(message: str) -> dict:
             out["date_from"] = f"01.{m1:02d}.{year}"
             last_day = _days_in_month(year, m2)
             out["date_to"] = f"{last_day:02d}.{m2:02d}.{year}"
+            return out
+
+    # 1c) Односторонняя дата: «от 2 июня», «с 15.03.2026»
+    open_day_month = re.search(
+        rf"(?:от|с)\s+(\d{{1,2}})\s+({_RU_MONTH_STEMS})(?:\s+(20\d{{2}}))?",
+        low,
+    )
+    if open_day_month:
+        day = int(open_day_month.group(1))
+        month = _month_num_from_stem(open_day_month.group(2))
+        year_tail = open_day_month.group(3) or (year_m.group(1) if (year_m := re.search(r"(20\d{2})", low)) else None)
+        year = int(year_tail) if year_tail else 2026
+        if month:
+            out["date_from"] = f"{day:02d}.{month:02d}.{year}"
             return out
 
     # 2) Месяц + год: "за март 2026", "за март", "за мартом 2026 года"
@@ -839,7 +878,7 @@ async def _open_document_by_number_reply(
 
 
 async def _list_documents_reply(
-    session: AsyncSession, message: str, org_id: str
+    session: AsyncSession, message: str, org_id: str, page_route: str | None = None
 ) -> dict | None:
     """AI-интент: «покажи все документы / за год / за март / с 01.01 по 31.03 / на подпись»."""
     low = message.lower()
@@ -852,6 +891,14 @@ async def _list_documents_reply(
     #   2) «документы за/на/по/с/между <период|статус|контрагент>» — без глагола
     #   3) «документы на подпись» / «документы за 2026» — типичный разговорный
     has_doc = bool(re.search(r"документ\w*|журнал\w*|реестр\w*", low))
+    if not has_doc and _on_documents_journal_route(page_route):
+        if re.search(
+            r"сумм\w*|контрагент\w*|"
+            rf"(?:с|от)\s+(?:\d{{1,2}}[./]|{_RU_MONTH_STEMS})|"
+            r"на\s+подпис|проведен|черновик",
+            low,
+        ):
+            has_doc = True
     if not has_doc:
         return None
     has_action = bool(
@@ -867,8 +914,9 @@ async def _list_documents_reply(
         re.search(
             r"за\s+(?:\d{4}|этот\s+год|прошл\w*\s+год|январ|феврал|март|апрел|ма[йя]|"
             r"июн|июл|август|сентябр|октябр|ноябр|декабр|квартал)|"
-            r"с\s+\d{1,2}\.\d{1,2}|"
-            rf"(?:с|от)\s+({_RU_MONTH_STEMS})\s*(?:по|до)|"
+            r"(?:с|от)\s+\d{1,2}[./]\d{1,2}|"
+            rf"(?:с|от)\s+({_RU_MONTH_STEMS})\s*(?:по|до)?|"
+            rf"(?:с|от)\s+\d{{1,2}}\s+({_RU_MONTH_STEMS})|"
             r"на\s+подпис|ожида\w+\s+подпис|"
             r"подписан\w+|проведен\w+|исполнен\w+|черновик|отказан\w+|"
             r"сумм\w*|контрагент|от\s+\d|более|больше|руб|byn",
@@ -949,8 +997,10 @@ async def _list_documents_reply(
         except (ValueError, AttributeError):
             return None
 
+    amount_hint = bool(re.search(r"сумм\w*|руб|byn|usd|eur", low))
     range_m = re.search(
         r"(?:сумм\w*\s*)?(?:от|более|больше|>=?|свыше)\s*(\d+(?:[.,]\d+)?)"
+        rf"(?!\s*{_MONTH_NEG})"
         r"\s*(?:до|и\s+до|меньше|<=?|до)\s*(\d+(?:[.,]\d+)?)",
         low,
     )
@@ -960,12 +1010,13 @@ async def _list_documents_reply(
             filters["min_amount"], filters["max_amount"] = min(v1, v2), max(v1, v2)
     else:
         gt_m = re.search(
-            r"(?:сумм\w*\s*)?(?:от|более|больше|>=?|свыше)\s*(\d+(?:[.,]\d+)?)(?!\s*(?:до|до\s|и\s+до|меньше|<=?))",
+            r"(?:сумм\w*\s*)?(?:от|более|больше|>=?|свыше)\s*(\d+(?:[.,]\d+)?)"
+            rf"(?!\s*{_MONTH_NEG})(?!\s*(?:до|до\s|и\s+до|меньше|<=?))",
             low,
         )
         if gt_m:
             v = _to_amount(gt_m.group(1))
-            if v is not None:
+            if v is not None and (amount_hint or v >= 50):
                 filters["min_amount"] = v
         lt_m = re.search(
             r"(?:сумм\w*\s*)?(?:до|меньше|<=?)\s*(\d+(?:[.,]\d+)?)(?!\s*(?:от|более|больше|>=?|свыше))",
@@ -1039,6 +1090,14 @@ async def _list_documents_reply(
         )
     elif filters.get("year"):
         pretty_filters.append(f"за {filters['year']} год")
+    if filters.get("date_from") or filters.get("date_to"):
+        df, dt = filters.get("date_from"), filters.get("date_to")
+        if df and dt:
+            pretty_filters.append(f"с {df} по {dt}")
+        elif df:
+            pretty_filters.append(f"с {df}")
+        elif dt:
+            pretty_filters.append(f"до {dt}")
     if filters.get("status"):
         pretty_filters.append(f"статус «{filters['status']}»")
     if filters.get("counterparty"):
@@ -1177,7 +1236,11 @@ async def _account_note_reply(
 
 
 async def handle_banking_query(
-    session: AsyncSession, message: str, org_id: str = "demo", session_id: str | None = None
+    session: AsyncSession,
+    message: str,
+    org_id: str = "demo",
+    session_id: str | None = None,
+    page_route: str | None = None,
 ) -> dict | None:
     from services.chat.session_sources import get_source
     from services.banking.counterparty_risk import format_risk_report, get_counterparty_risk
@@ -1206,7 +1269,7 @@ async def handle_banking_query(
     if open_doc_reply:
         return open_doc_reply
 
-    documents_reply = await _list_documents_reply(session, message, org_id)
+    documents_reply = await _list_documents_reply(session, message, org_id, page_route)
     if documents_reply:
         return documents_reply
 

@@ -2,6 +2,7 @@
 
 import Image from "next/image";
 import { useRouter } from "next/navigation";
+import { ExchangeRatesWidget } from "@/components/banking/ExchangeRatesWidget";
 import type { SyntheticPageBody as PageBody } from "@/lib/sbbol/syntheticPageContent";
 import { showStubToast } from "@/lib/sbbol/stubToast";
 
@@ -221,32 +222,8 @@ export function SyntheticPageBody({ body }: Props) {
         </div>
       )}
 
-      {body.type === "exchange" && body.rates && (
-        <div className="bg-white rounded-[10px] border border-[#e4e8eb] shadow-[0_2px_8px_rgba(0,0,0,0.05)] overflow-hidden">
-          <table className="w-full text-sm">
-            <thead>
-              <tr className="bg-[#f8f9fb] border-b border-[#e4e8eb]">
-                <th className="px-5 py-3 font-semibold text-[#565b62] text-left">Валюта</th>
-                <th className="px-5 py-3 font-semibold text-[#565b62] text-right">Покупка</th>
-                <th className="px-5 py-3 font-semibold text-[#565b62] text-right">Продажа</th>
-                <th className="px-5 py-3 font-semibold text-[#565b62] text-right">НБРБ</th>
-              </tr>
-            </thead>
-            <tbody>
-              {body.rates.map((r) => (
-                <tr key={r.currency} className="border-b border-[#e4e8eb] last:border-b-0 hover:bg-[#f8f9fb]">
-                  <td className="px-5 py-3.5 font-semibold text-[#1f1f22]">{r.currency}</td>
-                  <td className="px-5 py-3.5 text-right text-[#107f8c]">{r.buy}</td>
-                  <td className="px-5 py-3.5 text-right text-[#d64545]">{r.sell}</td>
-                  <td className="px-5 py-3.5 text-right text-[#565b62]">{r.nbrb}</td>
-                </tr>
-              ))}
-            </tbody>
-          </table>
-          <p className="px-5 py-3 text-xs text-[#7d838a] border-t border-[#e4e8eb]">
-            Курсы на 31.05.2026, обновлены в 10:00
-          </p>
-        </div>
+      {body.type === "exchange" && (
+        <ExchangeRatesWidget showNbrb className="rounded-[10px] border-[#e4e8eb] shadow-[0_2px_8px_rgba(0,0,0,0.05)]" />
       )}
 
       {body.type === "profile" && body.info && (

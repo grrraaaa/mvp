@@ -217,7 +217,25 @@ def test_is_banking_document_command():
     assert q.is_banking_document_command("Открой все документы с суммой от 50 руб")
     assert q.is_banking_document_command("Открой все документы с контрагентом ООО ромашка")
     assert q.is_banking_document_command("Открой документ номер 97")
+    assert q.is_banking_document_command("открой документы на подпись")
+    assert q.is_banking_document_command(
+        "открой документы на подписи от 02.06.2026 до 03.06.2026"
+    )
+    assert q.is_banking_document_command("сумма от 300", page_route="/other/documents")
     assert not q.is_banking_document_command("создай платёж на 100")
+    assert not q.is_banking_document_command("сумма от 300")
+
+
+def test_doc_period_open_day_month():
+    period = q.parse_doc_period("открой документы на подписи от 2 июня")
+    assert period.get("date_from") == "02.06.2026"
+
+
+def test_match_demo_route_skips_banking_document_list():
+    from services.navigation.demo_routes import match_demo_route
+
+    assert match_demo_route("открой документы на подпись") is None
+    assert match_demo_route("открой документы на подписи от 2 июня") is None
 
 
 def test_page_actions_skip_banking_document_commands():
@@ -251,6 +269,22 @@ def test_ocr_photo_payment_navigates_to_instant():
     assert "иконку камеры" in resp.message.lower()
     assert resp.ui_actions
     assert resp.ui_actions[0].target == "/payments/instant"
+
+
+def test_payment_hints_read_filled_by_field_name():
+    from services.ai.assistant import _payment_hints_from_state
+    from services.ai.form_schemas import load_form_schema
+
+    schema = load_form_schema("instant")
+    filled = {
+        "forms.INSTANT_PAYMENT_ORDER.CONTRAGENT_ID": "Федя",
+        "forms.INSTANT_PAYMENT_ORDER.COMMON_COLUMNS_AMOUNT": "1500",
+        "forms.INSTANT_PAYMENT_ORDER.PAYMENT_PURPOSE": "тест",
+        "forms.INSTANT_PAYMENT_ORDER.COMMON_COLUMNS_CUSTOMER_ACCOUNT": "крутой",
+    }
+    hints = _payment_hints_from_state(filled, schema=schema)
+    assert hints
+    assert "🟡" in hints or "🟢" in hints
 
 
 def test_ocr_photo_payment_on_form_page_no_navigate():

@@ -284,9 +284,17 @@ def is_navigation_message(message: str) -> bool:
     return match_demo_route(message) is not None
 
 
-def match_demo_route(message: str) -> Optional[str]:
+def match_demo_route(message: str, page_route: str | None = None) -> Optional[str]:
     """Map user message to an internal demo route, or None."""
     msg = message.lower().strip()
+
+    try:
+        from services.banking.queries import is_banking_document_command
+
+        if is_banking_document_command(message, page_route):
+            return None
+    except Exception:
+        pass
 
     for route, patterns in _ROUTE_RULES:
         for pat in patterns:

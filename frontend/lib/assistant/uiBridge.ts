@@ -1,6 +1,16 @@
 /** Мост ассистента → клики и действия в UI (React + DOM). */
 
 export const ASSISTANT_ACTION_EVENT = "sber-assistant-action";
+export const ASSISTANT_NAVIGATE_EVENT = "sber-assistant-navigate";
+
+export function dispatchAssistantNavigate(path: string) {
+  if (typeof window === "undefined") return;
+  window.dispatchEvent(
+    new CustomEvent<{ path: string }>(ASSISTANT_NAVIGATE_EVENT, {
+      detail: { path },
+    }),
+  );
+}
 
 export interface AssistantActionDetail {
   action: string;
@@ -48,7 +58,11 @@ export interface UiActionPayload {
 export function executeUiActions(actions: UiActionPayload[]) {
   for (const a of actions) {
     if (a.type === "navigate") {
-      window.location.href = a.target;
+      if (a.target.startsWith("/")) {
+        dispatchAssistantNavigate(a.target);
+      } else {
+        window.location.href = a.target;
+      }
       continue;
     }
     if (a.type === "open_modal") {

@@ -15,6 +15,7 @@ from db.database import AsyncSessionLocal
 from services.banking.queries import (
     handle_banking_query,
     get_org_profile,
+    is_banking_document_command,
     lookup_counterparty,
     normalize_counterparty_query,
 )
@@ -211,17 +212,41 @@ def _is_greeting_or_empty(message: str) -> bool:
 _HINT_MARKER = {"error": "🔴", "warn": "🟡", "ok": "🟢"}
 
 
+def _filled_values_by_key(schema: dict, filled: Dict[str, str]) -> Dict[str, str]:
+    """Сессия хранит filled по field name — приводим к schema keys."""
+    out: Dict[str, str] = {}
+    for fld in schema.get("fields", []):
+        key = fld.get("key")
+        name = fld.get("name")
+        if not key or not name:
+            continue
+        val = filled.get(name) or filled.get(key)
+        if val and str(val).strip():
+            out[key] = str(val).strip()
+    return out
+
+
 def _payment_hints_from_state(
     filled: Dict[str, str],
     daily_limit: float = 5000.0,
     counterparty_name: str = "",
+    *,
+    schema: dict | None = None,
 ) -> str:
-    unp = filled.get("CONTRAGENT_UNP", "")
-    iban = filled.get("CONTRAGENT_ACCOUNT", "")
-    purpose = filled.get("PAYMENT_PURPOSE", "")
-    amount_raw = filled.get("COMMON_COLUMNS_AMOUNT", "")
-    exec_date = filled.get("COMMON_COLUMNS_DOC_DATE", "")
-    currency = filled.get("COMMON_COLUMNS_CURRENCY", "") or filled.get("PAYMENT_CURRENCY", "") or "BYN"
+    by_key = _filled_values_by_key(schema, filled) if schema else filled
+
+    unp = by_key.get("CONTRAGENT_UNP", "")
+    iban = by_key.get("CONTRAGENT_ACCOUNT", "")
+    purpose = by_key.get("PAYMENT_PURPOSE", "")
+    amount_raw = by_key.get("COMMON_COLUMNS_AMOUNT", "")
+    exec_date = by_key.get("COMMON_COLUMNS_DOC_DATE", "")
+    currency = (
+        by_key.get("COMMON_COLUMNS_CURRENCY", "")
+        or by_key.get("PAYMENT_CURRENCY", "")
+        or "BYN"
+    )
+    if not counterparty_name:
+        counterparty_name = by_key.get("CONTRAGENT_ID", "")
     amount: float | None = None
     if amount_raw:
         try:
@@ -1133,7 +1158,9 @@ class AssistantService:
                 reformulation_meta,
             )
 
-        if is_navigation_message(message):
+        if is_navigation_message(message) and not is_banking_document_command(
+            message, page_route
+        ):
             demo_nav = self._maybe_demo_navigation(message, session_id)
             if demo_nav:
                 return self._attach_reformulation(demo_nav, reformulation_meta)
@@ -1147,7 +1174,9 @@ class AssistantService:
             if form_reply is not None:
                 return self._attach_reformulation(form_reply, reformulation_meta)
 
-        banking_reply = await self._maybe_banking_query(message, session_id, effective_org)
+        banking_reply = await self._maybe_banking_query(
+            message, session_id, effective_org, page_route=page_route
+        )
         if banking_reply:
             return self._attach_reformulation(banking_reply, reformulation_meta)
 
@@ -1220,15 +1249,31 @@ class AssistantService:
             async with AsyncSessionLocal() as _db:
                 org_profile = await get_org_profile(_db, org_id)
                 daily_limit = getattr(org_profile, "daily_payment_limit", 5000.0) or 5000.0
+            by_key = _filled_values_by_key(schema, state.filled)
             hint_block = _payment_hints_from_state(
                 state.filled,
                 daily_limit=daily_limit,
-                counterparty_name=state.filled.get("CONTRAGENT_ID", ""),
+                schema=schema,
             )
             if not hint_block:
+                has_core = (
+                    by_key.get("CONTRAGENT_ID")
+                    and by_key.get("COMMON_COLUMNS_AMOUNT")
+                    and by_key.get("PAYMENT_PURPOSE")
+                )
+                if not has_core:
+                    return AssistantResponse(
+                        message="Пока нечего проверять — заполните получателя, сумму и назначение платежа.",
+                        session_id=session_id,
+                    )
                 return AssistantResponse(
-                    message="Пока нечего проверять — заполните получателя, сумму и назначение платежа.",
+                    message=(
+                        "**Проверка реквизитов платежа:**\n"
+                        "🟢 Основные поля заполнены (получатель, сумма, назначение). "
+                        "Для мгновенного платежа УНП/IBAN в форме не требуются."
+                    ),
                     session_id=session_id,
+                    form_fill_status="partial",
                 )
             blocked = "🔴" in hint_block
             return AssistantResponse(
@@ -1371,7 +1416,7 @@ class AssistantService:
             hint_block = _payment_hints_from_state(
                 state.filled,
                 daily_limit=daily_limit,
-                counterparty_name=state.filled.get("CONTRAGENT_ID", ""),
+                schema=schema,
             )
             if hint_block:
                 msg += f"\n\n**Проверки:**\n{hint_block}"
@@ -1586,10 +1631,21 @@ class AssistantService:
         )
 
     async def _maybe_banking_query(
-        self, message: str, session_id: str, org_id: str = "demo"
+        self,
+        message: str,
+        session_id: str,
+        org_id: str = "demo",
+        *,
+        page_route: str | None = None,
     ) -> Optional[AssistantResponse]:
         async with AsyncSessionLocal() as session:
-            result = await handle_banking_query(session, message, org_id=org_id, session_id=session_id)
+            result = await handle_banking_query(
+                session,
+                message,
+                org_id=org_id,
+                session_id=session_id,
+                page_route=page_route,
+            )
         if not result:
             return None
         return AssistantResponse(

@@ -10,6 +10,7 @@ import { RoleCharacterSync } from "@/components/assistant/RoleCharacterSync";
 import { TtsBootstrap } from "@/components/assistant/TtsBootstrap";
 import { GatewayStatusBanner } from "@/components/banking/GatewayStatusBanner";
 import { ServiceApplicationModal } from "@/components/banking/ServiceApplicationModal";
+import { BankingShell } from "@/components/layout/BankingShell";
 import { useAuthStore } from "@/store/authStore";
 import { useAssistantDockStore } from "@/store/assistantDockStore";
 
@@ -62,7 +63,7 @@ function AppProvidersInner({ children, documentModalHtml }: Props) {
       <Suspense fallback={null}>
         <NewDocQueryOpener onOpen={() => setDocModalOpen(true)} />
       </Suspense>
-      {children}
+      {showBankingExtras ? <BankingShell>{children}</BankingShell> : children}
       {showBankingExtras && (
         <>
           <TtsBootstrap />

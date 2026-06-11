@@ -1,5 +1,6 @@
 import { apiUrl } from "@/lib/api/baseUrl";
 import { authHeaders } from "@/lib/auth/tokenRef";
+import type { ExchangeRatesPayload } from "@/lib/banking/exchangeRates";
 import type {
   BankAccount,
   BankDocument,
@@ -61,6 +62,10 @@ async function fetchJson<T>(path: string): Promise<T> {
 
 export function fetchAccounts(): Promise<BankAccount[]> {
   return fetchJson<BankAccount[]>("/api/banking/accounts");
+}
+
+export function fetchExchangeRates(): Promise<ExchangeRatesPayload> {
+  return fetchJson<ExchangeRatesPayload>("/api/banking/exchange-rates");
 }
 
 export function fetchDocument(docId: string): Promise<BankDocument> {

@@ -1,6 +1,12 @@
 import { create } from "zustand";
 import type { ChoiceCard } from "@/components/assistant/ChoiceCards";
 
+function newSessionId(): string {
+  return typeof crypto !== "undefined" && crypto.randomUUID
+    ? crypto.randomUUID()
+    : `sess-${Date.now()}`;
+}
+
 export interface NavigationStep {
   label: string;
   url: string;
@@ -121,7 +127,7 @@ interface AssistantState {
 export const useAssistantStore = create<AssistantState>((set) => ({
   messages: [],
   isLoading: false,
-  sessionId: null,
+  sessionId: newSessionId(),
   welcomeOpen: false,
   navigationPath: null,
   formActions: null,
@@ -131,7 +137,10 @@ export const useAssistantStore = create<AssistantState>((set) => ({
   historyLoaded: false,
 
   addMessage: (msg) =>
-    set((state) => ({ messages: [...state.messages, msg] })),
+    set((state) => ({
+      messages: [...state.messages, msg],
+      historyLoaded: msg.role === "user" ? true : state.historyLoaded,
+    })),
 
   updateLastAssistant: (patch) =>
     set((state) => {
@@ -177,7 +186,7 @@ export const useAssistantStore = create<AssistantState>((set) => ({
   clearSession: () =>
     set({
       messages: [],
-      sessionId: null,
+      sessionId: newSessionId(),
       welcomeOpen: false,
       navigationPath: null,
       formActions: null,
@@ -188,10 +197,7 @@ export const useAssistantStore = create<AssistantState>((set) => ({
   startNewChat: () =>
     set({
       messages: [],
-      sessionId:
-        typeof crypto !== "undefined" && crypto.randomUUID
-          ? crypto.randomUUID()
-          : `sess-${Date.now()}`,
+      sessionId: newSessionId(),
       welcomeOpen: true,
       navigationPath: null,
       formActions: null,

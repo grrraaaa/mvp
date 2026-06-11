@@ -898,7 +898,7 @@ def _match_action(message: str, page_route: Optional[str]) -> Optional[dict]:
     try:
         from services.banking.queries import is_banking_document_command
 
-        if is_banking_document_command(message):
+        if is_banking_document_command(message, page_route):
             return None
     except Exception:
         pass

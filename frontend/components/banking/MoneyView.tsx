@@ -20,8 +20,8 @@ import {
   CreditCard,
   Building2,
   Users2,
-  ArrowRightLeft,
 } from "lucide-react";
+import { ExchangeRatesWidget } from "@/components/banking/ExchangeRatesWidget";
 import type { BankDocument } from "@/lib/banking/types";
 import { useBankingStore } from "@/store/bankingStore";
 import { fetchBalanceSummary, patchAccountNote, type BalanceHistoryMonth } from "@/lib/api/banking";
@@ -101,17 +101,6 @@ export default function MoneyView() {
   const [verifyResult, setVerifyResult] = useState<any | null>(null);
   const [verifyLoading, setVerifyLoading] = useState(false);
 
-  // Quick Currency calculator state
-  const [calcAmount, setCalcAmount] = useState('100');
-  const [fromCurr, setFromCurr] = useState<'BYN' | 'USD' | 'EUR' | 'RUB'>('USD');
-  const [toCurr, setToCurr] = useState<'BYN' | 'USD' | 'EUR' | 'RUB'>('BYN');
-  const rates = {
-    BYN: 1,
-    USD: 3.25,
-    EUR: 3.52,
-    RUB: 0.035
-  };
-
   const handleRefresh = () => {
     setIsRefreshing(true);
     void loadAll().finally(() => setIsRefreshing(false));
@@ -152,14 +141,6 @@ export default function MoneyView() {
     if (filterCurrency === 'all') return true;
     return acc.currency === filterCurrency;
   });
-
-  // Currency Converter calculation
-  const convertCurrency = () => {
-    const amt = parseFloat(calcAmount) || 0;
-    const valueInByn = amt * rates[fromCurr];
-    const targetValue = valueInByn / rates[toCurr];
-    return targetValue.toFixed(2);
-  };
 
   // Safe signature action
   const startSign = (doc: BankDocument) => {
@@ -807,83 +788,7 @@ export default function MoneyView() {
             </div>
           </div>
 
-          {/* Current Currencies Conversion Widget with Live Input */}
-          <div className="bg-white rounded-2xl border border-gray-150 shadow-xs p-5 space-y-4">
-            <div className="flex items-center gap-2 border-b border-gray-150 pb-2">
-              <ArrowRightLeft className="w-4.5 h-4.5 text-[#138d8a]" />
-              <h4 className="text-xs font-black text-gray-400 uppercase tracking-widest leading-none">
-                Курсы валют ОАО «Сбер Банк»
-              </h4>
-            </div>
-
-            {/* Currency Rates Display */}
-            <div className="grid grid-cols-3 gap-2 text-center text-xs bg-slate-50 p-2.5 rounded-lg border border-gray-100">
-              <div>
-                <span className="text-gray-400 font-bold block">Валюта</span>
-                <span className="font-extrabold text-gray-700 block mt-1">USD/BYN</span>
-                <span className="font-extrabold text-gray-700 block">EUR/BYN</span>
-                <span className="font-extrabold text-gray-700 block">RUB/BYN</span>
-              </div>
-              <div>
-                <span className="text-[#138d8a] font-bold block">Покупка</span>
-                <span className="font-black text-[#138d8a] block mt-1">3.2200</span>
-                <span className="font-black text-[#138d8a] block">3.4900</span>
-                <span className="font-black text-[#138d8a] block">3.4100</span>
-              </div>
-              <div>
-                <span className="text-amber-600 font-bold block">Продажа</span>
-                <span className="font-black text-amber-600 block mt-1">3.2650</span>
-                <span className="font-black text-amber-600 block">3.5450</span>
-                <span className="font-black text-amber-600 block">3.4800</span>
-              </div>
-            </div>
-
-            {/* Interactive Calculator */}
-            <div className="space-y-3 pt-2">
-              <span className="text-[10px] text-gray-400 font-bold uppercase tracking-wider block">Калькулятор конверсий</span>
-              
-              <div className="flex items-center gap-2">
-                <input 
-                  type="number" 
-                  value={calcAmount} 
-                  onChange={(e) => setCalcAmount(e.target.value)}
-                  placeholder="Сумма"
-                  className="flex-1 border border-gray-200 rounded-lg px-2.5 py-1.5 text-xs focus:ring-1 focus:ring-[#138d8a] focus:border-[#138d8a] font-black text-gray-800"
-                />
-                
-                <select 
-                  value={fromCurr} 
-                  onChange={(e) => setFromCurr(e.target.value as any)}
-                  className="border border-gray-200 rounded-lg px-2 py-1.5 text-xs font-bold bg-white text-gray-700 focus:ring-1 focus:ring-[#138d8a]"
-                >
-                  <option value="BYN">BYN</option>
-                  <option value="USD">USD</option>
-                  <option value="EUR">EUR</option>
-                  <option value="RUB">RUB</option>
-                </select>
-
-                <span className="text-gray-400 text-xs font-black">➡</span>
-
-                <select 
-                  value={toCurr} 
-                  onChange={(e) => setToCurr(e.target.value as any)}
-                  className="border border-gray-200 rounded-lg px-2 py-1.5 text-xs font-bold bg-white text-gray-700 focus:ring-1 focus:ring-[#138d8a]"
-                >
-                  <option value="BYN">BYN</option>
-                  <option value="USD">USD</option>
-                  <option value="EUR">EUR</option>
-                  <option value="RUB">RUB</option>
-                </select>
-              </div>
-
-              <div className="bg-emerald-50/55 p-2 rounded-lg border border-emerald-100 text-right text-xs">
-                <span className="text-emerald-700 font-medium mr-1.5">Результат (ориентировочно):</span>
-                <span className="font-extrabold text-emerald-900 text-sm">
-                  {convertCurrency()} {toCurr}
-                </span>
-              </div>
-            </div>
-          </div>
+          <ExchangeRatesWidget compact />
 
         </div>
 

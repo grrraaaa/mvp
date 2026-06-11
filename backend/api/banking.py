@@ -369,6 +369,14 @@ async def banking_summary(
     return BankingSummaryOut(balances=balances, total_accounts=len(accounts))
 
 
+@router.get("/exchange-rates")
+async def exchange_rates():
+    """Курсы USD/EUR/RUB: НБРБ + спред банка, fallback — демо-котировки."""
+    from services.banking.exchange_rates import get_exchange_rates
+
+    return await get_exchange_rates()
+
+
 @router.get("/balance/summary", response_model=BalanceSummaryDetailOut)
 async def balance_summary(
     db: AsyncSession = Depends(get_db),

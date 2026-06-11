@@ -93,17 +93,14 @@ export function AssistantPanel({ variant = "default", compactMobile = false, onR
   }, [messages, isLoading]);
 
   useEffect(() => {
-    if (!sessionId) {
-      setSessionId(crypto.randomUUID());
-    }
-  }, [sessionId, setSessionId]);
-
-  useEffect(() => {
-    if (historyLoaded || !sessionId) return;
+    if (historyLoaded || !sessionId || messages.length > 0) return;
     void fetchChatHistory(sessionId).then((msgs) => {
       if (msgs.length > 0) loadMessages(msgs);
+      else if (useAssistantStore.getState().messages.length === 0) {
+        useAssistantStore.setState({ historyLoaded: true });
+      }
     });
-  }, [sessionId, historyLoaded, loadMessages]);
+  }, [sessionId, historyLoaded, loadMessages, messages.length]);
 
   const mergedChips = useMemo(() => {
     const dynamic = suggestedChips ?? [];
@@ -183,7 +180,11 @@ export function AssistantPanel({ variant = "default", compactMobile = false, onR
         ]?.url;
         if (target?.startsWith("/")) router.push(target);
       }
-      if (data.session_id) setSessionId(data.session_id as string);
+      if (data.session_id && typeof data.session_id === "string") {
+        const sid = data.session_id;
+        const current = useAssistantStore.getState().sessionId;
+        if (!current || sid === current) setSessionId(sid);
+      }
       const pendingFormActions = data.form_actions as never;
       if (pendingFormActions && (pendingFormActions as unknown[]).length) {
         const hasNav = Boolean(

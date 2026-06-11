@@ -2,7 +2,11 @@
 
 import { useEffect } from "react";
 import { useRouter } from "next/navigation";
-import { ASSISTANT_ACTION_EVENT, type AssistantActionDetail } from "@/lib/assistant/uiBridge";
+import {
+  ASSISTANT_ACTION_EVENT,
+  ASSISTANT_NAVIGATE_EVENT,
+  type AssistantActionDetail,
+} from "@/lib/assistant/uiBridge";
 import { useSbbolUi } from "@/components/layout/SbbolUiContext";
 import { PRODUCT_ROUTES } from "@/lib/banking/productCatalog";
 import { useBankingStore } from "@/store/bankingStore";
@@ -94,8 +98,17 @@ export function AssistantUiBridge() {
       }
     };
 
+    const onNavigate = (e: Event) => {
+      const path = (e as CustomEvent<{ path: string }>).detail?.path;
+      if (path?.startsWith("/")) router.push(path);
+    };
+
     window.addEventListener(ASSISTANT_ACTION_EVENT, handler);
-    return () => window.removeEventListener(ASSISTANT_ACTION_EVENT, handler);
+    window.addEventListener(ASSISTANT_NAVIGATE_EVENT, onNavigate);
+    return () => {
+      window.removeEventListener(ASSISTANT_ACTION_EVENT, handler);
+      window.removeEventListener(ASSISTANT_NAVIGATE_EVENT, onNavigate);
+    };
   }, [openDocumentModal, openServiceApplication, router]);
 
   return null;
