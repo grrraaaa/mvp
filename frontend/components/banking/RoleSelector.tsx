@@ -83,7 +83,11 @@ export function RoleSelector({ onLogout, compact, iconOnly }: Props) {
 
       {open && (
         <div
-          className="absolute right-0 top-full mt-2 bg-white border border-gray-200 rounded-xl shadow-2xl w-[min(22rem,calc(100vw-1.5rem))] z-50 overflow-hidden animate-fadeIn"
+          className={
+            iconOnly
+              ? "fixed left-3 right-3 top-[4.25rem] z-[60] bg-white border border-gray-200 rounded-xl shadow-2xl overflow-hidden animate-fadeIn"
+              : "absolute right-0 top-full mt-2 bg-white border border-gray-200 rounded-xl shadow-2xl w-[min(22rem,calc(100vw-1.5rem))] z-50 overflow-hidden animate-fadeIn"
+          }
           role="menu"
         >
           <div className="px-4 py-3 border-b border-gray-100 bg-slate-50">
