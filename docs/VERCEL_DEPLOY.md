@@ -65,10 +65,10 @@ vercel --prod
 | `SECRET_KEY` | случайная строка |
 | `ALLOWED_ORIGINS` | `https://mvp-beta-umber.vercel.app` |
 | `IMAGETOTEXT_API_KEY` / `SECRET` | OCR на формах платежей |
-| `SPEECHIFY_API_KEY` | Озвучка ответов + выбор голоса |
-| `SPEECHIFY_TTS_MODEL` | `simba-multilingual` |
-| `SPEECHIFY_TTS_LANGUAGE` | `ru-RU` |
-| `SPEECHIFY_TTS_VOICE` | `george` (или другой id) |
+| `QWEN_TTS_API_KEY` | Озвучка ответов + выбор голоса |
+| `QWEN_TTS_BASE_URL` | `https://dashscope-intl.aliyuncs.com/api/v1` |
+| `QWEN_TTS_MODEL` | `qwen3-tts-flash,cosyvoice-v3-flash` |
+| `QWEN_TTS_VOICE` | `qwen-male` (или `qwen-female`) |
 | `POSTGRES_URL` | из Storage (не вручную) |
 | `RESEED_ON_DEPLOY` | `1` — на каждом cold start снести схему и засеять заново (только dev). На проде `0`/пусто, иначе снесёт реальные правки пользователей |
 
@@ -82,7 +82,7 @@ vercel --prod
 2. `GET /api/health` → `{"status":"ok",...}`.
 3. Чат: «выписка по счёту» → навигация на `/statement`, без *HTTP 500*.
 4. Формы: `/payments/paydocbyn`, фото → OCR (если ключи заданы).
-5. TTS: `GET /api/tts/status` → `enabled: true`; в чате — выбор голоса и озвучка ответа.
+5. TTS: `GET /api/tts/status` → `qwen_available: true`; в чате — выбор голоса и озвучка ответа.
 
 ---
 

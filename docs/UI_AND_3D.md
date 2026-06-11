@@ -9,7 +9,7 @@
 | **Карта разделов** | Кнопка в шапке / слайдер планет | `PlanetMapOverlay`, `SolarSystemScene`, `PlanetNavSlider` |
 | **Консультант** | Панель AI-чата | `CharacterRoomScene`, `GlbCharacter3D` |
 
-Карта — космос и орбиты; чат — портрет Алексея на тёмном фоне (без мебели в GLB).
+Карта — космос и орбиты; чат — портрет Александра/Александры на тёмном фоне (без мебели в GLB).
 
 ---
 
@@ -98,6 +98,6 @@
 | Чипы чата | `lib/sbbol/assistantQuickChips.ts` |
 | Shell | `components/layout/SbbolShell.tsx` |
 | Камера | `lib/assistant/glbCharacter.ts` + env |
-| Голос TTS | UI + `SPEECHIFY_TTS_VOICE` |
+| Голос TTS | UI + `QWEN_TTS_VOICE` |
 
 См. [TTS.md](./TTS.md), [ASSISTANT.md](./ASSISTANT.md).

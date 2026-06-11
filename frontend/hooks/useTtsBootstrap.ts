@@ -28,10 +28,14 @@ function mergeVoiceGroups(apiGroups: typeof COMBINED_VOICE_GROUPS) {
 /** Синхронизирует текущий voiceId с полом активного персонажа. Вызывается
  *  после каждой загрузки списка голосов — иначе при гонке «пресет применился
  *  раньше, чем пришли голоса» в ttsStore залёг старый voiceId (например,
- *  qwen-female от прошлой женской роли), и Александр озвучивается женским. */
+ *  qwen-female от прошлой женской роли), и Александр озвучивается женским.
+ *  Скипается, если у пользователя выставлен ручной voiceOverride. */
 function syncVoiceToCurrentCharacter() {
   if (typeof window === "undefined") return;
-  const charStyleId = useCharacterStore.getState().config.styleId;
+  const char = useCharacterStore.getState();
+  // Ручной выбор голоса из UI — не трогаем.
+  if (char.voiceOverride) return;
+  const charStyleId = char.config.styleId;
   if (charStyleId !== "human-m" && charStyleId !== "human-f") return;
   const tts = useTtsStore.getState();
   const wanted = pickVoiceForCharacter(tts.voiceGroups, charStyleId);

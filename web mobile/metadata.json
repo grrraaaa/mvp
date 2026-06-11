@@ -1,7 +1,0 @@
-{
-  "name": "AURA OS Core Workspace",
-  "description": "Premium multi-page front-end application crafted in React, TypeScript, and Tailwind representing pixel-perfect Figma layout designs with complete diagnostic telemetry grids, and customizable parameters.",
-  "requestFramePermissions": [],
-  "majorCapabilities": ["MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"]
-}
-

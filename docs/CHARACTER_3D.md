@@ -1,8 +1,8 @@
-# 3D-консультант (Алексей)
+# 3D-консультант (Александр / Александра)
 
-> Схема подсистемы: [FEATURE_MAP.md §10](./FEATURE_MAP.md#10-3d-консультант-алексей)
+> Схема подсистемы: [FEATURE_MAP.md §10](./FEATURE_MAP.md#10-3d-консультант-александралександра)
 
-Модель по умолчанию: **`frontend/public/models/personage.glb`** (~20 MB, Sketchfab scan).
+Модель по умолчанию: **`frontend/public/models/personage.glb`** (~20 MB, Sketchfab scan). Дополнительно — `textured_sasha_lady1.glb`, `textured_sasha_lady2.glb` (выбираются пресетом).
 
 | Параметр | Значение |
 |----------|----------|
@@ -122,6 +122,6 @@ NEXT_PUBLIC_CHARACTER_HEAD_PORTRAIT=false
 
 ## Настройки в UI
 
-⚙ **Настройки консультанта** (`CharacterSettings.tsx`): имя, пресеты, **голос озвучки** (если Speechify).
+⚙ **Настройки консультанта** (`CharacterSettings.tsx`): пресет (3 шт.), **голос озвучки** (Qwen: `qwen-male` / `qwen-female`).
 
 См. [TTS.md](./TTS.md), [UI_AND_3D.md](./UI_AND_3D.md).

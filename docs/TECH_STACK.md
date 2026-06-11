@@ -26,7 +26,7 @@
 ### 3D (две сцены)
 
 1. **Карта** — `SolarSystemScene`, `planetMap.ts`
-2. **Консультант** — `personage.glb`, `GlbCharacter3D`, vertex lip sync
+2. **Консультант** — `personage.glb` / `textured_sasha_lady1.glb` / `textured_sasha_lady2.glb`, `GlbCharacter3D`, vertex lip sync
 
 ### Не используется в UI
 
@@ -44,7 +44,7 @@
 | **Pydantic** | 2.x | Схемы |
 | **pydantic-settings** | 2.x | `mvp/.env` |
 | **SQLAlchemy** | 2.x | Async ORM |
-| **httpx** | 0.27+ | Speechify, Soniox, OCR |
+| **httpx** | 0.27+ | Qwen TTS, OCR |
 | **openai** SDK | 1.50+ | OpenRouter / OpenAI |
 
 ### AI
@@ -58,11 +58,10 @@
 
 | Провайдер | Модуль |
 |-----------|--------|
-| Speechify | `services/tts/speechify.py` |
-| Soniox | `services/tts/soniox.py` |
-| Deepgram | `services/tts/deepgram.py` |
+| Qwen (Alibaba Model Studio) | `services/tts/qwen_tts.py` |
+| Edge TTS (fallback) | встроен в `services/tts/__init__.py` |
 
-Приоритет в `services/tts/__init__.py`.
+Без `QWEN_TTS_API_KEY` — озвучка через Edge TTS / браузер. См. [TTS.md](./TTS.md).
 
 ---
 
@@ -93,9 +92,8 @@
 |------------|------------|
 | `OPENAI_API_KEY` | LLM |
 | `OPENAI_BASE_URL` | OpenRouter URL |
-| `SPEECHIFY_API_KEY` | TTS (приоритет) |
-| `SPEECHIFY_TTS_VOICE` | Голос по умолчанию |
-| `SONIOX_API_KEY` | TTS запасной |
+| `QWEN_TTS_API_KEY` | TTS (Qwen, приоритет) |
+| `QWEN_TTS_VOICE` | Голос по умолчанию (`qwen-male` / `qwen-female`) |
 | `IMAGETOTEXT_*` | OCR |
 | `DATABASE_URL` / `POSTGRES_URL` | БД |
 | `NEXT_PUBLIC_API_URL` | URL API для фронта |
@@ -113,10 +111,10 @@ Next.js · React · Tailwind · Zustand
  ├─ R3F: планеты (внутренние маршруты SBBOL)
  ├─ R3F: GLB-консультант + vertex lip sync
  └─ TTS UI + Web Speech input
-        │ HTTP
+         │ HTTP
 FastAPI · httpx · SQLAlchemy
  ├─ assistant.py (LLM | rules | SBBOL links)
- └─ tts/ (Speechify | Soniox | Deepgram)
+ └─ tts/ (Qwen | Edge TTS fallback)
         │
- OpenRouter · Speechify API · Postgres
+ OpenRouter · Qwen TTS API · Postgres
 ```

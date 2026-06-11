@@ -5,7 +5,7 @@
 - **Node.js** 20+
 - **Python** 3.11+
 - Ключ [OpenRouter](https://openrouter.ai/keys) или OpenAI (для LLM; без ключа — rule-based)
-- Опционально: [Speechify](https://console.speechify.ai/api-keys) для озвучки, Docker для Postgres
+- Опционально: [Qwen TTS](https://modelstudio.console.alibabacloud.com/) для озвучки, Docker для Postgres
 
 ---
 
@@ -23,14 +23,13 @@ OPENAI_API_KEY=sk-or-v1-...
 OPENAI_BASE_URL=https://openrouter.ai/api/v1
 OPENAI_MODEL=openai/gpt-4o-mini
 
-# Озвучка (Speechify, русский)
-SPEECHIFY_API_KEY=...
-SPEECHIFY_TTS_MODEL=simba-multilingual
-SPEECHIFY_TTS_LANGUAGE=ru-RU
-SPEECHIFY_TTS_VOICE=george
+# Озвучка (Qwen TTS, русский)
+QWEN_TTS_API_KEY=sk-...
+QWEN_TTS_BASE_URL=https://dashscope-intl.aliyuncs.com/api/v1
+QWEN_TTS_VOICE=qwen-male
 ```
 
-Без `SPEECHIFY_API_KEY` — озвучка через голос браузера. Запас: `SONIOX_API_KEY`, `DEEPGRAM_API_KEY`. См. [TTS.md](./TTS.md).
+Без `QWEN_TTS_API_KEY` — озвучка через Edge TTS / голос браузера. См. [TTS.md](./TTS.md).
 
 ### `mvp/frontend/.env.local`
 
@@ -125,7 +124,7 @@ Invoke-RestMethod -Uri http://127.0.0.1:8000/api/chat/guest -Method POST `
 
 1. http://localhost:3000  
 2. Открыть AI-чат (кнопка справа внизу)  
-3. Выбрать голос в выпадающем списке (если Speechify настроен)  
+3. Выбрать голос в выпадающем списке (если Qwen TTS настроен)  
 4. Сообщения:
    - `выписка по счёту` → `/statement`
    - `зарплатный проект` → `/salary`

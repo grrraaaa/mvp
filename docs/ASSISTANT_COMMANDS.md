@@ -389,7 +389,7 @@ flowchart TD
 - **Формы**: заполнение работает только на страницах `/payments/*` с `form_type` в запросе.
 - **OCR**: требует `IMAGETOTEXT_API_KEY` или demo-fallback (без ключа — заглушка).
 - **LLM**: требует `OPENAI_API_KEY` (+ опционально `OPENAI_BASE_URL` для OpenRouter).
-- **TTS**: требует `SPEECHIFY_API_KEY` или fallback на Edge TTS / browser SpeechSynthesis.
+- **TTS**: требует `QWEN_TTS_API_KEY` или fallback на Edge TTS / browser SpeechSynthesis.
 - **Sticky context**: `page_actions` учитывает текущий `page_route` — «создать документ» на `/login` откроет `demo-login`, а не `open-doc-modal`.
 
 ---

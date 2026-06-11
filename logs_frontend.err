@@ -1,2 +1,128 @@
 (node:13596) Warning: `--localstorage-file` was provided without a valid path
 (Use `node --trace-warnings ...` to show where the warning was created)
+ ⚠ ./components/assistant/PersonalizationMenu.tsx
+Attempted import error: 'resolveModelPath' is not exported from '@/store/characterStore' (imported as 'resolveModelPath').
+
+Import trace for requested module:
+./components/assistant/PersonalizationMenu.tsx
+./components/assistant/AssistantPanel.tsx
+./components/assistant/AssistantFloatingChat.tsx
+./components/layout/AppProviders.tsx
+./components/layout/ClientRoot.tsx
+
+./components/assistant/PersonalizationMenu.tsx
+Attempted import error: 'PERSONALIZATION_GLB_CATALOG' is not exported from '@/store/characterStore' (imported as 'PERSONALIZATION_GLB_CATALOG').
+
+Import trace for requested module:
+./components/assistant/PersonalizationMenu.tsx
+./components/assistant/AssistantPanel.tsx
+./components/assistant/AssistantFloatingChat.tsx
+./components/layout/AppProviders.tsx
+./components/layout/ClientRoot.tsx
+ ⚠ ./components/assistant/PersonalizationMenu.tsx
+Attempted import error: 'resolveModelPath' is not exported from '@/store/characterStore' (imported as 'resolveModelPath').
+
+Import trace for requested module:
+./components/assistant/PersonalizationMenu.tsx
+./components/assistant/AssistantPanel.tsx
+./components/assistant/AssistantFloatingChat.tsx
+./components/layout/AppProviders.tsx
+./components/layout/ClientRoot.tsx
+
+./components/assistant/PersonalizationMenu.tsx
+Attempted import error: 'PERSONALIZATION_GLB_CATALOG' is not exported from '@/store/characterStore' (imported as 'PERSONALIZATION_GLB_CATALOG').
+
+Import trace for requested module:
+./components/assistant/PersonalizationMenu.tsx
+./components/assistant/AssistantPanel.tsx
+./components/assistant/AssistantFloatingChat.tsx
+./components/layout/AppProviders.tsx
+./components/layout/ClientRoot.tsx
+ ⚠ ./components/assistant/PersonalizationMenu.tsx
+Attempted import error: 'resolveModelPath' is not exported from '@/store/characterStore' (imported as 'resolveModelPath').
+
+Import trace for requested module:
+./components/assistant/PersonalizationMenu.tsx
+./components/assistant/AssistantPanel.tsx
+./components/assistant/AssistantFloatingChat.tsx
+./components/layout/AppProviders.tsx
+./components/layout/ClientRoot.tsx
+
+./components/assistant/PersonalizationMenu.tsx
+Attempted import error: 'PERSONALIZATION_GLB_CATALOG' is not exported from '@/store/characterStore' (imported as 'PERSONALIZATION_GLB_CATALOG').
+
+Import trace for requested module:
+./components/assistant/PersonalizationMenu.tsx
+./components/assistant/AssistantPanel.tsx
+./components/assistant/AssistantFloatingChat.tsx
+./components/layout/AppProviders.tsx
+./components/layout/ClientRoot.tsx
+ ⚠ ./components/assistant/PersonalizationMenu.tsx
+Attempted import error: 'resolveModelPath' is not exported from '@/store/characterStore' (imported as 'resolveModelPath').
+
+Import trace for requested module:
+./components/assistant/PersonalizationMenu.tsx
+./components/assistant/AssistantPanel.tsx
+./components/assistant/AssistantFloatingChat.tsx
+./components/layout/AppProviders.tsx
+./components/layout/ClientRoot.tsx
+
+./components/assistant/PersonalizationMenu.tsx
+Attempted import error: 'PERSONALIZATION_GLB_CATALOG' is not exported from '@/store/characterStore' (imported as 'PERSONALIZATION_GLB_CATALOG').
+
+Import trace for requested module:
+./components/assistant/PersonalizationMenu.tsx
+./components/assistant/AssistantPanel.tsx
+./components/assistant/AssistantFloatingChat.tsx
+./components/layout/AppProviders.tsx
+./components/layout/ClientRoot.tsx
+ ⚠ ./components/assistant/PersonalizationMenu.tsx
+Attempted import error: 'resolveModelPath' is not exported from '@/store/characterStore' (imported as 'resolveModelPath').
+
+Import trace for requested module:
+./components/assistant/PersonalizationMenu.tsx
+./components/assistant/AssistantPanel.tsx
+./components/assistant/AssistantFloatingChat.tsx
+./components/layout/AppProviders.tsx
+./components/layout/ClientRoot.tsx
+
+./components/assistant/PersonalizationMenu.tsx
+Attempted import error: 'PERSONALIZATION_GLB_CATALOG' is not exported from '@/store/characterStore' (imported as 'PERSONALIZATION_GLB_CATALOG').
+
+Import trace for requested module:
+./components/assistant/PersonalizationMenu.tsx
+./components/assistant/AssistantPanel.tsx
+./components/assistant/AssistantFloatingChat.tsx
+./components/layout/AppProviders.tsx
+./components/layout/ClientRoot.tsx
+ ⚠ ./components/assistant/PersonalizationMenu.tsx
+Attempted import error: 'resolveModelPath' is not exported from '@/store/characterStore' (imported as 'resolveModelPath').
+
+Import trace for requested module:
+./components/assistant/PersonalizationMenu.tsx
+./components/assistant/AssistantPanel.tsx
+./components/assistant/AssistantFloatingChat.tsx
+./components/layout/AppProviders.tsx
+./components/layout/ClientRoot.tsx
+
+./components/assistant/PersonalizationMenu.tsx
+Attempted import error: 'PERSONALIZATION_GLB_CATALOG' is not exported from '@/store/characterStore' (imported as 'PERSONALIZATION_GLB_CATALOG').
+
+Import trace for requested module:
+./components/assistant/PersonalizationMenu.tsx
+./components/assistant/AssistantPanel.tsx
+./components/assistant/AssistantFloatingChat.tsx
+./components/layout/AppProviders.tsx
+./components/layout/ClientRoot.tsx
+
+./components/assistant/character3d/CharacterAvatar3D.tsx
+Attempted import error: 'resolveModelPath' is not exported from '@/store/characterStore' (imported as 'resolveModelPath').
+
+Import trace for requested module:
+./components/assistant/character3d/CharacterAvatar3D.tsx
+./components/assistant/character3d/CharacterRoomScene.tsx
+./components/assistant/AssistantCharacter.tsx
+./components/assistant/AssistantPanel.tsx
+./components/assistant/AssistantFloatingChat.tsx
+./components/layout/AppProviders.tsx
+./components/layout/ClientRoot.tsx

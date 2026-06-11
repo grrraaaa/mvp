@@ -17,8 +17,8 @@
 | **Навигация** | «выписка по счёту» → `/statement` и др. |
 | **Формы** | AI-заполнение полей на страницах платежей |
 | **OCR** | ImageToText.com — фото → поля формы |
-| **3D** | Карта разделов + консультант Алексей (GLB, далёкая камера) |
-| **TTS** | Speechify, выбор голоса (русские + multilingual) |
+| **3D** | Карта разделов + консультант Александр/Александра (GLB, 3 модели) |
+| **TTS** | Qwen (Alibaba) + Edge TTS fallback, выбор голоса |
 
 ---
 
@@ -86,8 +86,8 @@ mvp/
 | [LOCAL_DEV.md](docs/LOCAL_DEV.md) | Локальный запуск |
 | [ARCHITECTURE.md](docs/ARCHITECTURE.md) | Архитектура + C4 |
 | [ASSISTANT.md](docs/ASSISTANT.md) | AI-консультант SBBOL |
-| [TTS.md](docs/TTS.md) | Speechify, голоса |
-| [CHARACTER_3D.md](docs/CHARACTER_3D.md) | 3D Алексей |
+| [TTS.md](docs/TTS.md) | Qwen TTS, голоса |
+| [CHARACTER_3D.md](docs/CHARACTER_3D.md) | 3D Александр/Александра |
 | [UI_AND_3D.md](docs/UI_AND_3D.md) | UI и 3D-сцены |
 | [API.md](docs/API.md) | REST API |
 | [VERCEL_DEPLOY.md](docs/VERCEL_DEPLOY.md) | Деплой |

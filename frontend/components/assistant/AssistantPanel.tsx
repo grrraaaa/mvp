@@ -2,13 +2,13 @@
 
 import { useState, useRef, useEffect, useMemo, useCallback } from "react";
 import { usePathname, useRouter } from "next/navigation";
-import { Settings } from "lucide-react";
 import { MessageBubble } from "./MessageBubble";
 import { ChatInput } from "./ChatInput";
 import { ProductCard } from "./ProductCard";
 import { ActionButtons } from "./ActionButtons";
 import { AssistantCharacter } from "./AssistantCharacter";
 import { CharacterSettings } from "./CharacterSettings";
+import { PersonalizationMenu } from "./PersonalizationMenu";
 import { WelcomeScreen } from "./WelcomeScreen";
 import { useAssistantStore } from "@/store/assistantStore";
 import { useAuthStore } from "@/store/authStore";
@@ -430,15 +430,11 @@ export function AssistantPanel({ variant = "default", compactMobile = false, onR
         >
           <div className="absolute top-0 left-0 right-0 h-1 bg-gradient-to-r from-sber-green via-sber-gold to-sber-green" />
           {!compactMobile && (
-            <button
-              type="button"
-              onClick={() => setSettingsOpen(true)}
-              className="absolute top-3 right-3 z-10 w-9 h-9 rounded-full bg-white border border-[#e4e8eb] text-[#7d838a] hover:text-[#008064] hover:border-[#008064]/40 flex items-center justify-center transition-colors"
-              title="Настроить консультанта"
-              aria-label="Настроить консультанта"
-            >
-              <Settings className="w-4 h-4" />
-            </button>
+            <div className="absolute top-3 right-3 z-10">
+              <PersonalizationMenu
+                onOpenAbilities={() => setSettingsOpen(true)}
+              />
+            </div>
           )}
           <AssistantCharacter
             isLoading={isLoading}

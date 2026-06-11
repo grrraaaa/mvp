@@ -5,7 +5,7 @@ import { Canvas, useFrame, useThree } from "@react-three/fiber";
 import { useGLTF, useAnimations } from "@react-three/drei";
 import * as THREE from "three";
 import { SkeletonUtils } from "three-stdlib";
-import { useCharacterStore } from "@/store/characterStore";
+import { useCharacterStore, resolveModelPath } from "@/store/characterStore";
 import {
   DEFAULT_GLB_PATH,
   MODEL_SASHA_LADY1,
@@ -206,7 +206,10 @@ export function WelcomeCharacter3D({ size = 192, yaw = 0, pitch = 0 }: Props) {
   const [mounted, setMounted] = useState(false);
   useEffect(() => setMounted(true), []);
 
-  const modelPath = useCharacterStore((s) => s.config.modelPath) ?? DEFAULT_GLB_PATH;
+  const modelPath = resolveModelPath({
+    modelOverride: useCharacterStore((s) => s.modelOverride),
+    config: useCharacterStore.getState().config,
+  }) ?? DEFAULT_GLB_PATH;
 
   if (!mounted) {
     return (

@@ -1,6 +1,6 @@
 # Карта фич — SBBOL Demo (MVP)
 
-Визуальный обзор всего демо **СберБизнес**: интерфейс банка, AI-консультант **Алексей**, 3D-навигация, озвучка, формы и интеграции.
+Визуальный обзор всего демо **СберБизнес**: интерфейс банка, AI-консультант **Александр / Александра**, 3D-навигация, озвучка, формы и интеграции.
 
 > Учебный проект. Референс UI: [sbbol.bps-sberbank.by](https://sbbol.bps-sberbank.by/) · Прод: [mvp-beta-umber.vercel.app](https://mvp-beta-umber.vercel.app)
 
@@ -20,7 +20,7 @@ mindmap
       Синтетические страницы
       Адаптив mobile desktop
       Basic Auth опционально
-    AI консультант Алексей
+    AI консультант Александр/Александра
       Плавающий чат FAB
       LLM OpenRouter OpenAI
       Rule-based fallback
@@ -33,13 +33,13 @@ mindmap
     3D
       Карта услуг планеты
       PlanetNavSlider
-      GLB personage.glb
+      3 GLB модели
       Vertex lip sync
       Портретная камера
     Озвучка TTS
-      Speechify ru-RU
-      Выбор голоса 50+9
-      Soniox Deepgram fallback
+      Qwen Alibaba ru-RU
+      Выбор голоса qwen-male qwen-female
+      Edge TTS fallback без ключа
       Browser speechSynthesis
     Backend API
       FastAPI guest chat
@@ -85,7 +85,7 @@ flowchart TB
 
     subgraph EXT["☁ Внешние сервисы"]
         OR[OpenRouter]
-        SP[Speechify]
+        QW[Qwen TTS]
         OCR[ImageToText]
         DB[(Postgres)]
     end
@@ -98,7 +98,7 @@ flowchart TB
     CHAT --> CHAT_API
     PANEL --> TTS_API
     CHAT_API --> OR
-    TTS_API --> SP
+    TTS_API --> QW
     OCR_API --> OCR
     CHAT_API --> DB
     PROD_API --> DB
@@ -124,9 +124,9 @@ flowchart TB
 | 12 | **Заполнение форм AI** | `useSbbolFormFill` | `form_actions` | ✅ |
 | 13 | **OCR с фото** | `ChatInput` 📷 | `POST /api/forms/ocr-fill` | ✅ |
 | 14 | **Голосовой ввод** | `useWebSpeechInput` | Web Speech API | ✅ |
-| 15 | **3D Алексей** | `GlbCharacter3D` | — | ✅ |
+| 15 | **3D Александр/Александра** | `GlbCharacter3D` | — | ✅ |
 | 16 | **Липсинг vertex** | `mouthVertexDeform` | — | ✅ |
-| 17 | **Озвучка Speechify** | `useAssistantSpeech` | `POST /api/tts/speak` | ✅ |
+| 17 | **Озвучка Qwen TTS** | `useAssistantSpeech` | `POST /api/tts/speak` | ✅ |
 | 18 | **Выбор голоса** | `AssistantVoicePicker` | `GET /api/tts/voices` | ✅ |
 | 19 | **Каталог продуктов** | `ProductCard` | `GET /api/products` | ✅ |
 | 20 | **Basic Auth** | `middleware.ts` | `SiteBasicAuthMiddleware` | ✅ |
@@ -255,7 +255,7 @@ sequenceDiagram
     participant UI as AssistantPanel
     participant API as FastAPI
     participant LLM as OpenRouter
-    participant TTS as Speechify
+    participant TTS as Qwen TTS
     participant GLB as GlbCharacter3D
 
     U->>UI: «выписка по счёту»
@@ -265,7 +265,7 @@ sequenceDiagram
     UI->>UI: router.push(/statement)
     UI->>GLB: talk + lip timeline
     UI->>API: POST /api/tts/speak { voice_id }
-    API->>TTS: simba-multilingual ru-RU
+    API->>TTS: qwen-male / qwen-female ru-RU
     TTS-->>UI: MP3
     UI->>U: аудио + анимация рта
 ```
@@ -307,19 +307,16 @@ flowchart LR
 ```mermaid
 flowchart TD
     REQ[POST /api/tts/speak<br/>text + voice_id?]
-    REQ --> P1{SPEECHIFY_API_KEY?}
-    P1 -->|да| SP[Speechify<br/>simba-multilingual ru-RU]
-    P1 -->|нет| P2{SONIOX_API_KEY?}
-    P2 -->|да| SX[Soniox TTS]
-    P2 -->|нет| P3{DEEPGRAM_API_KEY?}
-    P3 -->|да| DG[Deepgram]
-    P3 -->|нет| ERR[503 / browser fallback]
+    REQ --> P1{QWEN_TTS_API_KEY?}
+    P1 -->|да| QW[Qwen TTS<br/>qwen-male / qwen-female ru-RU]
+    P1 -->|нет| ED[Edge TTS<br/>ru-RU-DmitryNeural / SvetlanaNeural]
+    ED -->|ошибка| BR[browser speechSynthesis]
 
-    SP --> MP3[audio/mpeg]
-    SX --> MP3
-    DG --> MP3
+    QW --> MP3[audio/mpeg]
+    ED --> MP3
+    BR --> MP3
 
-    UI[AssistantVoicePicker] -->|GET /voices| VOICES[50 ru + 9 multilingual]
+    UI[AssistantVoicePicker] -->|GET /voices| VOICES[qwen-male + qwen-female]
     VOICES --> localStorage[sber-assistant-tts-voice]
     localStorage --> REQ
 ```
@@ -328,14 +325,14 @@ flowchart TD
 
 ---
 
-## 10. 3D-консультант Алексей
+## 10. 3D-консультант Александр/Александра
 
 ```mermaid
 flowchart TB
     subgraph CANVAS["CharacterRoomScene"]
         CAM[PortraitCamera<br/>Z≈7.8 Y offset -0.30]
         ORB[OrbitControls 5.2–9.5]
-        GLB[GlbCharacter3D<br/>personage.glb]
+        GLB[GlbCharacter3D<br/>personage.glb / sasha_lady1/2]
         LIP[mouthVertexDeform]
         BG[Тёмный фон<br/>без мебели GLB]
     end
@@ -373,7 +370,7 @@ flowchart TB
     PY --> MAIN[backend/main.py FastAPI]
     MAIN --> PG[(Vercel Postgres)]
     MAIN --> OR2[OpenRouter]
-    MAIN --> SP2[Speechify]
+    MAIN --> QW2[Qwen TTS]
 
     ENV -.-> NEXT & PY
 ```
@@ -397,6 +394,7 @@ classDiagram
         settingsOpen
         presets
     }
+    %% presets: manager-abilities, admin-abilities, ip-abilities
     class characterBehaviorStore {
         action idle talk walk
         speechText
