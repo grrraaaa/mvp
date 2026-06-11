@@ -83,6 +83,8 @@ export function useWebSpeechInput(
   const suppressOnEndRef = useRef(false);
   /** После отправки игнорируем поздние onresult, иначе поле снова заполняется. */
   const ignoreResultsRef = useRef(false);
+  /** Реально идёт сессия распознавания (onstart → stop/onend). */
+  const listeningSessionRef = useRef(false);
   const onTranscriptRef = useRef(onTranscript);
   const onCompleteRef = useRef(options.onComplete);
   const disabledRef = useRef(options.disabled);
@@ -121,6 +123,7 @@ export function useWebSpeechInput(
     recognition.maxAlternatives = 1;
 
     recognition.onstart = () => {
+      listeningSessionRef.current = true;
       lastErrorRef.current = false;
       spokenFinalRef.current = "";
       interimRef.current = "";
@@ -171,6 +174,7 @@ export function useWebSpeechInput(
     };
 
     recognition.onend = () => {
+      listeningSessionRef.current = false;
       setIsListening(false);
       if (lastErrorRef.current) {
         lastErrorRef.current = false;
@@ -264,6 +268,19 @@ export function useWebSpeechInput(
     const recognition = recognitionRef.current;
     if (!recognition) return;
 
+    const wasListening = listeningSessionRef.current;
+    if (!wasListening) {
+      try {
+        recognition.stop();
+      } catch {
+        /* recognition не был запущен */
+      }
+      setIsListening(false);
+      setStatusKind("idle");
+      setStatus("");
+      return;
+    }
+
     // Снимем то, что есть прямо сейчас (final + interim) и пошлём руками,
     // чтобы onend с continuous=true не «потерял» последний кусок.
     const finalTxt = spokenFinalRef.current.trim();
@@ -272,6 +289,7 @@ export function useWebSpeechInput(
 
     suppressOnEndRef.current = true;
     ignoreResultsRef.current = true;
+    listeningSessionRef.current = false;
 
     try {
       recognition.stop();

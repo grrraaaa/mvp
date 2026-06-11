@@ -1,6 +1,7 @@
 import { fillCustomerAccountField } from "@/hooks/useSbbolAccountPicker";
 import { highlightOcrFields } from "@/hooks/useSbbolPaymentValidation";
 import { dispatchAssistantAction } from "@/lib/assistant/uiBridge";
+import type { SbbolFormType } from "@/lib/sbbol/formContext";
 import type { FormFieldAction } from "@/store/assistantStore";
 import { useBankingStore } from "@/store/bankingStore";
 
@@ -347,4 +348,29 @@ export async function applyFormActionsWithRetry(
   }
 
   return lastResult.filled.length > 0 ? lastResult : null;
+}
+
+const FORM_NAME_PREFIX: Record<SbbolFormType, string> = {
+  paydocby: "forms.PAYDOCBY",
+  instant: "forms.INSTANT_PAYMENT_ORDER",
+  paydoccur: "forms.PAYDOCCUR",
+};
+
+/** Снимок уже заполненных полей на открытой форме — для синхронизации с чатом. */
+export function collectFormFieldSnapshot(formType: SbbolFormType): Record<string, string> {
+  const root = document.querySelector("main#app") ?? document.body;
+  if (!(root instanceof HTMLElement)) return {};
+
+  const prefix = FORM_NAME_PREFIX[formType];
+  const out: Record<string, string> = {};
+
+  for (const key of PAYMENT_FIELD_KEYS) {
+    const fieldName = `${prefix}.${key}`;
+    const el = findFieldElement(root, fieldName);
+    if (!el) continue;
+    const value = readFieldValue(el).trim();
+    if (value) out[fieldName] = value;
+  }
+
+  return out;
 }

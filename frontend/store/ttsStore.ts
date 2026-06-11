@@ -48,7 +48,16 @@ interface TtsState {
   voiceId: string | null;
   voiceGroups: TtsVoiceGroup[];
   voicesLoaded: boolean;
+  /**
+   * Какие провайдеры сконфигурированы на бэке (из /api/tts/status).
+   * Используется UI, чтобы показать баннер "API key required", если
+   * бэк отфильтровал группу из каталога. Edge бесплатен и не упоминается.
+   */
+  googleAvailable: boolean;
+  qwenAvailable: boolean;
   setServerTts: (v: boolean, opts?: { voiceSelection?: boolean; defaultVoice?: string }) => void;
+  /** Обновляет только флаги доступности провайдеров. */
+  setServerFlags: (flags: { googleAvailable?: boolean; qwenAvailable?: boolean }) => void;
   setVoiceGroups: (groups: TtsVoiceGroup[], defaultVoice: string) => void;
   setVoiceGroupsFallback: (defaultVoice: string) => void;
   setVoiceId: (id: string) => void;
@@ -64,6 +73,8 @@ export const useTtsStore = create<TtsState>((set, get) => ({
   voiceId: null,
   voiceGroups: [],
   voicesLoaded: false,
+  googleAvailable: false,
+  qwenAvailable: false,
   setServerTts: (v, opts) => {
     const patch: Partial<TtsState> = { serverTts: v };
     if (opts?.voiceSelection !== undefined) {
@@ -82,6 +93,13 @@ export const useTtsStore = create<TtsState>((set, get) => ({
       }
     }
     set(patch);
+  },
+  setServerFlags: (flags) => {
+    const cur = get();
+    set({
+      googleAvailable: flags.googleAvailable ?? cur.googleAvailable,
+      qwenAvailable: flags.qwenAvailable ?? cur.qwenAvailable,
+    });
   },
   setVoiceGroups: (groups, defaultVoice) => {
     const saved = readVoiceId();

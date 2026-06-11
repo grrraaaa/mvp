@@ -1,7 +1,7 @@
 "use client";
 
 import { useMemo, useRef, useState } from "react";
-import { Check, Play, Square } from "lucide-react";
+import { Check, Info, Play, Square } from "lucide-react";
 import { previewVoiceSample, type PreviewHandle } from "@/lib/tts/previewVoice";
 import {
   allAssistantVoices,
@@ -23,8 +23,18 @@ export function VoicePicker({ characterGender, compact }: Props) {
   const voiceId = useTtsStore((s) => s.voiceId);
   const setVoiceId = useTtsStore((s) => s.setVoiceId);
   const setVoiceOverride = useCharacterStore((s) => s.setVoiceOverride);
+  // Флаги доступности провайдеров с бэка: скрывать/показывать баннер "API key required"
+  const googleAvailable = useTtsStore((s) => s.googleAvailable);
+  const qwenAvailable = useTtsStore((s) => s.qwenAvailable);
   const [playingVoiceId, setPlayingVoiceId] = useState<string | null>(null);
   const previewRef = useRef<PreviewHandle | null>(null);
+
+  // Показываем баннер только если реально что-то недоступно. Edge — всегда бесплатный,
+  // не упоминаем. Бэк уже фильтрует каталог, так что юзер не увидит фантомных голосов —
+  // баннер просто объясняет ПОЧЕМУ их нет.
+  const missingProviders: string[] = [];
+  if (!googleAvailable) missingProviders.push("Google TTS");
+  if (!qwenAvailable) missingProviders.push("Qwen TTS");
 
   const genderVoices = useMemo(
     () => voicesForGender(voiceGroups, characterGender),
@@ -63,6 +73,20 @@ export function VoicePicker({ characterGender, compact }: Props) {
 
   return (
     <div className="space-y-1">
+      {missingProviders.length > 0 && (
+        <div className="mb-2 rounded-lg border border-amber-200 bg-amber-50 px-2.5 py-2 text-[10.5px] text-amber-900 leading-snug">
+          <div className="flex items-center gap-1.5 font-semibold mb-0.5">
+            <Info className="w-3.5 h-3.5 shrink-0" aria-hidden />
+            <span>Голоса ограничены</span>
+          </div>
+          <p>
+            Не настроено: <b>{missingProviders.join(", ")}</b>. Добавьте
+            соответствующий API-ключ в <code className="px-1 bg-amber-100/70 rounded">.env</code>{" "}
+            (например, <code className="px-1 bg-amber-100/70 rounded">GOOGLE_TTS_API_KEY</code>),
+            и они появятся в каталоге.
+          </p>
+        </div>
+      )}
       {genderVoices.map((v) => {
         const isActive = activeVoice?.id === v.id;
         const isPlaying = playingVoiceId === v.id;

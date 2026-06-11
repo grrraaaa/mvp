@@ -232,6 +232,8 @@ def _payment_hints_from_state(
     counterparty_name: str = "",
     *,
     schema: dict | None = None,
+    changed_keys: Optional[set[str]] = None,
+    include_ok: bool = False,
 ) -> str:
     by_key = _filled_values_by_key(schema, filled) if schema else filled
 
@@ -265,9 +267,21 @@ def _payment_hints_from_state(
         currency=currency,
         form_type=form_type,
     )
-    lines = [f"{_HINT_MARKER.get(h.level, '•')} {h.message}" for h in hints if h.level != "ok"]
-    ok_lines = [h for h in hints if h.level == "ok"]
-    if not lines and ok_lines:
+    filtered: list = []
+    for h in hints:
+        if changed_keys is not None and h.level != "error":
+            related = _hint_field_keys(h.field)
+            if related and not (related & changed_keys):
+                continue
+        filtered.append(h)
+
+    lines = [
+        f"{_HINT_MARKER.get(h.level, '•')} {h.message}"
+        for h in filtered
+        if h.level != "ok"
+    ]
+    ok_lines = [h for h in filtered if h.level == "ok"]
+    if include_ok and not lines and ok_lines:
         lines = [f"{_HINT_MARKER['ok']} {h.message}" for h in ok_lines[:2]]
     if any(h.level == "error" for h in hints):
         lines.append("⛔ Отправка заблокирована: исправьте поля с ошибками (🔴).")
@@ -496,6 +510,37 @@ def _missing_field_keys(schema: dict, filled_names: set[str]) -> List[str]:
     return missing
 
 
+def _sync_form_snapshot(
+    state: _FormFillState,
+    schema: dict,
+    snapshot: Optional[Dict[str, str]],
+) -> None:
+    """Подтянуть уже заполненные на экране поля (DOM → сессия чата)."""
+    if not snapshot:
+        return
+    for fld in fillable_fields(schema):
+        name = fld.get("name")
+        if not name:
+            continue
+        raw = snapshot.get(name)
+        if raw is None:
+            continue
+        val = str(raw).strip()
+        if val:
+            state.filled[name] = val
+
+
+def _hint_field_keys(hint_field: str) -> set[str]:
+    return {
+        "unp": {"CONTRAGENT_UNP"},
+        "iban": {"CONTRAGENT_ACCOUNT"},
+        "amount": {"COMMON_COLUMNS_AMOUNT"},
+        "purpose": {"PAYMENT_PURPOSE"},
+        "exec_date": {"COMMON_COLUMNS_DOC_DATE"},
+        "currency": {"COMMON_COLUMNS_CURRENCY", "PAYMENT_CURRENCY"},
+    }.get(hint_field, set())
+
+
 def _validate_form_actions(
     actions: Optional[List[FormFieldAction]], schema: dict
 ) -> Optional[List[FormFieldAction]]:
@@ -577,6 +622,8 @@ def _parse_pending_value(
             )
 
     if pending_key == "PAYMENT_PURPOSE":
+        if re.search(r"контрагент|получател", text, re.I):
+            return None
         value = re.sub(
             r"^назначени[ея]\s*(?:платеж\w*|оплаты?)?\s*[:—-]?\s*",
             "",
@@ -756,10 +803,11 @@ def _rule_based_form_fill(
                         )
                     ]
 
-    # Явное «дата документа …» / «сумма …» важнее ответа на pending (следующее пустое поле).
-    bare = _parse_bare_segment(message.strip(), schema)
-    if bare:
-        return bare
+    # Явное «дата документа …» / «сумма …» важнее pending, но не для составных фраз.
+    if _count_field_hints(message) < 2:
+        bare = _parse_bare_segment(message.strip(), schema)
+        if bare:
+            return bare
 
     if pending_key:
         pending_action = _parse_pending_value(message, pending_key, schema)
@@ -1129,6 +1177,7 @@ class AssistantService:
         page_route: Optional[str] = None,
         form_type: Optional[str] = None,
         org_id: Optional[str] = None,
+        form_fields: Optional[Dict[str, str]] = None,
     ) -> AssistantResponse:
         if not session_id:
             session_id = str(uuid.uuid4())
@@ -1186,7 +1235,13 @@ class AssistantService:
             return self._attach_reformulation(page_ui, reformulation_meta)
 
         if form_type:
-            form_reply = await self._handle_payment_form_chat(message, form_type, session_id, effective_org)
+            form_reply = await self._handle_payment_form_chat(
+                message,
+                form_type,
+                session_id,
+                effective_org,
+                form_fields=form_fields,
+            )
             if form_reply is not None:
                 return self._attach_reformulation(form_reply, reformulation_meta)
 
@@ -1249,7 +1304,12 @@ class AssistantService:
         return response
 
     async def _handle_payment_form_chat(
-        self, message: str, form_type: str, session_id: str, org_id: str = "demo"
+        self,
+        message: str,
+        form_type: str,
+        session_id: str,
+        org_id: str = "demo",
+        form_fields: Optional[Dict[str, str]] = None,
     ) -> Optional[AssistantResponse]:
         schema = load_form_schema(form_type)
         if not schema:
@@ -1259,6 +1319,8 @@ class AssistantService:
             return None
 
         state = _get_form_session(session_id, form_type)
+        _sync_form_snapshot(state, schema, form_fields)
+        _save_form_session(session_id, state)
 
         if _wants_payment_validation(message):
             daily_limit = 5000.0
@@ -1270,6 +1332,7 @@ class AssistantService:
                 state.filled,
                 daily_limit=daily_limit,
                 schema=schema,
+                include_ok=True,
             )
             if not hint_block:
                 has_core = (
@@ -1429,10 +1492,16 @@ class AssistantService:
             async with AsyncSessionLocal() as _db:
                 org_profile = await get_org_profile(_db, org_id)
                 daily_limit = getattr(org_profile, "daily_payment_limit", 5000.0) or 5000.0
+            changed_keys = {
+                by_name[a.field]["key"]
+                for a in new_actions
+                if a.field in by_name and by_name[a.field].get("key")
+            }
             hint_block = _payment_hints_from_state(
                 state.filled,
                 daily_limit=daily_limit,
                 schema=schema,
+                changed_keys=changed_keys or None,
             )
             if hint_block:
                 msg += f"\n\n**Проверки:**\n{hint_block}"

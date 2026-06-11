@@ -10,6 +10,10 @@ export interface TtsStatus {
   inworld_available?: boolean;
   voice?: string | null;
   voice_selection?: boolean;
+  /** Какие провайдеры сконфигурированы на бэке. UI показывает баннер,
+   *  если какого-то не хватает. Edge — бесплатный, не упоминается. */
+  google_available?: boolean;
+  qwen_available?: boolean;
 }
 
 export interface TtsVoicesResponse {

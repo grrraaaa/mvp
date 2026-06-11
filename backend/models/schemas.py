@@ -38,6 +38,7 @@ class ChatRequest(BaseModel):
     page_route: Optional[str] = None
     form_type: Optional[str] = None  # paydocby | instant | paydoccur
     org_id: Optional[str] = None
+    form_fields: Optional[dict[str, str]] = None  # DOM name → value с открытой формы
 
 class NavigationStep(BaseModel):
     label: str

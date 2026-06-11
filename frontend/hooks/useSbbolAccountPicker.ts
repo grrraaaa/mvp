@@ -15,7 +15,44 @@ import { useBankingStore } from "@/store/bankingStore";
 
 const DROPDOWN_CLASS = "sbbol-account-picker-dropdown";
 
+type ActiveDropdown = {
+  menu: HTMLElement;
+  container: HTMLElement;
+  reposition: () => void;
+};
+
+let activeDropdown: ActiveDropdown | null = null;
+
+function positionAccountDropdown(menu: HTMLElement, container: HTMLElement): void {
+  const rect = container.getBoundingClientRect();
+  const gap = 4;
+  const maxHeight = 280;
+  const spaceBelow = window.innerHeight - rect.bottom - gap;
+  const spaceAbove = rect.top - gap;
+  const openAbove = spaceBelow < 160 && spaceAbove > spaceBelow;
+  const height = Math.min(maxHeight, openAbove ? spaceAbove : spaceBelow);
+
+  menu.style.width = `${Math.max(rect.width, 280)}px`;
+  menu.style.maxHeight = `${Math.max(height, 120)}px`;
+  menu.style.left = `${Math.max(8, Math.min(rect.left, window.innerWidth - Math.max(rect.width, 280) - 8))}px`;
+
+  menu.style.bottom = "";
+  if (openAbove) {
+    menu.style.top = "auto";
+    menu.style.bottom = `${window.innerHeight - rect.top + gap}px`;
+  } else {
+    menu.style.top = `${rect.bottom + gap}px`;
+  }
+}
+
 function removeDropdown(): void {
+  if (activeDropdown) {
+    window.removeEventListener("scroll", activeDropdown.reposition, true);
+    window.removeEventListener("resize", activeDropdown.reposition);
+    activeDropdown.container.setAttribute("aria-expanded", "false");
+    activeDropdown.menu.remove();
+    activeDropdown = null;
+  }
   document.querySelectorAll(`.${DROPDOWN_CLASS}`).forEach((el) => el.remove());
 }
 
@@ -34,24 +71,9 @@ function openDropdown(
   const list = filterAccountsForField(accounts, dataName);
   if (!list.length) return;
 
-  const rect = container.getBoundingClientRect();
   const menu = document.createElement("div");
   menu.className = DROPDOWN_CLASS;
   menu.setAttribute("role", "listbox");
-  Object.assign(menu.style, {
-    position: "fixed",
-    top: `${rect.bottom + 4}px`,
-    left: `${rect.left}px`,
-    width: `${rect.width}px`,
-    maxHeight: "280px",
-    overflowY: "auto",
-    background: "#fff",
-    border: "1px solid #d0d7dd",
-    borderRadius: "8px",
-    boxShadow: "0 8px 24px rgba(0,0,0,0.12)",
-    zIndex: "10050",
-    padding: "4px 0",
-  });
 
   for (const acc of list) {
     const item = document.createElement("button");
@@ -87,6 +109,12 @@ function openDropdown(
 
   document.body.appendChild(menu);
   container.setAttribute("aria-expanded", "true");
+
+  const reposition = () => positionAccountDropdown(menu, container);
+  reposition();
+  window.addEventListener("scroll", reposition, true);
+  window.addEventListener("resize", reposition);
+  activeDropdown = { menu, container, reposition };
 
   const onOutside = (event: MouseEvent) => {
     const target = event.target as Node;

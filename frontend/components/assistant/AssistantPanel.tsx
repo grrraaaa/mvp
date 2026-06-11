@@ -13,6 +13,7 @@ import { WelcomeScreen } from "./WelcomeScreen";
 import { useAssistantStore } from "@/store/assistantStore";
 import { useAuthStore } from "@/store/authStore";
 import { useCharacterStore } from "@/store/characterStore";
+import { collectFormFieldSnapshot } from "@/lib/assistant/formFillRunner";
 import { getSbbolPageContext } from "@/lib/sbbol/formContext";
 import { getAssistantQuickChips } from "@/lib/sbbol/assistantQuickChips";
 import { ocrFillForm, readFileAsDataUrl } from "@/lib/api/forms";
@@ -229,13 +230,19 @@ export function AssistantPanel({ variant = "default", compactMobile = false, onR
       streamBufferRef.current = "";
       addMessage({ role: "assistant", content: "", streaming: true });
 
-      const body = {
+      const body: Record<string, unknown> = {
         message: trimmed,
         session_id: sessionId,
         page_route: pageContext.page_route,
         form_type: pageContext.form_type,
         org_id: orgId,
       };
+      if (pageContext.form_type) {
+        const snapshot = collectFormFieldSnapshot(pageContext.form_type);
+        if (Object.keys(snapshot).length > 0) {
+          body.form_fields = snapshot;
+        }
+      }
 
       try {
         let data: Record<string, unknown>;

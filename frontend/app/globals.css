@@ -27,9 +27,12 @@
   --sbbol-primary-dark: #0f7270;
   --sbbol-primary-light: #90d0cc;
 
-  /* Панель AI-чата и 3D-превью — оттенок белого, контраст с --sbbol-bg */
-  --assistant-surface: #fafbfc;
-  --assistant-surface-border: #e8ebef;
+  /* Панель AI-чата и 3D-превью — мятный teal, совпадает с фоном 3D-сцены
+   * (CharacterRoomScene: bg=#eef7f5 light, #f4faf9 default), чтобы ассистент
+   * и 3D-персонаж визуально сливались. Главная страница остаётся на --sbbol-bg
+   * (cool gray #f4f6f9), и панель на этом фоне заметно выделяется. */
+  --assistant-surface: #e8f4f2;
+  --assistant-surface-border: #cfe0dc;
 }
 
 html,
@@ -463,4 +466,20 @@ body {
 .sbbol-demo-toast--visible {
   opacity: 1;
   transform: translateX(-50%) translateY(0);
+}
+
+/* Выпадающий список «Со счёта» — fixed + перепозиционирование при scroll */
+.sbbol-account-picker-dropdown {
+  position: fixed !important;
+  z-index: 10050;
+  overflow-y: auto;
+  background: #fff;
+  border: 1px solid #d0d7dd;
+  border-radius: 8px;
+  box-shadow: 0 8px 24px rgba(0, 0, 0, 0.12);
+  padding: 4px 0;
+}
+
+.sbbol-account-picker-item:hover {
+  background: #f2f4f7;
 }

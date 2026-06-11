@@ -150,7 +150,7 @@ def validate_purpose(
             f"Назначение слишком короткое — укажите не менее {min_len} символов.",
         )
     if not instant and len(text) < 15 and not re.search(
-        r"договор|счёт|счет|№|акт|услуг|оплат", text, re.I
+        r"договор|счёт|счет|№|акт|услуг|оплат|аренд|офис|зарплат|налог", text, re.I
     ):
         return FieldHint(
             "purpose",

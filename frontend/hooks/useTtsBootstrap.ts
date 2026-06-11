@@ -53,6 +53,7 @@ function mergeVoiceGroups(apiGroups: TtsVoiceGroup[]): TtsVoiceGroup[] {
 export function useTtsBootstrap() {
   const setServerTts = useTtsStore((s) => s.setServerTts);
   const setVoiceGroups = useTtsStore((s) => s.setVoiceGroups);
+  const setServerFlags = useTtsStore((s) => s.setServerFlags);
 
   useEffect(() => {
     const staticFallback = combinedFallback(COMBINED_DEFAULT_VOICE);
@@ -62,6 +63,11 @@ export function useTtsBootstrap() {
         setServerTts(Boolean(status.enabled), {
           defaultVoice: status.voice ?? staticFallback.defaultVoice,
           voiceSelection: true,
+        });
+        // Какие провайдеры реально сконфигурированы на бэке — для UI-баннера
+        setServerFlags({
+          googleAvailable: Boolean(status.google_available),
+          qwenAvailable: Boolean(status.qwen_available),
         });
         return fetchTtsVoices();
       })
@@ -77,5 +83,5 @@ export function useTtsBootstrap() {
         setVoiceGroups(COMBINED_VOICE_GROUPS, COMBINED_DEFAULT_VOICE);
         syncVoiceToCurrentCharacter();
       });
-  }, [setServerTts, setVoiceGroups]);
+  }, [setServerTts, setVoiceGroups, setServerFlags]);
 }

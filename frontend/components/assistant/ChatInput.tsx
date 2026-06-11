@@ -120,19 +120,23 @@ export function ChatInput({
    *  в обход preventDefault — иначе он перезапускает запись через
    *  toggleListening. */
   const lastPointerUpAtRef = useRef(0);
+  /** true только между pointerdown и pointerup на микрофоне */
+  const micPressedRef = useRef(false);
 
   /** Кнопка-микрофон: push-to-talk. pointerdown → start,
    *  pointerup/pointerleave/pointercancel → stop. */
   const handleMicPressStart = (e: React.PointerEvent<HTMLButtonElement>) => {
     if (!supported || disabled) return;
     e.preventDefault();
+    micPressedRef.current = true;
     // Не даём уйти pointerleave в blur textarea, поэтому держим capture.
     e.currentTarget.setPointerCapture?.(e.pointerId);
     startListening(value);
   };
 
   const handleMicPressEnd = (e: React.PointerEvent<HTMLButtonElement>) => {
-    if (!supported) return;
+    if (!supported || !micPressedRef.current) return;
+    micPressedRef.current = false;
     e.preventDefault();
     try {
       e.currentTarget.releasePointerCapture?.(e.pointerId);

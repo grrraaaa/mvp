@@ -69,6 +69,7 @@ async def chat(
         page_route=request.page_route,
         form_type=request.form_type,
         org_id=current_user.org_id,
+        form_fields=request.form_fields,
     )
     return await _finalize_chat(
         response,
@@ -91,6 +92,7 @@ async def chat_guest(request: ChatRequest):
         page_route=request.page_route,
         form_type=request.form_type,
         org_id=request.org_id,
+        form_fields=request.form_fields,
     )
     return await _finalize_chat(
         response,
@@ -127,6 +129,7 @@ async def _stream_response(request: ChatRequest, user_id: str, org_id: str | Non
             page_route=request.page_route,
             form_type=request.form_type,
             org_id=org_id,
+            form_fields=request.form_fields,
         )
         response = await _finalize_chat(
             response,
