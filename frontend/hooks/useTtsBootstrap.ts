@@ -48,6 +48,7 @@ function syncVoiceToCurrentCharacter() {
 export function useTtsBootstrap() {
   const setServerTts = useTtsStore((s) => s.setServerTts);
   const setVoiceGroups = useTtsStore((s) => s.setVoiceGroups);
+  const setServerFlags = useTtsStore((s) => s.setServerFlags);
 
   useEffect(() => {
     const staticFallback = combinedFallback(COMBINED_DEFAULT_VOICE);
@@ -59,6 +60,11 @@ export function useTtsBootstrap() {
         // ручной UI-выбор озвучки отключён, поэтому voiceSelection не передаём.
         setServerTts(enabled, {
           defaultVoice: s.voice ?? staticFallback.defaultVoice,
+        });
+        // Запоминаем какие провайдеры доступны на бэке — для UI-подсказки
+        setServerFlags({
+          googleAvailable: Boolean(s.google_available),
+          qwenAvailable: Boolean(s.qwen_available),
         });
         return fetchTtsVoices()
           .then((data) => {
@@ -79,5 +85,5 @@ export function useTtsBootstrap() {
         useTtsStore.setState({ serverTts: true });
         syncVoiceToCurrentCharacter();
       });
-  }, [setServerTts, setVoiceGroups]);
+  }, [setServerTts, setVoiceGroups, setServerFlags]);
 }

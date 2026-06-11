@@ -105,10 +105,21 @@ def resolve_synthesis_route(voice_id: str | None = None) -> tuple[str, str | Non
 
 
 def list_all_assistant_voices() -> dict:
-    """Каталог голосов для UI: Google → Qwen → Edge."""
+    """Каталог голосов для UI: только сконфигурированные провайдеры.
+
+    Edge (Microsoft) — всегда бесплатный, всегда в каталоге.
+    Google — только если есть ключ.
+    Qwen — только если есть ключ + base_url.
+
+    НЕ показываем в каталоге провайдеров без ключа, чтобы юзер не тыкал
+    голоса которые по факту проиграют Edge-fallback'ом того же пола.
+    """
     groups: list[dict] = []
-    groups.extend(list_google_voices()["groups"])
-    groups.extend(list_qwen_voices()["groups"])
+    if _google_configured():
+        groups.extend(list_google_voices()["groups"])
+    if _qwen_configured():
+        groups.extend(list_qwen_voices()["groups"])
+    # Edge всегда (бесплатный, без ключа)
     groups.extend(list_edge_voices()["groups"])
 
     # Дефолт по полу: если задан TTS_DEFAULT_VOICE — берём его, иначе male.

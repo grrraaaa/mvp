@@ -90,6 +90,8 @@ export function PersonalizationMenu({ onOpenAbilities }: Props) {
     useCharacterStore();
   const voiceGroups = useTtsStore((s) => s.voiceGroups);
   const voiceId = useTtsStore((s) => s.voiceId);
+  const googleAvailable = useTtsStore((s) => s.googleAvailable);
+  const qwenAvailable = useTtsStore((s) => s.qwenAvailable);
 
   // Закрытие по клику снаружи / Esc
   useEffect(() => {

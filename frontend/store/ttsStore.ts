@@ -47,7 +47,11 @@ interface TtsState {
   voiceId: string | null;
   voiceGroups: TtsVoiceGroup[];
   voicesLoaded: boolean;
+  /** Какие провайдеры сконфигурированы на бэке (из /api/tts/status). */
+  googleAvailable: boolean;
+  qwenAvailable: boolean;
   setServerTts: (v: boolean, opts?: { voiceSelection?: boolean; defaultVoice?: string }) => void;
+  setServerFlags: (flags: { googleAvailable?: boolean; qwenAvailable?: boolean }) => void;
   setVoiceGroups: (groups: TtsVoiceGroup[], defaultVoice: string) => void;
   setVoiceGroupsFallback: (defaultVoice: string) => void;
   setVoiceId: (id: string) => void;
@@ -63,6 +67,8 @@ export const useTtsStore = create<TtsState>((set, get) => ({
   voiceId: null,
   voiceGroups: [],
   voicesLoaded: false,
+  googleAvailable: false,
+  qwenAvailable: false,
   setServerTts: (v, opts) => {
     const patch: Partial<TtsState> = { serverTts: v };
     if (opts?.voiceSelection !== undefined) {
@@ -81,6 +87,12 @@ export const useTtsStore = create<TtsState>((set, get) => ({
       }
     }
     set(patch);
+  },
+  setServerFlags: (flags) => {
+    set({
+      googleAvailable: flags.googleAvailable ?? get().googleAvailable,
+      qwenAvailable: flags.qwenAvailable ?? get().qwenAvailable,
+    });
   },
   setVoiceGroups: (groups, defaultVoice) => {
     const saved = readVoiceId();
