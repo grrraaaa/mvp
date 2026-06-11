@@ -6,7 +6,7 @@ export interface TtsStatus {
   model: string;
   provider: string | null;
   providers?: string[];
-  qwen_available?: boolean;
+  puter_available?: boolean;
   voice?: string | null;
   voice_selection?: boolean;
 }

@@ -1,9 +1,9 @@
 "use client";
 
 import { useCallback, useEffect } from "react";
-import { fetchAssistantSpeech } from "@/lib/api/tts";
-import { isBrowserSpeechAvailable, speakWithBrowserSpeech } from "@/lib/tts/browserSpeech";
-import { onTtsLipSync, playTtsBlob, stopTtsPlayback } from "@/lib/tts/playback";
+import { onTtsLipSync, playTtsElement, stopTtsPlayback } from "@/lib/tts/playback";
+import { puterTextToSpeech } from "@/lib/tts/puterTts";
+import { PUTER_DEFAULT_LANGUAGE } from "@/lib/tts/puterVoices";
 import { useCharacterBehaviorStore } from "@/store/characterBehaviorStore";
 import { buildLipTimeline } from "@/lib/assistant/lipSync";
 import { useTtsStore } from "@/store/ttsStore";
@@ -26,7 +26,6 @@ function toneToEmotion(tone?: string): string {
 
 export function useAssistantSpeech() {
   const enabled = useTtsStore((s) => s.enabled);
-  const serverTts = useTtsStore((s) => s.serverTts);
   const voiceId = useTtsStore((s) => s.voiceId);
   const setEnabled = useTtsStore((s) => s.setEnabled);
   const { startTalk, finishTalk, setEmotion } = useCharacterBehaviorStore();
@@ -71,30 +70,12 @@ export function useAssistantSpeech() {
       stopTtsPlayback();
 
       try {
-        const blob = await fetchAssistantSpeech(trimmed, voiceId);
+        const language = voiceId || PUTER_DEFAULT_LANGUAGE;
+        const audio = await puterTextToSpeech(trimmed, language);
         if (!isTtsEnabled()) return;
-        await playTtsBlob(blob, trimmed);
-      } catch {
-        const edgeVoice =
-          voiceId === "qwen-female" ||
-          voiceId?.includes("Svetlana") ||
-          voiceId?.includes("Wavenet-A")
-            ? "ru-RU-SvetlanaNeural"
-            : "ru-RU-DmitryNeural";
-        try {
-          const blob = await fetchAssistantSpeech(trimmed, edgeVoice);
-          if (!isTtsEnabled()) return;
-          await playTtsBlob(blob, trimmed);
-          return;
-        } catch {
-          /* try browser */
-        }
-        if (!isTtsEnabled() || !isBrowserSpeechAvailable()) return;
-        try {
-          await speakWithBrowserSpeech(trimmed, voiceId);
-        } catch {
-          /* server + browser TTS unavailable */
-        }
+        await playTtsElement(audio, trimmed);
+      } catch (err) {
+        console.warn("[TTS] Puter playback failed:", err);
       }
     },
     [voiceId, setEmotion, startTalk],
@@ -105,5 +86,5 @@ export function useAssistantSpeech() {
     setEnabled(next);
   }, [setEnabled]);
 
-  return { enabled, speak, stop, toggleEnabled: toggleWithStop, serverTts, setEnabled };
+  return { enabled, speak, stop, toggleEnabled: toggleWithStop, serverTts: true, setEnabled };
 }

@@ -69,5 +69,5 @@ async def health():
         "version": "0.1.0",
         "db": db_status,
         "ai_mode": settings.ai_provider,
-        "tts": bool(settings.DEEPGRAM_API_KEY),
+        "tts": "puter-js",
     }

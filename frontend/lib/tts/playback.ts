@@ -31,13 +31,7 @@ export function stopTtsPlayback(): void {
   emitLipSync(0, false);
 }
 
-export async function playTtsBlob(blob: Blob, text?: string): Promise<void> {
-  stopTtsPlayback();
-  const url = URL.createObjectURL(blob);
-  objectUrlRef = url;
-  const audio = new Audio(url);
-  audioRef = audio;
-
+function attachLipSyncPlayback(audio: HTMLAudioElement, text?: string, objectUrl?: string | null) {
   let raf = 0;
   const tick = () => {
     if (!audioRef || audioRef !== audio || audio.paused) {
@@ -61,11 +55,28 @@ export async function playTtsBlob(blob: Blob, text?: string): Promise<void> {
   audio.onended = () => {
     cancelAnimationFrame(raf);
     emitLipSync(0, false);
-    if (objectUrlRef === url) {
-      URL.revokeObjectURL(url);
+    if (objectUrl && objectUrlRef === objectUrl) {
+      URL.revokeObjectURL(objectUrl);
       objectUrlRef = null;
     }
     if (audioRef === audio) audioRef = null;
   };
+}
+
+export async function playTtsBlob(blob: Blob, text?: string): Promise<void> {
+  stopTtsPlayback();
+  const url = URL.createObjectURL(blob);
+  objectUrlRef = url;
+  const audio = new Audio(url);
+  audioRef = audio;
+  attachLipSyncPlayback(audio, text, url);
+  await audio.play();
+}
+
+/** Puter.js возвращает готовый HTMLAudioElement. */
+export async function playTtsElement(audio: HTMLAudioElement, text?: string): Promise<void> {
+  stopTtsPlayback();
+  audioRef = audio;
+  attachLipSyncPlayback(audio, text, null);
   await audio.play();
 }

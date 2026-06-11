@@ -31,44 +31,6 @@ interface Props {
 
 type ModelGender = "male" | "female";
 
-/** Ранг для сортировки голосов: премиум выше, бюджет ниже. */
-function tierRank(tier: string | null | undefined): number {
-  switch (tier) {
-    case "neural2":
-      return 0;
-    case "qwen":
-    case "cosyvoice":
-      return 1;
-    case "wavenet":
-      return 2;
-    case "standard":
-      return 3;
-    default:
-      return 4;
-  }
-}
-
-/** Бейдж качества голоса для UI. */
-function TierBadge({ tier }: { tier: string | null | undefined }) {
-  if (!tier) return null;
-  const config: Record<string, { label: string; cls: string }> = {
-    neural2: { label: "Premium", cls: "bg-gradient-to-r from-amber-100 to-yellow-100 text-amber-800 ring-1 ring-amber-300" },
-    qwen: { label: "Qwen", cls: "bg-emerald-100 text-emerald-700" },
-    cosyvoice: { label: "Cosy", cls: "bg-violet-100 text-violet-700" },
-    wavenet: { label: "HD", cls: "bg-blue-50 text-blue-700" },
-    standard: { label: "Базовый", cls: "bg-gray-100 text-gray-500" },
-  };
-  const c = config[tier];
-  if (!c) return null;
-  return (
-    <span
-      className={`text-[9px] uppercase font-bold tracking-wider px-1.5 py-0.5 rounded shrink-0 ${c.cls}`}
-    >
-      {c.label}
-    </span>
-  );
-}
-
 interface ModelEntry {
   id: string;
   label: string;
@@ -90,8 +52,6 @@ export function PersonalizationMenu({ onOpenAbilities }: Props) {
     useCharacterStore();
   const voiceGroups = useTtsStore((s) => s.voiceGroups);
   const voiceId = useTtsStore((s) => s.voiceId);
-  const googleAvailable = useTtsStore((s) => s.googleAvailable);
-  const qwenAvailable = useTtsStore((s) => s.qwenAvailable);
 
   // Закрытие по клику снаружи / Esc
   useEffect(() => {
@@ -135,27 +95,9 @@ export function PersonalizationMenu({ onOpenAbilities }: Props) {
     [currentModelPath],
   );
 
-  // Пол, по которому фильтруем голоса. Если юзер наводит на пункт модели —
-  // берём её пол; иначе — пол текущей активной модели.
-  const filteredGender: ModelGender | undefined =
-    previewModel?.gender ?? activeModel?.gender;
-
-  const filteredVoiceGroups = useMemo(() => {
-    if (!filteredGender) return voiceGroups;
-    return voiceGroups
-      .map((g) => ({
-        ...g,
-        // Сортировка: сначала премиум, потом дефолт, потом стандарт
-        voices: g.voices
-          .filter((v) => v.gender === filteredGender)
-          .sort((a, b) => tierRank(a.tier) - tierRank(b.tier)),
-      }))
-      .filter((g) => g.voices.length > 0);
-  }, [voiceGroups, filteredGender]);
-
-  const totalVoicesForGender = useMemo(
-    () => filteredVoiceGroups.reduce((acc, g) => acc + g.voices.length, 0),
-    [filteredVoiceGroups],
+  const languageVoices = useMemo(
+    () => voiceGroups.flatMap((g) => g.voices),
+    [voiceGroups],
   );
 
   const handleReset = () => {
@@ -178,9 +120,6 @@ export function PersonalizationMenu({ onOpenAbilities }: Props) {
       setPlayingVoiceId((cur) => (cur === v.id ? null : cur));
     });
   };
-
-  const previewGenderLabel =
-    filteredGender === "male" ? "мужской" : filteredGender === "female" ? "женский" : "авто";
 
   // Какая модель показывается в 3D-превью: ховер/фокус → активная.
   const previewTarget = previewModel ?? activeModel ?? null;
@@ -302,110 +241,63 @@ export function PersonalizationMenu({ onOpenAbilities }: Props) {
             </div>
           </Section>
 
-          {/* Голос — фильтр по полу модели + превью ▶ */}
-          <Section
-            icon={<Mic className="w-3.5 h-3.5" />}
-            title={`Голос (${previewGenderLabel})`}
-          >
-            {voiceGroups.length === 0 ? (
+          {/* Язык озвучки Puter.js */}
+          <Section icon={<Mic className="w-3.5 h-3.5" />} title="Язык озвучки">
+            {languageVoices.length === 0 ? (
               <p className="text-[10px] text-gray-400 px-1 py-1">
-                Список голосов ещё не загружен — попробуйте чуть позже.
-              </p>
-            ) : totalVoicesForGender === 0 ? (
-              <p className="text-[10px] text-gray-400 px-1 py-1">
-                Нет голосов для {previewGenderLabel} пола — попробуйте другого
-                персонажа.
+                Список языков загружается…
               </p>
             ) : (
-              <div className="space-y-2">
-                {filteredVoiceGroups.map((group) => (
-                  <div key={group.id}>
-                    <div className="text-[9px] uppercase font-bold tracking-wider text-gray-400 mb-1">
-                      {group.label}
+              <div className="space-y-1">
+                {languageVoices.map((v) => {
+                  const isActive =
+                    voiceId === v.id || (voiceOverride === v.id && voiceId !== null);
+                  const isPlaying = playingVoiceId === v.id;
+                  return (
+                    <div
+                      key={v.id}
+                      className={`flex items-center gap-1.5 px-1.5 py-1 rounded-lg transition-colors ${
+                        isActive
+                          ? "bg-emerald-50/60 ring-1 ring-sber-green/30"
+                          : isPlaying
+                            ? "bg-amber-50"
+                            : "hover:bg-gray-50"
+                      }`}
+                    >
+                      <button
+                        type="button"
+                        onClick={() => setVoiceOverride(v.id)}
+                        className="flex-1 min-w-0 flex items-center gap-2.5 text-left"
+                        title={isActive ? "Активный язык" : "Выбрать язык"}
+                      >
+                        <span className="flex-1 min-w-0">
+                          <span className="block text-xs font-semibold text-gray-800 truncate">
+                            {v.name}
+                          </span>
+                          <span className="block text-[10px] text-gray-500">{v.locale ?? v.id}</span>
+                        </span>
+                        {isActive && <Check className="w-3.5 h-3.5 text-sber-green shrink-0" />}
+                      </button>
+                      <button
+                        type="button"
+                        onClick={() => handleTogglePlayVoice(v)}
+                        className={`w-7 h-7 rounded-full flex items-center justify-center shrink-0 transition-colors ${
+                          isPlaying
+                            ? "bg-amber-500 text-white hover:bg-amber-600"
+                            : "bg-gray-100 text-gray-600 hover:bg-emerald-100 hover:text-emerald-700"
+                        }`}
+                        title={isPlaying ? "Остановить" : "Прослушать"}
+                        aria-label={isPlaying ? "Остановить" : "Прослушать"}
+                      >
+                        {isPlaying ? (
+                          <Square className="w-3 h-3" aria-hidden />
+                        ) : (
+                          <Play className="w-3 h-3 ml-0.5" aria-hidden />
+                        )}
+                      </button>
                     </div>
-                    <div className="space-y-1">
-                      {group.voices.map((v) => {
-                        const isActive =
-                          voiceId === v.id ||
-                          (voiceOverride === v.id && voiceId !== null);
-                        const isPlaying = playingVoiceId === v.id;
-                        const isFemale = v.gender === "female";
-                        return (
-                          <div
-                            key={v.id}
-                            className={`flex items-center gap-1.5 px-1.5 py-1 rounded-lg transition-colors ${
-                              isActive
-                                ? "bg-emerald-50/60 ring-1 ring-sber-green/30"
-                                : isPlaying
-                                  ? "bg-amber-50"
-                                  : "hover:bg-gray-50"
-                            }`}
-                          >
-                            <button
-                              type="button"
-                              onClick={() => setVoiceOverride(v.id)}
-                              className="flex-1 min-w-0 flex items-center gap-2.5 text-left"
-                              title={isActive ? "Активный голос" : "Выбрать голос"}
-                            >
-                              <span
-                                className={`w-6 h-6 rounded-full flex items-center justify-center shrink-0 ${
-                                  isFemale
-                                    ? "bg-pink-100 text-pink-600"
-                                    : "bg-blue-100 text-blue-600"
-                                }`}
-                                aria-hidden
-                              >
-                                {isFemale ? (
-                                  <UserRound className="w-3.5 h-3.5" />
-                                ) : (
-                                  <User className="w-3.5 h-3.5" />
-                                )}
-                              </span>
-                              <span className="flex-1 min-w-0">
-                                <div className="flex items-center gap-1.5 min-w-0">
-                                  <span className="block text-xs font-semibold text-gray-800 truncate">
-                                    {v.name}
-                                  </span>
-                                  <TierBadge tier={v.tier} />
-                                </div>
-                                {v.description && (
-                                  <span className="block text-[10px] text-gray-500 truncate">
-                                    {v.description}
-                                  </span>
-                                )}
-                                {v.locale && !v.description && (
-                                  <span className="block text-[10px] text-gray-500">
-                                    {v.locale}
-                                  </span>
-                                )}
-                              </span>
-                              {isActive && (
-                                <Check className="w-3.5 h-3.5 text-sber-green shrink-0" />
-                              )}
-                            </button>
-                            <button
-                              type="button"
-                              onClick={() => handleTogglePlayVoice(v)}
-                              className={`w-7 h-7 rounded-full flex items-center justify-center shrink-0 transition-colors ${
-                                isPlaying
-                                  ? "bg-amber-500 text-white hover:bg-amber-600"
-                                  : "bg-gray-100 text-gray-600 hover:bg-emerald-100 hover:text-emerald-700"
-                              }`}
-                              title={isPlaying ? "Остановить" : "Прослушать"}
-                              aria-label={isPlaying ? "Остановить" : "Прослушать"}
-                            >
-                              {isPlaying ? (
-                                <Square className="w-3 h-3" aria-hidden />
-                              ) : (
-                                <Play className="w-3 h-3 ml-0.5" aria-hidden />
-                              )}
-                            </button>
-                          </div>
-                        );
-                      })}
-                    </div>
-                  </div>
-                ))}
+                  );
+                })}
               </div>
             )}
             {voiceOverride && (
@@ -414,7 +306,7 @@ export function PersonalizationMenu({ onOpenAbilities }: Props) {
                 onClick={() => setVoiceOverride(null)}
                 className="mt-1.5 text-[10px] text-gray-500 hover:text-sber-green underline"
               >
-                Вернуть автоподбор голоса
+                Вернуть автоподбор языка
               </button>
             )}
           </Section>
