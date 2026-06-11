@@ -40,7 +40,7 @@ export default function ProductLandingView({ item }: Props) {
             Создать заявку
           </button>
           <p className="text-xs text-gray-400">
-            Демо-режим: данные сохраняются в облачной PostgreSQL при подключении соответствующего API.
+            Демо-режим: данные сохраняются в вашем кабинете.
           </p>
         </div>
       </div>

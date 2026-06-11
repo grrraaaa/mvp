@@ -93,6 +93,7 @@ export function ChatInput({
     stopListening,
     toggleListening,
     clearStatus,
+    resetVoiceDraft,
   } = useWebSpeechInput(onChange, {
     onComplete: onVoiceComplete,
     disabled,
@@ -108,6 +109,8 @@ export function ChatInput({
   const handleSend = () => {
     stopListening();
     clearStatus();
+    resetVoiceDraft();
+    onChange("");
     onSend();
   };
 
@@ -318,7 +321,7 @@ export function ChatInput({
                 <p className="text-[11px] font-bold text-[#107f8c] flex items-center gap-1">
                   <BarChart3 className="w-3 h-3" /> Быстрый график
                 </p>
-                <p className="text-[10px] text-[#7d838a]">Построю по реальным данным из БД</p>
+                <p className="text-[10px] text-[#7d838a]">Построю по данным вашего кабинета</p>
               </div>
               <div className="py-1">
                 {CHART_QUICK_PRESETS.map((preset) => (

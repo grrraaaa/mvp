@@ -89,7 +89,7 @@ export function OneCImportView() {
       <header>
         <h1 className="text-xl font-semibold text-[#1f1f22]">Коннектор 1С</h1>
         <p className="text-sm text-[#565b62] mt-1">
-          Импорт платёжных документов из 1С в СберБизнес (демо-эмулятор PostgreSQL).
+          Импорт платёжных документов из 1С в СберБизнес (демо-режим).
         </p>
       </header>
 

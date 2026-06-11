@@ -81,9 +81,19 @@ export function useWebSpeechInput(
   /** Push-to-talk: при ручном stop() мы сами шлём накопленное и скипаем
    *  авто-отправку в onend (иначе будет дубль). */
   const suppressOnEndRef = useRef(false);
+  /** После отправки игнорируем поздние onresult, иначе поле снова заполняется. */
+  const ignoreResultsRef = useRef(false);
   const onTranscriptRef = useRef(onTranscript);
   const onCompleteRef = useRef(options.onComplete);
   const disabledRef = useRef(options.disabled);
+
+  const resetVoiceDraft = useCallback(() => {
+    ignoreResultsRef.current = true;
+    baseValueRef.current = "";
+    spokenFinalRef.current = "";
+    interimRef.current = "";
+    onTranscriptRef.current("");
+  }, []);
 
   useEffect(() => {
     onTranscriptRef.current = onTranscript;
@@ -120,6 +130,8 @@ export function useWebSpeechInput(
     };
 
     recognition.onresult = (event) => {
+      if (ignoreResultsRef.current) return;
+
       let finalText = "";
       let interimText = "";
 
@@ -180,8 +192,12 @@ export function useWebSpeechInput(
       if (text && onCompleteRef.current && !disabledRef.current) {
         setStatusKind("listening");
         setStatus("Отправляю…");
-        onCompleteRef.current(text);
+        ignoreResultsRef.current = true;
+        baseValueRef.current = "";
+        spokenFinalRef.current = "";
+        interimRef.current = "";
         onTranscriptRef.current("");
+        onCompleteRef.current(text);
         setStatusKind("idle");
         setStatus("");
         return;
@@ -223,6 +239,7 @@ export function useWebSpeechInput(
       interimRef.current = "";
       lastErrorRef.current = false;
       suppressOnEndRef.current = false;
+      ignoreResultsRef.current = false;
       setStatusKind("listening");
       setStatus("Запрашиваю доступ к микрофону...");
 
@@ -254,6 +271,7 @@ export function useWebSpeechInput(
     const text = (finalTxt + (interimTxt ? " " + interimTxt : "")).trim();
 
     suppressOnEndRef.current = true;
+    ignoreResultsRef.current = true;
 
     try {
       recognition.stop();
@@ -261,11 +279,15 @@ export function useWebSpeechInput(
       /* recognition не был запущен — ок, ничего не делаем */
     }
 
+    spokenFinalRef.current = "";
+    interimRef.current = "";
+    baseValueRef.current = "";
+    onTranscriptRef.current("");
+
     if (text && onCompleteRef.current && !disabledRef.current) {
       setStatusKind("listening");
       setStatus("Отправляю…");
       onCompleteRef.current(text);
-      onTranscriptRef.current("");
       window.setTimeout(() => {
         setStatusKind("idle");
         setStatus("");
@@ -274,8 +296,6 @@ export function useWebSpeechInput(
       setStatusKind("idle");
       setStatus("");
     }
-    spokenFinalRef.current = "";
-    interimRef.current = "";
     setIsListening(false);
   }, []);
 
@@ -305,5 +325,6 @@ export function useWebSpeechInput(
     stopListening,
     toggleListening,
     clearStatus,
+    resetVoiceDraft,
   };
 }

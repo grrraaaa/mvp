@@ -155,7 +155,7 @@ export default function StatementView() {
         if (lines.length === 0) {
           bankingToast("За выбранный период операций нет — попробуйте другой интервал", "err");
         } else {
-          bankingToast(`Выписка: ${lines.length} операций из PostgreSQL`, "ok");
+          bankingToast(`Выписка: ${lines.length} операций`, "ok");
         }
         setReportGenerated(true);
       })

@@ -37,13 +37,13 @@ export async function runBankingAction(
           currency: payload.currency ?? "USD",
           amount: payload.amount ?? 0,
         });
-        bankingToast(`Заявка на конверсию ${payload.side} ${payload.amount} ${payload.currency} в БД`, "ok");
+        bankingToast(`Заявка на конверсию ${payload.side} ${payload.amount} ${payload.currency} принята`, "ok");
         await ctx.reload?.();
         return true;
       }
       case "connect-softpos": {
         await createPaymentRequest("service", { service: "softpos", status: "requested" });
-        bankingToast("Заявка на SoftPOS сохранена в PostgreSQL", "ok");
+        bankingToast("Заявка на SoftPOS сохранена", "ok");
         return true;
       }
       case "tax-certificate": {
@@ -62,7 +62,7 @@ export async function runBankingAction(
           card_mask: String(payload.cardMask ?? "**** 0000"),
           amount: Number(payload.amount ?? 0),
         });
-        bankingToast("Сотрудник добавлен в реестр (PostgreSQL)", "ok");
+        bankingToast("Сотрудник добавлен в реестр", "ok");
         await ctx.reload?.();
         return true;
       }
@@ -71,7 +71,7 @@ export async function runBankingAction(
           currency: String(payload.currency ?? "BYN"),
           label: String(payload.label ?? "Новый счёт"),
         });
-        bankingToast("Расчётный счёт открыт и записан в БД", "ok");
+        bankingToast("Расчётный счёт открыт", "ok");
         await ctx.reload?.();
         return true;
       }
@@ -86,7 +86,7 @@ export async function runBankingAction(
           payload.accountId as string | undefined,
           String(payload.period ?? "month"),
         );
-        bankingToast(`Выписка: ${lines.length} операций из PostgreSQL`, "ok");
+        bankingToast(`Выписка: ${lines.length} операций`, "ok");
         return true;
       }
       default:

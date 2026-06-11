@@ -18,7 +18,7 @@ function drawTitle(ctx: CanvasRenderingContext2D, chart: ChartSpec) {
   ctx.fillText(chart.title, PAD.left, 28);
   ctx.fillStyle = "#9ca3af";
   ctx.font = "11px Inter, Arial, sans-serif";
-  ctx.fillText(`СберБизнес · данные из БД · ${chart.currency ?? "BYN"}`, PAD.left, 44);
+  ctx.fillText(`СберБизнес · ${chart.currency ?? "BYN"}`, PAD.left, 44);
 }
 
 function drawAxes(ctx: CanvasRenderingContext2D, max: number) {

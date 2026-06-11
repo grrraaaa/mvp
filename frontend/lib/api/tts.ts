@@ -35,6 +35,8 @@ export async function fetchTtsVoices(): Promise<TtsVoicesResponse> {
   return res.json() as Promise<TtsVoicesResponse>;
 }
 
+const TTS_FETCH_TIMEOUT_MS = 12_000;
+
 export async function fetchAssistantSpeech(
   text: string,
   voiceId?: string | null,
@@ -42,12 +44,26 @@ export async function fetchAssistantSpeech(
   const body: { text: string; voice_id?: string } = { text };
   if (voiceId) body.voice_id = voiceId;
 
-  const res = await fetch(apiUrl("/api/tts/speak"), {
-    method: "POST",
-    credentials: "same-origin",
-    headers: { "Content-Type": "application/json" },
-    body: JSON.stringify(body),
-  });
+  const ctrl = new AbortController();
+  const timer = window.setTimeout(() => ctrl.abort(), TTS_FETCH_TIMEOUT_MS);
+
+  let res: Response;
+  try {
+    res = await fetch(apiUrl("/api/tts/speak"), {
+      method: "POST",
+      credentials: "same-origin",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify(body),
+      signal: ctrl.signal,
+    });
+  } catch (err) {
+    if (ctrl.signal.aborted) {
+      throw new Error("TTS_TIMEOUT");
+    }
+    throw err;
+  } finally {
+    window.clearTimeout(timer);
+  }
 
   if (!res.ok) {
     const data = await res.json().catch(() => ({}));

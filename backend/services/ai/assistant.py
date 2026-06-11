@@ -1226,7 +1226,7 @@ class AssistantService:
             if hint_block:
                 msg += f"\n\n**Проверки:**\n{hint_block}"
             if any(a.field not in before_fields for a in new_actions):
-                msg += "\n\n_УНП и счёт получателя подставлены из справочника контрагентов (PostgreSQL)._"
+                msg += "\n\n_УНП и счёт получателя подставлены из справочника контрагентов._"
             action_btns = None
             has_critical = "🔴" in hint_block
             if status == "complete" and not has_critical:

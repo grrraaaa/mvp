@@ -59,7 +59,7 @@ async def handle_onec_query(
             ),
             session_id=session_id,
             sources=[
-                SourceRef(index=1, label="Коннектор 1С (PostgreSQL)", kind="service", url="/services"),
+                SourceRef(index=1, label="Коннектор 1С", kind="service", url="/services"),
             ],
             action_buttons=[
                 ActionButton(label="Импортировать все", url="/services", variant="primary"),

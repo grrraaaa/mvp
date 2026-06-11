@@ -138,7 +138,7 @@ export default function MoneyView() {
     setAccounts(prev => prev.map(acc => acc.id === accId ? { ...acc, label: note } : acc));
     setNoteEditId(null);
     patchAccountNote(accId, note)
-      .then(() => bankingToast('Заметка к счёту сохранена в БД'))
+      .then(() => bankingToast('Заметка к счёту сохранена'))
       .catch(() => bankingToast('Не удалось сохранить заметку', 'err'));
   };
 
@@ -579,7 +579,7 @@ export default function MoneyView() {
                 <span className="font-extrabold text-[#2c3e50] text-sm uppercase tracking-wider">
                   Динамика оборотов по счетам, BYN
                 </span>
-                <HelpCircle className="w-4 h-4 text-gray-300" onClick={(e) => { e.stopPropagation(); alert('График отражает движение денежных средств по всем вашим текущим счетам в BYN за последние 6 месяцев работы. Источник: агрегат statement_lines из PostgreSQL.'); }} />
+                <HelpCircle className="w-4 h-4 text-gray-300" onClick={(e) => { e.stopPropagation(); alert('График отражает движение денежных средств по всем вашим текущим счетам в BYN за последние 6 месяцев.'); }} />
               </div>
               {dynamicsOpen ? <ChevronUp className="w-4 h-4 text-gray-400" /> : <ChevronDown className="w-4 h-4 text-gray-400" />}
             </button>
@@ -602,7 +602,7 @@ export default function MoneyView() {
                   <TurnoverSvgChart history={turnoverHistory} />
 
                   <div className="mt-4 text-[11px] text-gray-405 text-center font-medium italic">
-                    * Данные из PostgreSQL: суммы поступлений (statement_lines.credit) и расходов (statement_lines.debit) по орг-ии за последние 6 месяцев.
+                    * Поступления и расходы по вашим счетам за последние 6 месяцев.
                   </div>
                 </div>
               </div>

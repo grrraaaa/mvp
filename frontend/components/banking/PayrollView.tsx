@@ -94,7 +94,7 @@ export default function PayrollView() {
         setEmpCard("");
         setEmpAmount("");
         setActiveTab("employees");
-        bankingToast("Сотрудник сохранён в PostgreSQL", "ok");
+        bankingToast("Сотрудник сохранён", "ok");
         void loadAll();
       })
       .catch(() => bankingToast("Ошибка добавления сотрудника", "err"));
@@ -127,7 +127,7 @@ export default function PayrollView() {
         })
         .catch(() => {
           setPayStatus("idle");
-          alert("Ошибка выплаты. Проверьте API и PostgreSQL.");
+          alert("Ошибка выплаты. Попробуйте ещё раз или обратитесь в поддержку.");
         });
     }, 1500);
   };

@@ -238,7 +238,7 @@ export function DashboardHome() {
         </div>
         <TurnoverBars history={turnoverHistory} loading={turnoverLoading} />
         <p className="mt-3 text-[10px] text-[#7d838a]">
-          * Данные из PostgreSQL: агрегат statement_lines по орг-ии за последние 6 месяцев. credit = поступления, debit = расходы.
+          * Поступления и расходы по вашим счетам за последние 6 месяцев.
         </p>
       </section>
     </div>

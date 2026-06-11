@@ -72,7 +72,8 @@ export function useTtsBootstrap() {
         syncVoiceToCurrentCharacter();
       })
       .catch(() => {
-        setServerTts(true, { defaultVoice: COMBINED_DEFAULT_VOICE, voiceSelection: true });
+        // Сервер озвучки недоступен — не блокируем чат ожиданием TTS.
+        setServerTts(false, { defaultVoice: COMBINED_DEFAULT_VOICE, voiceSelection: true });
         setVoiceGroups(COMBINED_VOICE_GROUPS, COMBINED_DEFAULT_VOICE);
         syncVoiceToCurrentCharacter();
       });

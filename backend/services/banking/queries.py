@@ -1065,7 +1065,7 @@ async def _list_documents_reply(
         msg = "Открываю список всех документов."
 
     if found == 0:
-        msg += "\n\nВ базе пока нет документов под выбранные фильтры — но открою страницу, чтобы было видно."
+        msg += "\n\nПока нет документов под выбранные фильтры — но открою страницу, чтобы было видно."
     elif found <= 30:
         msg += f"\n\nПод фильтры попадает **{found}** документов."
     else:
@@ -1166,7 +1166,7 @@ async def _account_note_reply(
     return {
         "message": (
             f"Готово! Заметка счёта **…{tail} ({target.currency})** изменена: "
-            f"«{old}» → **«{new_note}»**. Сохранено в БД."
+            f"«{old}» → **«{new_note}»**. Изменения сохранены."
         ),
         "ui_actions": [{"type": "click", "target": "reload-banking"}],
         "action_buttons": [
@@ -1621,7 +1621,7 @@ async def handle_banking_query(
         forecast = await cash_gap_forecast(session, org_id)
         return {
             "message": (
-                "Я умею строить несколько видов графиков по реальным данным из БД:\n\n"
+                "Я умею строить несколько видов графиков по данным вашего кабинета:\n\n"
                 "📊 **Доступно прямо сейчас:**\n"
                 "• **Прогноз остатка** — линейный график, на сколько дней хватит текущих средств\n"
                 "• **Структура расходов** — круговая диаграмма по категориям за месяц\n"
@@ -1635,8 +1635,8 @@ async def handle_banking_query(
             ),
             "charts": [to_chart_line("Прогноз остатка", forecast["forecast"])],
             "sources": [
-                {"index": 1, "label": "Источник 1: Счета PostgreSQL", "kind": "account", "url": "/statement"},
-                {"index": 2, "label": "Источник 2: Аналитика PostgreSQL", "kind": "analytics", "url": "/services"},
+                {"index": 1, "label": "Источник 1: Счета и выписка", "kind": "account", "url": "/statement"},
+                {"index": 2, "label": "Источник 2: Аналитика", "kind": "analytics", "url": "/services"},
             ],
             "action_buttons": [
                 {"label": "📈 Прогноз остатка", "message": "Кассовый прогноз", "variant": "primary"},
@@ -1657,7 +1657,7 @@ async def handle_banking_query(
         items = await monthly_expenses(session, org_id, month)
         if not items:
             return {
-                "message": "За выбранный период расходов в базе нет. Укажите месяц, например: «расходы за 2026-03».",
+                "message": "За выбранный период расходов нет. Укажите месяц, например: «расходы за 2026-03».",
                 "pending_form_fields": ["Период (YYYY-MM)"],
                 "action_buttons": [
                     {"label": "За март 2026", "message": "Расходы за 2026-03", "variant": "primary"},
@@ -1669,7 +1669,7 @@ async def handle_banking_query(
         return {
             "message": f"Расходы по категориям за **{month_label}**:\n{lines}",
             "charts": [to_chart_pie("Структура расходов", items)],
-            "sources": [{"index": 1, "label": "Аналитика PostgreSQL", "kind": "analytics", "url": "/services"}],
+            "sources": [{"index": 1, "label": "Аналитика расходов", "kind": "analytics", "url": "/services"}],
             "action_buttons": [
                 {"label": "Сравнить с другим месяцем", "message": "Сравни февраль и март", "variant": "primary"},
                 {"label": "Прогноз остатка", "message": "Кассовый прогноз", "variant": "secondary"},
@@ -1686,7 +1686,7 @@ async def handle_banking_query(
         items = await monthly_expenses(session, org_id, month)
         if not items:
             return {
-                "message": "За выбранный период расходов в базе нет. Укажите месяц, например: «расходы за 2026-03».",
+                "message": "За выбранный период расходов нет. Укажите месяц, например: «расходы за 2026-03».",
                 "pending_form_fields": ["Период (YYYY-MM)"],
                 "action_buttons": [
                     {"label": "За март 2026", "message": "Расходы за 2026-03", "variant": "primary"},
@@ -1697,7 +1697,7 @@ async def handle_banking_query(
         return {
             "message": f"Расходы по категориям:\n{lines}",
             "charts": [to_chart_pie("Структура расходов", items)],
-            "sources": [{"index": 1, "label": "Аналитика PostgreSQL", "kind": "analytics", "url": "/services"}],
+            "sources": [{"index": 1, "label": "Аналитика расходов", "kind": "analytics", "url": "/services"}],
             "action_buttons": [{"label": "Выписка", "url": "/statement", "variant": "secondary"}],
         }
 
@@ -1715,7 +1715,7 @@ async def handle_banking_query(
                 f"• {month_b}: **{data['amount_b']:,.2f} BYN**"
             ),
             "charts": [to_chart_bar(f"{month_a} vs {month_b}", [month_a, month_b], [data["amount_a"], data["amount_b"]])],
-            "sources": [{"index": 1, "label": "Аналитика PostgreSQL", "kind": "analytics", "url": "/services"}],
+            "sources": [{"index": 1, "label": "Аналитика расходов", "kind": "analytics", "url": "/services"}],
         }
 
     # ── AI-прогноз остатков на N дней ─────────────────────────────────────
@@ -1794,7 +1794,7 @@ async def handle_banking_query(
 
         accs = data["accounts"]
         text = (
-            f"💰 **Остатки на счетах (реальные данные PostgreSQL):**\n"
+            f"💰 **Остатки на счетах:**\n"
             f"  • BYN: **{byn:,.2f}**\n"
             f"  • USD: {usd:,.2f}\n"
             f"  • EUR: {eur:,.2f}\n"
@@ -1849,7 +1849,7 @@ async def handle_banking_query(
             "sources": [
                 {
                     "index": 1,
-                    "label": "Источник 1: Счета и выписка PostgreSQL",
+                    "label": "Источник 1: Счета и выписка",
                     "kind": "account",
                     "url": "/statement/account",
                 }
@@ -1906,7 +1906,7 @@ async def handle_banking_query(
             elif hits:
                 cur = hits[0].currency or "?"
                 currency_note = (
-                    f"\n\n⚠️ В базе нет платежей в {wanted_currency}; "
+                    f"\n\n⚠️ Нет платежей в {wanted_currency}; "
                     f"показываю ближайший в {cur}."
                 )
         text, sources = format_search_response(f"платежи {rest}", hits)

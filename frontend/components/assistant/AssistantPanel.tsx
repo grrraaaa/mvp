@@ -288,8 +288,13 @@ export function AssistantPanel({ variant = "default", compactMobile = false, onR
 
   const handleVoiceComplete = useCallback(
     (text: string) => {
+      const trimmed = text.trim();
+      if (!trimmed) {
+        setInput("");
+        return;
+      }
       setInput("");
-      void sendMessage(text);
+      void sendMessage(trimmed);
     },
     [sendMessage],
   );
