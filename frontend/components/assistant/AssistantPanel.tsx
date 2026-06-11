@@ -43,13 +43,6 @@ export function AssistantPanel({ variant = "default", compactMobile = false, onR
   const [orgName, setOrgName] = useState<string | null>(null);
   const [userRole, setUserRole] = useState<string | null>(null);
   const [notifications, setNotifications] = useState<SmartNotification[]>([]);
-  /**
-   * Режим приветственного экрана: false — показываем WelcomeScreen (плавающий
-   * чат до явного «Начать чат»). Становится true при первом действии
-   * пользователя (нажал «Начать чат», кликнул плитку или отправил сообщение).
-   * Сбрасывается в false при очистке истории (`messages.length === 0`).
-   */
-  const [chatStarted, setChatStarted] = useState(false);
   const scrollRef = useRef<HTMLDivElement>(null);
   const bottomRef = useRef<HTMLDivElement>(null);
   const pathname = usePathname();
@@ -78,6 +71,8 @@ export function AssistantPanel({ variant = "default", compactMobile = false, onR
     setLastEmotion,
     lastEmotion,
     loadMessages,
+    welcomeOpen,
+    setWelcomeOpen,
   } = useAssistantStore();
   const orgId = useAuthStore((s) => s.user?.org_id);
   const { config, setSettingsOpen } = useCharacterStore();
@@ -126,14 +121,23 @@ export function AssistantPanel({ variant = "default", compactMobile = false, onR
     [cancelReveal],
   );
 
-  // Синхронизация режима: первое сообщение → чат, пустая история → welcome.
   useEffect(() => {
-    if (messages.length > 0) {
-      setChatStarted(true);
-    } else {
-      setChatStarted(false);
+    if (welcomeOpen) {
+      cancelReveal();
+      stopTtsPlayback();
+      setInput("");
+      requestAnimationFrame(() => {
+        scrollRef.current?.scrollTo({ top: 0, behavior: "instant" as ScrollBehavior });
+      });
     }
-  }, [messages.length]);
+  }, [welcomeOpen, sessionId, cancelReveal]);
+
+  // После навигации по странице — остаёмся в том же чате, прокрутка вниз.
+  useEffect(() => {
+    requestAnimationFrame(() => {
+      bottomRef.current?.scrollIntoView({ behavior: "instant" as ScrollBehavior });
+    });
+  }, [pathname]);
 
   useEffect(() => {
     void fetchOrgProfile()
@@ -218,6 +222,7 @@ export function AssistantPanel({ variant = "default", compactMobile = false, onR
       if (!text.trim() || isLoading) return;
       const trimmed = text.trim();
       setInput("");
+      setWelcomeOpen(false);
       addMessage({ role: "user", content: trimmed });
       setLoading(true);
       streamBufferRef.current = "";
@@ -277,7 +282,16 @@ export function AssistantPanel({ variant = "default", compactMobile = false, onR
       sessionId,
       setLoading,
       useStreaming,
+      setWelcomeOpen,
     ],
+  );
+
+  const handleVoiceComplete = useCallback(
+    (text: string) => {
+      setInput("");
+      void sendMessage(text);
+    },
+    [sendMessage],
   );
 
   const handleShowSource = useCallback(
@@ -439,15 +453,15 @@ export function AssistantPanel({ variant = "default", compactMobile = false, onR
             onAsk={(n) => void sendMessage(`Расскажи про напоминание «${n.title}»`)}
           />
         )}
-        {!chatStarted && messages.length === 0 && inputCompact && (
+        {welcomeOpen && messages.length === 0 && inputCompact && (
           <WelcomeScreen
             compact={compactMobile}
             onSendPrompt={(text) => {
-              setChatStarted(true);
+              setWelcomeOpen(false);
               void sendMessage(text);
             }}
             onStartChat={() => {
-              setChatStarted(true);
+              setWelcomeOpen(false);
               const ta = document.querySelector<HTMLTextAreaElement>(
                 "[data-chat-panel] textarea",
               );
@@ -628,8 +642,11 @@ export function AssistantPanel({ variant = "default", compactMobile = false, onR
         <div ref={bottomRef} />
       </div>
 
-      {chatStarted && (
-        <div className={`flex-shrink-0 border-t ${embedded ? "border-assistant-surface-border bg-assistant-surface" : "border-sber-border"}`}>
+      {(!welcomeOpen || messages.length > 0) && (
+        <div
+          data-chat-panel
+          className={`flex-shrink-0 border-t ${embedded ? "border-assistant-surface-border bg-assistant-surface" : "border-sber-border"}`}
+        >
           <ChatInput
             value={input}
             onChange={setInput}
@@ -644,7 +661,7 @@ export function AssistantPanel({ variant = "default", compactMobile = false, onR
             disabled={isLoading}
             compact={inputCompact}
             simplified={inputCompact}
-            onVoiceComplete={sendMessage}
+            onVoiceComplete={handleVoiceComplete}
           />
         </div>
       )}

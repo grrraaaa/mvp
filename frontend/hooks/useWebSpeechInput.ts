@@ -181,6 +181,7 @@ export function useWebSpeechInput(
         setStatusKind("listening");
         setStatus("Отправляю…");
         onCompleteRef.current(text);
+        onTranscriptRef.current("");
         setStatusKind("idle");
         setStatus("");
         return;
@@ -264,6 +265,7 @@ export function useWebSpeechInput(
       setStatusKind("listening");
       setStatus("Отправляю…");
       onCompleteRef.current(text);
+      onTranscriptRef.current("");
       window.setTimeout(() => {
         setStatusKind("idle");
         setStatus("");

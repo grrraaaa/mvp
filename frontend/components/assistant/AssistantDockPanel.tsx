@@ -1,7 +1,8 @@
 "use client";
 
 import { useEffect, useState } from "react";
-import { Volume2, VolumeX, History, X } from "lucide-react";
+import { Volume2, VolumeX, History, X, Plus } from "lucide-react";
+import { stopTtsPlayback } from "@/lib/tts/playback";
 import { AssistantPanel } from "./AssistantPanel";
 import { ChatArchive } from "./ChatArchive";
 import { IconAiSpark } from "./IconAiSpark";
@@ -22,6 +23,7 @@ export function AssistantDockPanel() {
   const ttsEnabled = useTtsStore((s) => s.enabled);
   const toggleTts = useTtsStore((s) => s.toggleEnabled);
   const sessionId = useAssistantStore((s) => s.sessionId);
+  const startNewChat = useAssistantStore((s) => s.startNewChat);
   const collapsed = useAssistantDockStore((s) => s.collapsed);
   const setCollapsed = useAssistantDockStore((s) => s.setCollapsed);
   const expand = useAssistantDockStore((s) => s.expand);
@@ -52,6 +54,10 @@ export function AssistantDockPanel() {
               ttsEnabled={ttsEnabled}
               toggleTts={toggleTts}
               onArchive={() => setArchiveOpen(true)}
+              onNewChat={() => {
+                stopTtsPlayback();
+                startNewChat();
+              }}
               onClose={() => setMobileOpen(false)}
               compact
             />
@@ -91,6 +97,10 @@ export function AssistantDockPanel() {
             ttsEnabled={ttsEnabled}
             toggleTts={toggleTts}
             onArchive={() => setArchiveOpen(true)}
+            onNewChat={() => {
+              stopTtsPlayback();
+              startNewChat();
+            }}
             onClose={() => setCollapsed(true)}
             onOpenAbilities={() => setSettingsOpen(true)}
           />
@@ -125,6 +135,7 @@ function DockHeader({
   ttsEnabled,
   toggleTts,
   onArchive,
+  onNewChat,
   onClose,
   onOpenAbilities,
   compact = false,
@@ -132,6 +143,7 @@ function DockHeader({
   ttsEnabled: boolean;
   toggleTts: () => void;
   onArchive: () => void;
+  onNewChat: () => void;
   onClose: () => void;
   onOpenAbilities?: () => void;
   compact?: boolean;
@@ -171,6 +183,15 @@ function DockHeader({
           title="Свернуть"
         >
           <X className="w-4 h-4" />
+        </button>
+        <button
+          type="button"
+          onClick={onNewChat}
+          className="w-8 h-8 flex items-center justify-center rounded text-[#7d838a] hover:bg-[#f2f4f7] hover:text-[#0d6e68]"
+          aria-label="Новый чат"
+          title="Новый чат с 3D-консультантом"
+        >
+          <Plus className="w-4 h-4" />
         </button>
         <PersonalizationMenu
           onOpenAbilities={onOpenAbilities}

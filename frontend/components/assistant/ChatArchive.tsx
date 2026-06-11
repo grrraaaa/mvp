@@ -31,7 +31,7 @@ export function ChatArchive({ open, onClose, activeSessionId }: Props) {
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const switchSession = useAssistantStore((s) => s.switchSession);
-  const clearSession = useAssistantStore((s) => s.clearSession);
+  const startNewChat = useAssistantStore((s) => s.startNewChat);
 
   const load = async () => {
     setLoading(true);
@@ -61,7 +61,7 @@ export function ChatArchive({ open, onClose, activeSessionId }: Props) {
   };
 
   const handleNew = () => {
-    clearSession();
+    startNewChat();
     onClose();
   };
 

@@ -48,6 +48,7 @@ function AppProvidersInner({ children, documentModalHtml }: Props) {
     () => ({
       openDocumentModal: () => setDocModalOpen(true),
       openChat: () => useAssistantDockStore.getState().expand(),
+      toggleChat: () => useAssistantDockStore.getState().toggleChat(),
       openServiceApplication: (serviceName?: string) => {
         setServiceModalName(serviceName);
         setServiceModalOpen(true);

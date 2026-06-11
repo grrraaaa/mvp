@@ -93,6 +93,8 @@ interface AssistantState {
   messages: ChatMessage[];
   isLoading: boolean;
   sessionId: string | null;
+  /** Экран приветствия с 3D — только после кнопки «Новый чат». */
+  welcomeOpen: boolean;
   navigationPath: NavigationStep[] | null;
   formActions: FormFieldAction[] | null;
   suggestedChips: string[];
@@ -112,12 +114,15 @@ interface AssistantState {
   loadMessages: (msgs: ChatMessage[]) => void;
   switchSession: (id: string, msgs: ChatMessage[]) => void;
   clearSession: () => void;
+  startNewChat: () => void;
+  setWelcomeOpen: (open: boolean) => void;
 }
 
 export const useAssistantStore = create<AssistantState>((set) => ({
   messages: [],
   isLoading: false,
   sessionId: null,
+  welcomeOpen: false,
   navigationPath: null,
   formActions: null,
   suggestedChips: [],
@@ -163,6 +168,7 @@ export const useAssistantStore = create<AssistantState>((set) => ({
       sessionId: id,
       messages: msgs,
       historyLoaded: true,
+      welcomeOpen: false,
       suggestedChips: [],
       navigationPath: null,
       formActions: null,
@@ -172,9 +178,27 @@ export const useAssistantStore = create<AssistantState>((set) => ({
     set({
       messages: [],
       sessionId: null,
+      welcomeOpen: false,
       navigationPath: null,
       formActions: null,
       suggestedChips: [],
       historyLoaded: false,
     }),
+
+  startNewChat: () =>
+    set({
+      messages: [],
+      sessionId:
+        typeof crypto !== "undefined" && crypto.randomUUID
+          ? crypto.randomUUID()
+          : `sess-${Date.now()}`,
+      welcomeOpen: true,
+      navigationPath: null,
+      formActions: null,
+      suggestedChips: [],
+      historyLoaded: true,
+      isLoading: false,
+    }),
+
+  setWelcomeOpen: (open) => set({ welcomeOpen: open }),
 }));
