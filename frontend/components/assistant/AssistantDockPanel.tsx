@@ -159,7 +159,7 @@ function DockHeader({
   toggleTts: () => void;
   onArchive: () => void;
   onClose: () => void;
-  onOpenAbilities: () => void;
+  onOpenAbilities?: () => void;
   compact?: boolean;
 }) {
   return (

@@ -15,7 +15,9 @@
 flowchart TD
     IN[Сообщение пользователя<br/>+ page_route + form_type] --> API[POST /api/chat/guest]
 
-    API --> P1[1. Page UI Action<br/>page_actions.py]
+    API --> P0[0. LLM-нормализатор<br/>query_reformulator.py<br/>gpt-4o-mini, 2.5s timeout]
+    P0 -->|canonical ≠ original| P1[1. Page UI Action<br/>page_actions.py]
+    P0 -->|passthrough| P1
     P1 -->|matched| OUT1[UiAction: navigate / click]
     P1 -->|no match| P2
 
@@ -40,10 +42,98 @@ flowchart TD
     P9 -->|OPENAI_API_KEY| OUT5[LLM-ответ]
     P9 -->|нет/ошибка| P10[10. Rule-based fallback<br/>assistant.py + sber_links]
 
-    OUT1 & OUT2 & OUT3 & OUT4 & OUT5 & P10 --> R[AssistantResponse]
+    OUT1 & OUT2 & OUT3 & OUT4 & OUT5 & P10 --> R[AssistantResponse<br/>+ reformulation metadata]
 ```
 
 Пайплайн идёт **строго сверху вниз** — кто первый ответил, тот и выиграл.
+**Шаг 0** (LLM-нормализатор) — опциональный препроцессор, см. [§ 4](#4-llm-нормализатор-запросов).
+
+---
+
+## 1.1. LLM-нормализатор запросов (шаг 0)
+
+`backend/services/ai/query_reformulator.py` — отдельный модуль, который
+переписывает пользовательский запрос в каноническую форму, прежде чем тот
+попадёт в основной pipeline. Нужен, чтобы:
+
+- Юзер мог писать **как угодно** — сленг, опечатки, разговорные обороты.
+- Rule-based детекторы (INTENTS, `is_payments_by_name_query`, …) получают
+  чистую фразу и срабатывают надёжнее.
+
+### Пример
+
+| Ввод | Каноническая форма | Intent |
+|------|-------------------|--------|
+| `здароу браток надо узнать последние переводы` | `покажи последние переводы` | `statement_period` |
+| `перевод иванова` | `найди платежи Иванова` | `payments_by_name` |
+| `покажи мне выписку за прошлый месяц` | `покажи выписку за прошлый месяц` | `statement_period` |
+| `сделай платёжку на 200 рублей` | `создай платёжное поручение на 200 рублей` | `create_payment_doc` |
+| `привет` | `привет` (без изменений) | `null` (small talk) |
+
+### Архитектура
+
+1. **Манифест** — список всех поддерживаемых команд. Авто-генерируется из
+   `INTENTS` (assistant.py), `is_*_query()` паттернов (banking/queries.py),
+   form-fill ключей, demo_routes. Сейчас: **32 команды**.
+2. **LLM-вызов** — дешёвая модель (`gpt-4o-mini` по умолчанию), `temperature=0`,
+   JSON-ответ со схемой `{canonical, intent, params, confidence}`.
+3. **Кэш** — LRU по SHA-1 от сообщения (256 слотов, настраивается).
+4. **Graceful fallback** — при таймауте, ошибке сети, битом JSON, отсутствии
+   `OPENAI_API_KEY` — отдаём оригинал как есть. Pipeline идёт дальше.
+5. **Порог confidence** (по умолчанию `0.6`) — если LLM не уверен, ничего не
+   меняем.
+
+### Настройки (`.env`)
+
+| Переменная | Дефолт | Что делает |
+|------------|--------|-----------|
+| `LLM_REF_ENABLED` | `1` | Вкл/выкл нормализатор (0 = выкл). Авто-выкл, если нет `OPENAI_API_KEY`. |
+| `LLM_REF_MODEL` | `gpt-4o-mini` | Модель для нормализации. Пусто → `OPENAI_MODEL`. |
+| `LLM_REF_TIMEOUT` | `2.5` | Таймаут одного вызова (сек). Превышение → passthrough. |
+| `LLM_REF_CACHE_SIZE` | `256` | Размер LRU-кэша (по хэшу сообщения). |
+| `LLM_REF_MIN_CONFIDENCE` | `0.6` | Минимальная уверенность для замены original → canonical. |
+
+### Метаданные в ответе
+
+Если нормализатор что-то поменял, в `AssistantResponse.reformulation` придёт
+словарь:
+
+```python
+{
+    "original": "здароу браток надо узнать последние переводы",
+    "canonical": "покажи последние переводы",
+    "intent": "statement_period",
+    "confidence": 0.92,
+    "params": {"period": "recent"},
+    "via_llm": true,
+    "elapsed_ms": 187,
+}
+```
+
+Это полезно для отладки: видно, что именно LLM «понял» из пользовательского
+ввода. На UI пока не выводим, но фронт может взять `reformulation.intent` и
+подсветить матч.
+
+### Что **не** делает нормализатор
+
+- **Не решает**, что делать с запросом. Только переписывает текст.
+- **Не выдумывает** параметры — если контрагент не упомянут, не добавляет его.
+- **Не выходит за рамки** манифеста — если запрос не подходит ни под одну
+  команду (`small talk`, благодарность, ругань), возвращает `confidence: 0.0`
+  и `intent: null`, а pipeline дальше сам разруливает через OpenAI или
+  rule-based fallback.
+
+### Тесты
+
+`backend/tests/test_query_reformulator.py` — 22 теста:
+- манифест (4 теста: непустой, уникальные intent, наличие известных, синхронность с INTENTS)
+- disabled/empty fallback
+- парсинг JSON (plain, markdown-обёртка, с пояснениями, невалидный)
+- coerce_float с clamp и обработкой мусора
+- LRU-кэш (hit, eviction)
+- LLM-вызов с моком OpenAI (7 тестов: успех, markdown, bad json, timeout, exception, cache, prompt)
+
+Все async-тесты запускаются через `conftest.py::pytest_pyfunc_call` (anyio).
 
 ---
 

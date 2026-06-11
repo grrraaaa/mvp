@@ -22,6 +22,23 @@ class Settings(BaseSettings):
     OPENROUTER_SITE_URL: str = "http://localhost:3000"
     OPENROUTER_APP_NAME: str = "Sber AI Navigator"
 
+    # ── LLM-нормализатор запросов (services/ai/query_reformulator.py) ────────
+    # 1 = переписывать входящее сообщение в каноническую форму через дешёвую
+    # LLM перед основным пайплайном; 0 = пропускать как есть.
+    # Автоматически 0, если OPENAI_API_KEY пустой.
+    LLM_REF_ENABLED: int = 1
+    # Модель для нормализации. По умолчанию gpt-4o-mini — дёшево и достаточно
+    # для простой JSON-классификации. Если пусто — берётся OPENAI_MODEL.
+    LLM_REF_MODEL: str = "gpt-4o-mini"
+    # Таймаут одного вызова (сек). Если LLM не уложилась — отдаём оригинал
+    # и идём дальше по пайплайну (graceful fallback).
+    LLM_REF_TIMEOUT: float = 2.5
+    # Размер LRU-кэша нормализованных запросов (по хэшу сообщения).
+    LLM_REF_CACHE_SIZE: int = 256
+    # Минимальный confidence (0..1) от LLM, чтобы заменить original → canonical.
+    # Ниже порога — оставляем как есть.
+    LLM_REF_MIN_CONFIDENCE: float = 0.6
+
     SECRET_KEY: str = "dev-secret-key-change-in-production"
     # Опорная «сегодняшняя» дата демо-выписки (ДД.ММ.ГГГГ)
     DEMO_STATEMENT_ANCHOR: str = "06.06.2026"

@@ -867,6 +867,10 @@ class AssistantService:
         self.nav = NavigationService()
         self.products = ProductService()
         self._openai_available = bool(settings.OPENAI_API_KEY)
+        # LLM-нормализатор запросов. Один инстанс на сервис — переиспользуем
+        # манифест и LRU-кэш между вызовами.
+        from services.ai.query_reformulator import QueryReformulator
+        self._reformulator = QueryReformulator()
 
     async def process(
         self,
@@ -884,60 +888,106 @@ class AssistantService:
         if _is_greeting_or_empty(message):
             return await self._build_welcome(session_id, effective_org, page_route)
 
+        # ── LLM-нормализация: переписываем «здароу браток, последние переводы»
+        # в каноническую фразу, которую существующий pipeline уже понимает.
+        reformulation_meta = None
+        try:
+            ref = await self._reformulator.areformulate(message)
+            min_conf = float(getattr(settings, "LLM_REF_MIN_CONFIDENCE", 0.6))
+            if (
+                ref.via_llm
+                and ref.confidence >= min_conf
+                and ref.canonical
+                and ref.canonical.strip() != message.strip()
+            ):
+                logger.info(
+                    "Reformulated: %r → %r (intent=%s, conf=%.2f, %dms)",
+                    message[:80], ref.canonical[:80], ref.intent,
+                    ref.confidence, ref.elapsed_ms,
+                )
+                reformulation_meta = {
+                    "original": message,
+                    "canonical": ref.canonical,
+                    "intent": ref.intent,
+                    "confidence": ref.confidence,
+                    "params": ref.params,
+                    "via_llm": ref.via_llm,
+                    "elapsed_ms": ref.elapsed_ms,
+                }
+                message = ref.canonical
+        except Exception as exc:  # noqa: BLE001
+            # Любая ошибка реформатора — не ломаем основной pipeline.
+            logger.warning("Reformulator skipped: %s", exc)
+
         if is_navigation_message(message):
             demo_nav = self._maybe_demo_navigation(message, session_id)
             if demo_nav:
-                return demo_nav
+                return self._attach_reformulation(demo_nav, reformulation_meta)
 
         page_ui = handle_page_ui_action(message, session_id, page_route)
         if page_ui:
-            return page_ui
+            return self._attach_reformulation(page_ui, reformulation_meta)
 
         if form_type:
             form_reply = await self._handle_payment_form_chat(message, form_type, session_id, effective_org)
             if form_reply is not None:
-                return form_reply
+                return self._attach_reformulation(form_reply, reformulation_meta)
 
         banking_reply = await self._maybe_banking_query(message, session_id, effective_org)
         if banking_reply:
-            return banking_reply
+            return self._attach_reformulation(banking_reply, reformulation_meta)
 
         async with AsyncSessionLocal() as db:
             onec_reply = await handle_onec_query(db, message, session_id, effective_org)
         if onec_reply:
-            return onec_reply
+            return self._attach_reformulation(onec_reply, reformulation_meta)
 
         tax_salary = self._maybe_tax_salary_chain(message, session_id)
         if tax_salary:
-            return tax_salary
+            return self._attach_reformulation(tax_salary, reformulation_meta)
 
         service_reply = await self._maybe_service_consultation(message, session_id)
         if service_reply:
-            return service_reply
+            return self._attach_reformulation(service_reply, reformulation_meta)
 
         insurance_reply = self._maybe_insurance_reply(message, session_id)
         if insurance_reply:
-            return insurance_reply
+            return self._attach_reformulation(insurance_reply, reformulation_meta)
 
         product_reply = await self._maybe_product_recommendations(message, session_id, effective_org)
         if product_reply:
-            return product_reply
+            return self._attach_reformulation(product_reply, reformulation_meta)
 
         if self._openai_available and is_knowledge_question(message):
             try:
-                return await self._process_openai(
+                resp = await self._process_openai(
                     message, session_id, form_type=form_type, knowledge_mode=True
                 )
+                return self._attach_reformulation(resp, reformulation_meta)
             except Exception as exc:
                 logger.exception("LLM knowledge Q&A failed, continuing pipeline: %s", exc)
 
         if self._openai_available:
             try:
-                return await self._process_openai(message, session_id, form_type=form_type)
+                resp = await self._process_openai(message, session_id, form_type=form_type)
+                return self._attach_reformulation(resp, reformulation_meta)
             except Exception as exc:
                 logger.exception("LLM request failed, using rule-based fallback: %s", exc)
 
-        return await self._process_rules(message, session_id)
+        resp = await self._process_rules(message, session_id)
+        return self._attach_reformulation(resp, reformulation_meta)
+
+    @staticmethod
+    def _attach_reformulation(
+        response: AssistantResponse, meta: Optional[dict]
+    ) -> AssistantResponse:
+        """Приклеить метаданные LLM-нормализации к ответу (если были)."""
+        if not meta:
+            return response
+        # Не затигиваем существующую метадату (на всякий случай).
+        if response.reformulation is None:
+            response.reformulation = meta
+        return response
 
     async def _handle_payment_form_chat(
         self, message: str, form_type: str, session_id: str, org_id: str = "demo"

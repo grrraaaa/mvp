@@ -12,7 +12,7 @@ import { isBrowserSpeechAvailable, speakWithBrowserSpeech } from "./browserSpeec
 
 export const PREVIEW_PHRASE = "Привет! Я ваш виртуальный ассистент Сбер Бизнес.";
 
-interface PreviewHandle {
+export interface PreviewHandle {
   /** Promise, который резолвится когда превью закончилось (или было прервано). */
   done: Promise<void>;
   /** Прервать воспроизведение. */
@@ -22,24 +22,28 @@ interface PreviewHandle {
 /** Запустить превью голоса. Можно вызвать повторно — предыдущее превью
  *  того же voiceId (или любое активное) будет остановлено. */
 export function previewVoiceSample(voiceId: string, text = PREVIEW_PHRASE): PreviewHandle {
-  let stopFn = () => {};
-  const done = new Promise<void>((resolve) => {
-    stopFn = () => {
-      try {
-        audio?.pause();
-      } catch {
-        /* noop */
-      }
-      try {
-        speechSynthesis?.cancel();
-      } catch {
-        /* noop */
-      }
-      resolve();
-    };
-  });
+  // Ячейка для `resolve` Promise'а — заполняется синхронно в конструкторе ниже.
+  const resolveRef: { fn: (() => void) | null } = { fn: null };
 
   let audio: HTMLAudioElement | null = null;
+
+  const done = new Promise<void>((resolve) => {
+    resolveRef.fn = resolve;
+  });
+
+  const stopFn = () => {
+    try {
+      audio?.pause();
+    } catch {
+      /* noop */
+    }
+    try {
+      speechSynthesis?.cancel();
+    } catch {
+      /* noop */
+    }
+    resolveRef.fn?.();
+  };
 
   // Канселлим любую активную браузерную озвучку, чтобы не накладывалось.
   if (typeof window !== "undefined" && "speechSynthesis" in window) {
@@ -58,11 +62,11 @@ export function previewVoiceSample(voiceId: string, text = PREVIEW_PHRASE): Prev
       audio = new Audio(url);
       audio.onended = () => {
         URL.revokeObjectURL(url);
-        resolve();
+        resolveRef.fn?.();
       };
       audio.onerror = () => {
         URL.revokeObjectURL(url);
-        resolve();
+        resolveRef.fn?.();
       };
       await audio.play();
     } catch {
@@ -74,7 +78,7 @@ export function previewVoiceSample(voiceId: string, text = PREVIEW_PHRASE): Prev
           /* noop */
         }
       }
-      resolve();
+      resolveRef.fn?.();
     }
   })();
 

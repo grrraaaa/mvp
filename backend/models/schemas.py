@@ -116,6 +116,10 @@ class AssistantResponse(BaseModel):
     response_tone: Optional[str] = None  # success | warning | error | neutral | info
     character_emotion: Optional[str] = None
     stream: bool = False
+    # Метаданные LLM-нормализации запроса (services/ai/query_reformulator.py).
+    # Заполняется, только если реформатор реально что-то поменял.
+    # None → реформатор не отработал (отключён, таймаут, нет ключа, low confidence).
+    reformulation: Optional[dict] = None  # {original, canonical, intent, confidence, via_llm}
 
 
 # ─── Products ─────────────────────────────────────────
