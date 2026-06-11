@@ -15,6 +15,10 @@ interface Props {
 
 export function MessageBubble({ message, isTyping, compact, onChoice }: Props) {
   const isUser = message.role === "user";
+  const pendingReply =
+    isTyping ||
+    Boolean(message.awaitingVoice) ||
+    (Boolean(message.streaming) && !message.content.trim());
 
   // Сообщения ассистента: маленький sparkles-аватар слева (та же иконка, что
   // в Nav у "ИИ-ассистент") + белый бабл с тонкой границей. Строгий стиль:
@@ -35,7 +39,7 @@ export function MessageBubble({ message, isTyping, compact, onChoice }: Props) {
             compact ? "px-3 py-2 text-xs" : "px-3.5 py-2.5 text-sm"
           } bg-white text-[#1f1f22] border border-[#e4e8eb] rounded-2xl rounded-tl-md shadow-sm`}
         >
-          {isTyping ? (
+          {pendingReply ? (
             <span className="flex gap-1 py-0.5">
               {[0, 1, 2].map((i) => (
                 <span
@@ -48,7 +52,10 @@ export function MessageBubble({ message, isTyping, compact, onChoice }: Props) {
           ) : (
             <>
               {renderAssistantMessageContent(message.content)}
-              {message.choiceCards && message.choiceCards.length > 0 && (
+              {message.choiceCards &&
+                message.choiceCards.length > 0 &&
+                !message.revealing &&
+                !message.awaitingVoice && (
                 <ChoiceCards
                   cards={message.choiceCards}
                   compact={compact}

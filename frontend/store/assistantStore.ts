@@ -79,22 +79,14 @@ export interface ChatMessage {
   charts?: ChartSpec[];
   /** Специализированные графики (forecast, balance и т.д.) — рендерим как карточки, а не PNG. */
   chartPayload?: ChartPayloadMap | null;
-  streaming?: boolean;
-}
-
-export interface ChatMessage {
-  role: "user" | "assistant";
-  content: string;
-  products?: BankProduct[];
-  actionButtons?: ActionButton[];
-  navigationPath?: NavigationStep[];
-  pendingFormFields?: string[];
-  formFillStatus?: string;
-  sources?: SourceRef[];
-  charts?: ChartSpec[];
   /** Структурированные карточки выбора (radio/чекбоксы + «Рекомендуем»). */
   choiceCards?: ChoiceCard[];
+  /** Идёт ответ с сервера (SSE). */
   streaming?: boolean;
+  /** Ответ готов, ждём подготовку озвучки. */
+  awaitingVoice?: boolean;
+  /** Текст постепенно «печатается» в бабле. */
+  revealing?: boolean;
 }
 
 interface AssistantState {

@@ -19,7 +19,8 @@ import { ocrFillForm, readFileAsDataUrl } from "@/lib/api/forms";
 import { apiUrl } from "@/lib/api/baseUrl";
 import { authHeaders } from "@/lib/auth/tokenRef";
 import { executeUiActions } from "@/lib/assistant/uiBridge";
-import { useAssistantSpeech } from "@/hooks/useAssistantSpeech";
+import { useAssistantReveal } from "@/hooks/useAssistantReveal";
+import { stopTtsPlayback } from "@/lib/tts/playback";
 import { SourceChips } from "./SourceChips";
 import { documentViewPath, isDocumentUuid } from "@/lib/banking/documentDeepLink";
 import { buildHighlightUrl } from "@/lib/sbbol/fieldHighlight";
@@ -80,10 +81,10 @@ export function AssistantPanel({ variant = "default", compactMobile = false, onR
   } = useAssistantStore();
   const orgId = useAuthStore((s) => s.user?.org_id);
   const { config, setSettingsOpen } = useCharacterStore();
-  const { speak, stop: stopSpeech } = useAssistantSpeech();
+  const { revealLastAssistant, cancelReveal } = useAssistantReveal();
   const { setEmotion } = useCharacterBehaviorStore();
-  const lastSpokenCountRef = useRef(0);
   const lastToneRef = useRef<string | undefined>(undefined);
+  const streamBufferRef = useRef("");
 
   const lastAssistantText = useMemo(() => {
     for (let i = messages.length - 1; i >= 0; i--) {
@@ -95,20 +96,6 @@ export function AssistantPanel({ variant = "default", compactMobile = false, onR
   useEffect(() => {
     bottomRef.current?.scrollIntoView({ behavior: "smooth" });
   }, [messages, isLoading]);
-
-  useEffect(() => {
-    if (isLoading) return;
-    if (messages.length <= lastSpokenCountRef.current) return;
-
-    const last = messages[messages.length - 1];
-    if (last?.role !== "assistant" || !last.content.trim()) {
-      lastSpokenCountRef.current = messages.length;
-      return;
-    }
-
-    lastSpokenCountRef.current = messages.length;
-    void speak(last.content, { tone: lastToneRef.current, emotion: lastEmotion ?? undefined });
-  }, [messages, isLoading, speak, lastEmotion]);
 
   useEffect(() => {
     if (!sessionId) {
@@ -131,7 +118,13 @@ export function AssistantPanel({ variant = "default", compactMobile = false, onR
 
   const hideSuggestions = messages.length > 0 && suggestedChips.length === 0 && !input.trim();
 
-  useEffect(() => () => stopSpeech(), [stopSpeech]);
+  useEffect(
+    () => () => {
+      cancelReveal();
+      stopTtsPlayback();
+    },
+    [cancelReveal],
+  );
 
   // Синхронизация режима: первое сообщение → чат, пустая история → welcome.
   useEffect(() => {
@@ -162,6 +155,20 @@ export function AssistantPanel({ variant = "default", compactMobile = false, onR
       scrollRef.current?.scrollTo({ top: 0, behavior: "smooth" });
     });
   }, [onRegisterReset]);
+
+  const assistantMetaFromPayload = useCallback(
+    (data: Record<string, unknown>) => ({
+      products: data.products as never,
+      actionButtons: data.action_buttons as never,
+      navigationPath: data.navigation_path as never,
+      pendingFormFields: data.pending_form_fields as never,
+      formFillStatus: data.form_fill_status as never,
+      sources: data.sources as never,
+      charts: data.charts as never,
+      chartPayload: (data.chart_payload as never) ?? null,
+    }),
+    [],
+  );
 
   const applyAssistantPayload = useCallback(
     (data: Record<string, unknown>) => {
@@ -213,6 +220,8 @@ export function AssistantPanel({ variant = "default", compactMobile = false, onR
       setInput("");
       addMessage({ role: "user", content: trimmed });
       setLoading(true);
+      streamBufferRef.current = "";
+      addMessage({ role: "assistant", content: "", streaming: true });
 
       const body = {
         message: trimmed,
@@ -223,23 +232,10 @@ export function AssistantPanel({ variant = "default", compactMobile = false, onR
       };
 
       try {
+        let data: Record<string, unknown>;
         if (useStreaming) {
-          addMessage({ role: "assistant", content: "", streaming: true });
-          const data = await streamChatMessage(body, (partial) => {
-            updateLastAssistant({ content: partial });
-          });
-          applyAssistantPayload(data);
-          updateLastAssistant({
-            content: (data.message as string) || "",
-            streaming: false,
-            products: data.products as never,
-            actionButtons: data.action_buttons as never,
-            navigationPath: data.navigation_path as never,
-            pendingFormFields: data.pending_form_fields as never,
-            formFillStatus: data.form_fill_status as never,
-            sources: data.sources as never,
-            charts: data.charts as never,
-            chartPayload: (data.chart_payload as never) ?? null,
+          data = await streamChatMessage(body, (partial) => {
+            streamBufferRef.current = partial;
           });
         } else {
           const chatPath = authHeaders().Authorization ? "/api/chat" : "/api/chat/guest";
@@ -250,34 +246,21 @@ export function AssistantPanel({ variant = "default", compactMobile = false, onR
             body: JSON.stringify(body),
           });
           if (!res.ok) throw new Error(`HTTP ${res.status}`);
-          const data = await res.json();
-          applyAssistantPayload(data);
-          addMessage({
-            role: "assistant",
-            content: data.message,
-            products: data.products,
-            actionButtons: data.action_buttons,
-            navigationPath: data.navigation_path,
-            pendingFormFields: data.pending_form_fields,
-            formFillStatus: data.form_fill_status,
-            sources: data.sources,
-            charts: data.charts,
-            chartPayload: data.chart_payload ?? null,
-          });
+          data = await res.json();
         }
+
+        applyAssistantPayload(data);
+        const replyText =
+          (typeof data.message === "string" && data.message) || streamBufferRef.current || "";
+        await revealLastAssistant(replyText, assistantMetaFromPayload(data), {
+          tone: lastToneRef.current,
+          emotion: lastEmotion ?? undefined,
+        });
       } catch (err) {
         console.error("[AssistantPanel] fetch error:", err);
         const msg = err instanceof Error ? err.message : String(err);
-        updateLastAssistant({
-          content: `Не удалось связаться с сервером.\nРазделы СберБизнес доступны в меню слева.\n\n${msg}`,
-          streaming: false,
-        });
-        if (!useStreaming) {
-          addMessage({
-            role: "assistant",
-            content: `Не удалось связаться с сервером.\nРазделы СберБизнес доступны в меню слева.\n\n${msg}`,
-          });
-        }
+        const errorText = `Не удалось связаться с сервером.\nРазделы СберБизнес доступны в меню слева.\n\n${msg}`;
+        await revealLastAssistant(errorText, {}, { tone: "error" });
       } finally {
         setLoading(false);
       }
@@ -285,12 +268,14 @@ export function AssistantPanel({ variant = "default", compactMobile = false, onR
     [
       addMessage,
       applyAssistantPayload,
+      assistantMetaFromPayload,
       isLoading,
+      lastEmotion,
       orgId,
       pageContext,
+      revealLastAssistant,
       sessionId,
       setLoading,
-      updateLastAssistant,
       useStreaming,
     ],
   );
@@ -360,25 +345,27 @@ export function AssistantPanel({ variant = "default", compactMobile = false, onR
     async (file: File) => {
       if (isLoading) return;
       if (!pageContext.form_type) {
-        addMessage({
-          role: "assistant",
-          content:
-            "Загрузка фото счёта работает на странице **Мгновенный платёж**.\n\nОткройте /payments/instant и нажмите иконку камеры внизу чата — я распознаю реквизиты и заполню форму.",
-        });
+        addMessage({ role: "assistant", content: "", streaming: true });
+        void revealLastAssistant(
+          "Загрузка фото счёта работает на странице **Мгновенный платёж**.\n\nОткройте /payments/instant и нажмите иконку камеры внизу чата — я распознаю реквизиты и заполню форму.",
+        );
         return;
       }
       const isPdf = file.type === "application/pdf" || file.name.toLowerCase().endsWith(".pdf");
       if (!file.type.startsWith("image/") && !isPdf) {
-        addMessage({ role: "assistant", content: "Выберите изображение (JPG, PNG) или PDF счёта." });
+        addMessage({ role: "assistant", content: "", streaming: true });
+        void revealLastAssistant("Выберите изображение (JPG, PNG) или PDF счёта.");
         return;
       }
       if (file.size > 8 * 1024 * 1024) {
-        addMessage({ role: "assistant", content: "Файл слишком большой. Максимум 8 МБ." });
+        addMessage({ role: "assistant", content: "", streaming: true });
+        void revealLastAssistant("Файл слишком большой. Максимум 8 МБ.");
         return;
       }
 
       addMessage({ role: "user", content: `${isPdf ? "PDF" : "Фото"}: ${file.name}` });
       setLoading(true);
+      addMessage({ role: "assistant", content: "", streaming: true });
 
       try {
         const dataUrl = await readFileAsDataUrl(file);
@@ -390,17 +377,12 @@ export function AssistantPanel({ variant = "default", compactMobile = false, onR
           setLastEmotion(data.character_emotion as string);
           setEmotion(data.character_emotion as string);
         }
-        addMessage({
-          role: "assistant",
-          content: data.message,
+        await revealLastAssistant(data.message, {
           formFillStatus: data.form_fill_status,
         });
       } catch (err) {
         const msg = err instanceof Error ? err.message : String(err);
-        addMessage({
-          role: "assistant",
-          content: `Не удалось распознать фото.\n\n${msg}`,
-        });
+        await revealLastAssistant(`Не удалось распознать фото.\n\n${msg}`, {}, { tone: "error" });
       } finally {
         setLoading(false);
       }
@@ -410,9 +392,13 @@ export function AssistantPanel({ variant = "default", compactMobile = false, onR
       applyFormActions,
       isLoading,
       pageContext.form_type,
+      revealLastAssistant,
       sessionId,
+      setEmotion,
+      setLastEmotion,
       setLoading,
       setSessionId,
+      setSuggestedChips,
     ],
   );
 
@@ -574,17 +560,29 @@ export function AssistantPanel({ variant = "default", compactMobile = false, onR
               compact={compactMobile}
               onChoice={(text) => void sendMessage(text)}
             />
-            {msg.products && msg.products.length > 0 && (
+            {msg.products &&
+              msg.products.length > 0 &&
+              !msg.streaming &&
+              !msg.awaitingVoice &&
+              !msg.revealing && (
               <ProductCard products={msg.products} />
             )}
-            {msg.actionButtons && msg.actionButtons.length > 0 && (
+            {msg.actionButtons &&
+              msg.actionButtons.length > 0 &&
+              !msg.streaming &&
+              !msg.awaitingVoice &&
+              !msg.revealing && (
               <ActionButtons
                 buttons={msg.actionButtons}
                 onSendMessage={sendMessage}
                 compact={compactMobile}
               />
             )}
-            {msg.sources && msg.sources.length > 0 && !msg.streaming && (
+            {msg.sources &&
+              msg.sources.length > 0 &&
+              !msg.streaming &&
+              !msg.awaitingVoice &&
+              !msg.revealing && (
               <SourceChips
                 sources={msg.sources}
                 onShowSource={handleShowSource}
@@ -616,7 +614,12 @@ export function AssistantPanel({ variant = "default", compactMobile = false, onR
           </div>
         ))}
 
-        {isLoading && !messages.some((m) => m.role === "assistant" && m.streaming) && (
+        {isLoading &&
+          !messages.some(
+            (m) =>
+              m.role === "assistant" &&
+              (m.streaming || m.awaitingVoice || m.revealing),
+          ) && (
           <div className="mb-3">
             <MessageBubble message={{ role: "assistant", content: "…" }} isTyping />
           </div>
