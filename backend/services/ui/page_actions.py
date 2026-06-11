@@ -526,12 +526,17 @@ PAGE_REGISTRY: dict[str, list[dict]] = {
     "/services/counterparty": [
         {
             "target": "check-counterparty",
-            "labels": ["проверить контрагента", "проверь", "благонадёжност", "риск"],
+            # Только полные формы — НЕ сокращённые «проверь» / «риск», чтобы
+            # они не перехватывали сообщения с конкретным именем («проверь
+            # контрагента ИП Петров»). Конкретное имя (ООО/ИП/ЗАО/ОДО/УНП)
+            # отсекается отдельной проверкой в _match_action
+            # (_has_counterparty_name), чтобы banking query мог отработать.
+            "labels": ["проверить контрагента", "проверь контрагента"],
             "description": "Проверить контрагента — риск-анализ, DUE DILIGENCE",
         },
         {
             "target": "add-counterparty",
-            "labels": ["добавить контрагента", "добавь", "новый контрагент"],
+            "labels": ["добавить контрагента", "добавь контрагента", "новый контрагент"],
             "description": "Добавить контрагента в справочник",
         },
     ],
@@ -850,6 +855,25 @@ def _normalize_route(page_route: Optional[str]) -> str:
     return base or "/"
 
 
+def _has_counterparty_name(msg: str) -> bool:
+    """В сообщении есть конкретное имя контрагента (ООО/ИП/ЗАО/ОДО/ЗАО/УНП).
+
+    Используется чтобы НЕ перехватывать «проверь контрагента ИП Петров»
+    page-action'ом check-counterparty (который вернёт generic «Проверяет…»)
+    — вместо этого banking query выполнит реальный risk-анализ по имени.
+    """
+    # ООО/ОДО/ЗАО/ИП/ЧУП/ОАО — формы собственности РБ
+    # УНП — 9-значный номер (после «уnp» или как самостоятельное число из 9 цифр)
+    if re.search(r"\b(ооо|одо|зао|оао|чуп|ип|чунп)\b", msg):
+        return True
+    if re.search(r"\bунп\b", msg):
+        return True
+    if re.search(r"\b\d{9}\b", msg):
+        # 9-значное число без контекста — вероятно УНП
+        return True
+    return False
+
+
 def _match_action(message: str, page_route: Optional[str]) -> Optional[dict]:
     """Найти действие по фразе пользователя.
 
@@ -860,11 +884,24 @@ def _match_action(message: str, page_route: Optional[str]) -> Optional[dict]:
        явно указан год / месяц / период, даём приоритет конкретному фильтру над
        общим ``reset-filters`` (иначе «покажи все документы за 2026 год» ошибочно
        шлёт ``reset-filters``, потому что «все документы» длиннее «за 2026»).
+
+    Гвард: для ``check-counterparty`` (проверка контрагента) — если в
+    сообщении упомянуто конкретное имя (ООО/ИП/ЗАО/УНП) — НЕ матчим
+    page-action, пусть banking query выполнит реальный risk-анализ.
     """
     msg = message.lower().strip()
 
     if not any(re.search(p, msg) for p in CLICK_PATTERNS):
         return None
+
+    # Гвард: конкретное имя контрагента → banking query, а не page-action click.
+    if _has_counterparty_name(msg):
+        # Возвращаем None только если page-action был бы check-counterparty;
+        # иные actions (например «проверь реквизиты платежа») — не блокируем.
+        # Проверяем это через re-поиск по check-counterparty labels.
+        cp_check_labels = ("проверить контрагента", "проверь контрагента")
+        if any(lbl in msg for lbl in cp_check_labels):
+            return None
 
     # 1) Точный маршрут навигации (мгновенный платёж → /payments/instant)
     nav_route = resolve_navigation_route(message)

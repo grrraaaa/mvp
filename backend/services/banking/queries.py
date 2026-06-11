@@ -1119,10 +1119,35 @@ async def handle_banking_query(
 
     if re.search(r"провер\w*\s+контрагент|благонадёжност|due\s+diligence|риск.?\s+скор", low):
         name_m = re.search(r"(?:контрагент\w*|поставщик\w*)\s+(.+)", message, re.I)
-        query = name_m.group(1).strip() if name_m else message
-        for token in ["проверь", "контрагента", "благонадёжность", "риск"]:
+        query = name_m.group(1).strip() if name_m else ""
+        for token in ["проверь", "проверить", "контрагента", "контрагент", "благонадёжность", "риск", "скор"]:
             query = re.sub(token, "", query, flags=re.I).strip()
-        risk = await get_counterparty_risk(session, org_id, query or "Ромашка")
+        query = query.strip("«»\"' ,.")
+
+        if not query:
+            # Без имени — спрашиваем и предлагаем чипы с реальными
+            # контрагентами из реестра (раньше был захардкоженный «Ромашка»,
+            # что давало фейковый ответ).
+            cps = (
+                await session.execute(
+                    select(Counterparty).where(Counterparty.org_id == org_id).limit(5)
+                )
+            ).scalars().all()
+            chips = [f"Проверь контрагента {c.name}" for c in cps][:4]
+            listing = "\n".join(f"• {c.name} (УНП {c.unp or '—'})" for c in cps)
+            return {
+                "message": (
+                    "Уточните, какого контрагента проверить. "
+                    "Например: «Проверь контрагента ООО Ромашка».\n\n"
+                    f"Ваши контрагенты:\n{listing}"
+                ),
+                "suggested_chips": chips or ["Проверь контрагента ООО Ромашка"],
+                "action_buttons": [
+                    {"label": "Все контрагенты", "url": "/payments/counterparties", "variant": "secondary"},
+                ],
+            }
+
+        risk = await get_counterparty_risk(session, org_id, query)
         if risk:
             return {
                 "message": format_risk_report(risk),
@@ -1139,9 +1164,30 @@ async def handle_banking_query(
                     {"label": "Карточка контрагента", "url": f"/services/counterparty?cp={risk['id']}", "variant": "primary"},
                 ],
             }
+
+        # Имя не нашлось — даём подсказки: похожие имена + «добавить».
+        all_cps = (
+            await session.execute(
+                select(Counterparty).where(Counterparty.org_id == org_id)
+            )
+        ).scalars().all()
+        low_q = query.lower()
+        suggestions = [
+            c for c in all_cps
+            if any(tok in c.name.lower() for tok in low_q.split() if len(tok) >= 3)
+        ][:3]
+        suggestion_lines = "\n".join(f"• {c.name} (УНП {c.unp or '—'})" for c in suggestions) or "— нет похожих —"
         return {
-            "message": "Укажите название контрагента, например: «Проверь контрагента ООО Ромашка».",
-            "pending_form_fields": ["Название контрагента"],
+            "message": (
+                f"Не нашёл «{query}» в вашем справочнике.\n\n"
+                f"Возможно, вы имели в виду:\n{suggestion_lines}\n\n"
+                "Уточните имя или добавьте нового контрагента."
+            ),
+            "suggested_chips": [f"Проверь контрагента {s.name}" for s in suggestions]
+            + [f"Добавь контрагента {query}"],
+            "action_buttons": [
+                {"label": "Все контрагенты", "url": "/payments/counterparties", "variant": "secondary"},
+            ],
         }
 
     if re.search(r"добав\w*\s+контрагент", low):
