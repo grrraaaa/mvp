@@ -2,7 +2,7 @@
 
 import { Suspense, useEffect, useMemo, useRef, useState } from "react";
 import { Canvas, useFrame, useThree } from "@react-three/fiber";
-import { useGLTF, useAnimations } from "@react-three/drei";
+import { OrbitControls, useGLTF, useAnimations } from "@react-three/drei";
 import * as THREE from "three";
 import { SkeletonUtils } from "three-stdlib";
 import { useCharacterStore, resolveModelPath } from "@/store/characterStore";
@@ -16,12 +16,10 @@ import { fitObjectToFloor } from "@/lib/assistant/fitGlbModel";
 import { analyzeHead } from "@/lib/assistant/analyzeModel";
 
 interface Props {
-  /** Размер вьюпорта (квадрат). По умолчанию 192. */
-  size?: number;
-  /** Горизонтальный поворот камеры (радианы). */
-  yaw?: number;
-  /** Вертикальный наклон (радианы). */
-  pitch?: number;
+  /** Полная высота канваса в px. Ширина — 100% контейнера. */
+  height?: number;
+  /** Отключить вращение (если канвас внутри скролл-контейнера и т.п.). */
+  disableOrbit?: boolean;
 }
 
 type MorphMesh = THREE.Mesh & {
@@ -106,19 +104,16 @@ function prepareMaterials(root: THREE.Object3D) {
   });
 }
 
-function WelcomeCharacterInner({
-  modelPath,
-  yaw,
-  pitch,
-}: {
+interface InnerProps {
   modelPath: string;
-  yaw: number;
-  pitch: number;
-}) {
+  onHeadAnalyzed: (worldY: number) => void;
+}
+
+function WelcomeCharacterInner({ modelPath, onHeadAnalyzed }: InnerProps) {
   const modelRef = useRef<THREE.Group>(null);
-  const headCenterRef = useRef(new THREE.Vector3());
   const morphMeshesRef = useRef<MorphMesh[]>([]);
   const lipBindingsRef = useRef<Array<{ meshIndex: number; morphIndex: number }>>([]);
+  const reportedRef = useRef<string | null>(null);
 
   const { scene, animations } = useGLTF(modelPath);
   const clone = useMemo(() => {
@@ -131,26 +126,16 @@ function WelcomeCharacterInner({
   const fit = useMemo(() => fitObjectToFloor(clone), [clone]);
   const head = useMemo(() => analyzeHead(clone), [clone]);
 
-  const modelPos = useMemo(() => {
-    // Зум на верхнюю часть: поднимаем базу так, чтобы голова оказалась ~в центре вида
-    const headLocalY = head.headCenterLocal.y * fit.scale;
-    const baseY = fit.position.y - headLocalY * 0.6; // смещаем вверх, оставляя часть торса
-    return new THREE.Vector3(fit.position.x, baseY, fit.position.z);
-  }, [fit, head]);
-
-  const modelScale = useMemo(() => fit.scale * 1.4, [fit]);
-
   useEffect(() => {
     morphMeshesRef.current = collectMorphMeshes(clone);
     lipBindingsRef.current = collectLipBindings(morphMeshesRef.current);
-    headCenterRef.current.copy(head.headCenterLocal);
-    for (const m of morphMeshesRef.current) {
-      const inf = m.morphTargetInfluences;
-      if (inf) for (let i = 0; i < inf.length; i++) inf[i] = 0;
+    if (reportedRef.current !== modelPath) {
+      reportedRef.current = modelPath;
+      const worldY = head.headCenterLocal.y * fit.scale + fit.position.y;
+      onHeadAnalyzed(worldY);
     }
-  }, [clone, head]);
+  }, [clone, head, fit, modelPath, onHeadAnalyzed]);
 
-  // Лёгкая idle-анимация + микро-движения, чтобы персонаж «жил»
   const { actions, mixer } = useAnimations(animations, modelRef);
   useEffect(() => {
     if (!actions) return undefined;
@@ -164,26 +149,38 @@ function WelcomeCharacterInner({
     };
   }, [actions]);
 
+  // Лёгкая idle-анимация: микро-движения, чтобы персонаж «жил».
   useFrame((state, delta) => {
     if (mixer) mixer.update(delta);
     const g = modelRef.current;
     if (!g) return;
     const t = state.clock.elapsedTime;
-    g.rotation.y = yaw + Math.sin(t * 0.6) * 0.04;
-    g.rotation.x = pitch + Math.sin(t * 0.8) * 0.01;
-    g.position.y = modelPos.y + Math.sin(t * 1.2) * 0.01;
+    g.position.y = fit.position.y + Math.sin(t * 1.2) * 0.005;
   });
 
   return (
-    <group
-      ref={modelRef}
-      position={modelPos}
-      rotation={[pitch, yaw, 0]}
-      scale={modelScale}
-    >
+    <group ref={modelRef} position={fit.position} scale={fit.scale}>
       <primitive object={clone} />
     </group>
   );
+}
+
+/** Камера смотрит на верхнюю треть модели (голова/плечи), слегка
+ *  приподнята над уровнем глаз. */
+function PortraitRig({ headWorldY }: { headWorldY: number }) {
+  const { camera } = useThree();
+  const applied = useRef<number | null>(null);
+
+  useFrame(() => {
+    if (applied.current === headWorldY) return;
+    applied.current = headWorldY;
+    const y = headWorldY || 1.45;
+    camera.position.set(0, y + 0.25, 2.6);
+    camera.lookAt(0, y, 0);
+    camera.updateProjectionMatrix();
+  });
+
+  return null;
 }
 
 function StudioLights() {
@@ -198,12 +195,13 @@ function StudioLights() {
 }
 
 /**
- * Компактный 3D-аватар для приветственного экрана плавающего чата.
- * Канвас квадратный, без скролла, без орбит-контролов — просто «портрет»
- * с лёгкой idle-анимацией.
+ * Полноразмерный прямоугольный 3D-канвас. Drag для вращения, wheel для
+ * зума. Камера слегка приподнята и смотрит на голову. Без круглой клипсы —
+ * аватар занимает весь контейнер.
  */
-export function WelcomeCharacter3D({ size = 192, yaw = 0, pitch = 0 }: Props) {
+export function WelcomeCharacter3D({ height = 280, disableOrbit }: Props) {
   const [mounted, setMounted] = useState(false);
+  const [headWorldY, setHeadWorldY] = useState(1.45);
   useEffect(() => setMounted(true), []);
 
   const modelPath = resolveModelPath({
@@ -214,8 +212,8 @@ export function WelcomeCharacter3D({ size = 192, yaw = 0, pitch = 0 }: Props) {
   if (!mounted) {
     return (
       <div
-        style={{ width: size, height: size }}
-        className="rounded-full bg-gradient-to-br from-[#f4e4d4] to-[#e8c8a8] flex items-center justify-center text-[#5a3a20] font-bold shadow-md border-2 border-white/40"
+        style={{ height }}
+        className="w-full bg-gradient-to-br from-[#e8f1ee] via-[#eef7f5] to-[#e5f0ec]"
         aria-hidden
       />
     );
@@ -223,12 +221,12 @@ export function WelcomeCharacter3D({ size = 192, yaw = 0, pitch = 0 }: Props) {
 
   return (
     <div
-      style={{ width: size, height: size }}
-      className="rounded-full overflow-hidden shadow-md border-2 border-white/40 bg-gradient-to-br from-[#e8f1ee] via-[#eef7f5] to-[#e5f0ec]"
+      style={{ height }}
+      className="relative w-full bg-gradient-to-br from-[#e8f1ee] via-[#eef7f5] to-[#e5f0ec] touch-none"
     >
       <Canvas
         className="!h-full !w-full"
-        camera={{ position: [0, 0.05, 1.5], fov: 28, near: 0.05, far: 20 }}
+        camera={{ position: [0, 1.6, 2.6], fov: 35, near: 0.05, far: 50 }}
         gl={{
           antialias: true,
           alpha: true,
@@ -238,14 +236,33 @@ export function WelcomeCharacter3D({ size = 192, yaw = 0, pitch = 0 }: Props) {
       >
         <Suspense fallback={null}>
           <StudioLights />
+          <PortraitRig headWorldY={headWorldY} />
           <WelcomeCharacterInner
             key={modelPath}
             modelPath={modelPath}
-            yaw={yaw}
-            pitch={pitch}
+            onHeadAnalyzed={setHeadWorldY}
           />
+          {!disableOrbit && (
+            <OrbitControls
+              makeDefault
+              enablePan={false}
+              enableZoom
+              enableRotate
+              enableDamping
+              dampingFactor={0.12}
+              minDistance={1.6}
+              maxDistance={5.5}
+              minPolarAngle={Math.PI * 0.18}
+              maxPolarAngle={Math.PI * 0.62}
+              target={[0, headWorldY, 0]}
+            />
+          )}
         </Suspense>
       </Canvas>
+
+      <div className="pointer-events-none absolute bottom-2 right-2 hidden sm:flex items-center gap-1 bg-white/70 backdrop-blur-sm rounded-full px-2 py-0.5 text-[9px] font-bold text-[#0d6e68]">
+        <span>↻ перетащите</span>
+      </div>
     </div>
   );
 }

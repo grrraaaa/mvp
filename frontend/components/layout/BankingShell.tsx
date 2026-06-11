@@ -8,6 +8,7 @@ import Navbar from "@/components/banking/Navbar";
 import Sidebar, { getActiveTab, getSubHeaderTitle } from "@/components/banking/Sidebar";
 import Footer from "@/components/banking/Footer";
 import { BankingModals } from "@/components/banking/BankingModals";
+import { AssistantDockPanel } from "@/components/assistant/AssistantDockPanel";
 import { useBankingStore } from "@/store/bankingStore";
 import { useAuthStore } from "@/store/authStore";
 import { fetchNotifications } from "@/lib/api/banking";
@@ -128,6 +129,8 @@ export function BankingShell({ children }: Props) {
 
           <Footer />
         </div>
+
+        <AssistantDockPanel />
       </div>
 
       <BankingModals

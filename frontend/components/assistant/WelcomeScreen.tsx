@@ -102,35 +102,23 @@ export function WelcomeScreen({ onSendPrompt, onStartChat, compact }: Props) {
     onSendPrompt(message);
   };
 
-  const avatarSize = compact ? 96 : 128;
+  const avatarHeight = compact ? 160 : 260;
 
   return (
     <div className={`flex flex-col w-full bg-white ${compact ? "px-3 py-2" : "px-4 py-3"}`}>
-      {/* Карточка ассистента */}
+      {/* Карточка ассистента — внутри полноразмерный 3D-канвас */}
       <div
         className={`relative w-full overflow-hidden rounded-2xl ${
-          compact ? "h-36" : "h-48 sm:h-52"
+          compact ? "h-40" : "h-64 sm:h-72"
         }`}
         style={{
           background:
             "linear-gradient(135deg, #b8d8d3 0%, #c8e4dd 35%, #d6ece5 70%, #e3f1ea 100%)",
         }}
       >
-        {/* Тонкий зернистый оверлей для имитации фото-фона */}
-        <div
-          className="absolute inset-0 opacity-30"
-          style={{
-            background:
-              "radial-gradient(circle at 30% 40%, rgba(255,255,255,0.6) 0%, transparent 50%), radial-gradient(circle at 70% 60%, rgba(255,255,255,0.3) 0%, transparent 50%)",
-          }}
-          aria-hidden
-        />
-        {/* 3D-аватар ассистента (Александр / Александра) */}
-        <div className="absolute inset-0 flex items-end justify-center pb-1">
-          <div className="flex flex-col items-center">
-            <WelcomeCharacter3D size={avatarSize} />
-          </div>
-        </div>
+        {/* 3D-канвас на всю карточку (можно вращать, зумить) */}
+        <WelcomeCharacter3D height={avatarHeight} />
+
         {/* Sparkles-чип в углу */}
         <div className="absolute top-2.5 left-2.5 flex items-center gap-1 bg-white/70 backdrop-blur-sm rounded-full px-2 py-1 text-[10px] font-bold text-[#0d6e68]">
           <IconAiSpark size={12} />

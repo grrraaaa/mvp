@@ -2,7 +2,6 @@
 
 import { ReactNode, Suspense, useEffect, useMemo, useState } from "react";
 import { usePathname, useSearchParams } from "next/navigation";
-import { AssistantFloatingChat } from "@/components/assistant/AssistantFloatingChat";
 import CreateDocumentModal from "@/components/banking/CreateDocumentModal";
 import { SbbolUiContext } from "@/components/layout/SbbolUiContext";
 import { AssistantUiBridge } from "@/components/assistant/AssistantUiBridge";
@@ -12,6 +11,7 @@ import { TtsBootstrap } from "@/components/assistant/TtsBootstrap";
 import { GatewayStatusBanner } from "@/components/banking/GatewayStatusBanner";
 import { ServiceApplicationModal } from "@/components/banking/ServiceApplicationModal";
 import { useAuthStore } from "@/store/authStore";
+import { useAssistantDockStore } from "@/store/assistantDockStore";
 
 interface Props {
   children: ReactNode;
@@ -34,16 +34,9 @@ function AppProvidersInner({ children, documentModalHtml }: Props) {
   const isLoginPage = pathname === "/login";
   const showBankingExtras = Boolean(token) && !isLoginPage;
 
-  const [chatOpen, setChatOpen] = useState(false);
   const [docModalOpen, setDocModalOpen] = useState(false);
   const [serviceModalOpen, setServiceModalOpen] = useState(false);
   const [serviceModalName, setServiceModalName] = useState<string | undefined>();
-
-  useEffect(() => {
-    if (!showBankingExtras) {
-      setChatOpen(false);
-    }
-  }, [showBankingExtras]);
 
   useEffect(() => {
     if ("serviceWorker" in navigator) {
@@ -54,7 +47,7 @@ function AppProvidersInner({ children, documentModalHtml }: Props) {
   const ui = useMemo(
     () => ({
       openDocumentModal: () => setDocModalOpen(true),
-      openChat: () => setChatOpen(true),
+      openChat: () => useAssistantDockStore.getState().expand(),
       openServiceApplication: (serviceName?: string) => {
         setServiceModalName(serviceName);
         setServiceModalOpen(true);
@@ -75,7 +68,6 @@ function AppProvidersInner({ children, documentModalHtml }: Props) {
           <RoleCharacterSync />
           <AssistantUiBridge />
           <FormFillBridge />
-          <AssistantFloatingChat open={chatOpen} onOpenChange={setChatOpen} />
           <GatewayStatusBanner />
         </>
       )}
