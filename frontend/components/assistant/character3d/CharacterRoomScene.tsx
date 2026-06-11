@@ -1,7 +1,7 @@
 "use client";
 
-import { Suspense, useMemo } from "react";
-import { Canvas } from "@react-three/fiber";
+import { Suspense, useMemo, useRef } from "react";
+import { Canvas, useFrame, useThree } from "@react-three/fiber";
 import {
   AdaptiveDpr,
   ContactShadows,
@@ -103,6 +103,38 @@ function StudioEnvironment() {
   );
 }
 
+/**
+ * Камера для режима «студия» (не faceFraming): ставим камеру выше головы и
+ * направляем взгляд на лицо/плечи. OrbitControls после init.target подхватит
+ * это и будет крутить модель вокруг этой точки.
+ */
+function DefaultCameraRig({
+  y,
+  z,
+  targetY,
+}: {
+  y: number;
+  z: number;
+  targetY: number;
+}) {
+  const { camera, controls } = useThree();
+  const applied = useRef(false);
+  useFrame(() => {
+    if (applied.current) return;
+    applied.current = true;
+    if (!(camera instanceof THREE.PerspectiveCamera)) return;
+    camera.position.set(0, y, z);
+    camera.lookAt(0, targetY, 0);
+    camera.updateProjectionMatrix();
+    const orbit = controls as { target?: THREE.Vector3; update?: () => void } | null;
+    if (orbit?.target) {
+      orbit.target.set(0, targetY, 0);
+      orbit.update?.();
+    }
+  });
+  return null;
+}
+
 function SceneContent({
   isLoading,
   lastAssistantText,
@@ -120,9 +152,16 @@ function SceneContent({
   const headY = PORTRAIT_HEAD_WORLD_Y;
   const lookY = headY + PORTRAIT_TARGET_Y_OFFSET;
   const camY = headY + PORTRAIT_CAMERA_Y_OFFSET;
+
+  // В обычном (не faceFraming) режиме — камера приподнята над головой, смотрит
+  // вниз на лицо/плечи. Слегка отъезжаем, чтобы поместился верх фигуры.
+  const lookYDefault = headY - 0.05;
+  const camYDefault = camY;
+  const zDefault = compact ? PORTRAIT_CAMERA_Z_COMPACT - 0.4 : PORTRAIT_CAMERA_Z - 0.4;
+
   const target: [number, number, number] = faceFraming
     ? [0, lookY, 0]
-    : [0, 1.05, 0];
+    : [0, lookYDefault, 0];
 
   // Мягкий радиальный градиент фона: от тёплого teal-50 в центре к холодному
   // frost-50 по краям. Сделан на canvas-цвете + fog, чтобы не было «кубика».
@@ -184,6 +223,9 @@ function SceneContent({
       />
 
       <PortraitCamera active={faceFraming} compact={compact} />
+      {!faceFraming && (
+        <DefaultCameraRig y={camYDefault} z={zDefault} targetY={lookYDefault} />
+      )}
       <CharacterAvatar3D config={config} />
 
       {/* Мягкие контактные тени — главный «вау-эффект» под моделью. */}
@@ -212,15 +254,22 @@ function SceneContent({
         />
       )}
 
+      {/*
+        OrbitControls: свободное вращение (без жёстких азимутальных углов),
+        зум включён, мягкий damping. Цель — голова/плечи, чтобы вращение
+        крутилось вокруг лица, а не вокруг ног.
+      */}
       <OrbitControls
+        makeDefault
         enablePan={false}
-        enableZoom={faceFraming}
-        minDistance={faceFraming ? 5.2 : 3}
-        maxDistance={faceFraming ? 9.5 : 7}
-        minPolarAngle={faceFraming ? Math.PI / 2.45 : Math.PI / 3.8}
-        maxPolarAngle={faceFraming ? Math.PI / 2.12 : Math.PI / 2.15}
-        minAzimuthAngle={-0.15}
-        maxAzimuthAngle={0.15}
+        enableZoom
+        enableRotate
+        enableDamping
+        dampingFactor={0.12}
+        minDistance={faceFraming ? 5.2 : 3.4}
+        maxDistance={faceFraming ? 9.5 : 7.5}
+        minPolarAngle={Math.PI * 0.12}
+        maxPolarAngle={Math.PI * 0.62}
         target={target}
       />
 
@@ -252,11 +301,13 @@ export function CharacterRoomScene(props: Props) {
   const headY = PORTRAIT_HEAD_WORLD_Y;
   const camY = headY + PORTRAIT_CAMERA_Y_OFFSET;
 
+  // В embedded/compact режиме раньше было 240-280px — слишком короткая полоска
+  // для 3D-канваса. Подняли до полноценного «студийного» прямоугольника.
   const height = compactMobile
     ? "h-[min(36dvh,280px)]"
     : compact
-      ? "h-[240px] sm:h-[280px]"
-      : "h-[380px] sm:h-[520px] min-h-[320px]";
+      ? "h-[360px] sm:h-[440px]"
+      : "h-[420px] sm:h-[560px] min-h-[360px]";
 
   const borderClass = compact ? "border-gray-100" : "border-sber-border";
   // Тёплый градиент: сверху бирюзово-светлый, внизу — белый с холодным
@@ -275,7 +326,7 @@ export function CharacterRoomScene(props: Props) {
         camera={{
           position: faceFraming
             ? [0, camY, compact ? PORTRAIT_CAMERA_Z_COMPACT : PORTRAIT_CAMERA_Z]
-            : [0, 1.05, 4.1],
+            : [0, camY, compact ? PORTRAIT_CAMERA_Z_COMPACT : PORTRAIT_CAMERA_Z],
           fov: faceFraming ? PORTRAIT_CAMERA_FOV : compactMobile ? 42 : 36,
           near: 0.08,
           far: 50,
@@ -303,6 +354,15 @@ export function CharacterRoomScene(props: Props) {
           <p className="text-[10px] text-[#5a6470] drop-shadow-sm">
             {config.subtitle}
           </p>
+        </div>
+      )}
+
+      {/* Подсказка: «перетащите, чтобы вращать» — показываем только в
+          встраиваемом/компактном режиме, где раньше юзер не понимал, что
+          можно крутить. */}
+      {!compactMobile && (
+        <div className="pointer-events-none absolute top-2 left-2 hidden sm:flex items-center gap-1 bg-white/70 backdrop-blur-sm rounded-full px-2 py-0.5 text-[9px] font-bold text-[#0d6e68]">
+          <span>↻ перетащите — вращайте</span>
         </div>
       )}
     </div>

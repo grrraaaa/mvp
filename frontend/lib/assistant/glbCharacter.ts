@@ -45,14 +45,16 @@ export const PORTRAIT_FACE_SCALE = Number(
 /** Мировая высота центра головы в портретном режиме */
 export const PORTRAIT_HEAD_WORLD_Y = 1.45;
 
-/** Смещение камеры по Y от центра головы (отрицательное = камера ниже) */
+/** Смещение камеры по Y от центра головы (положительное = камера выше).
+ *  Дефолт: камера приподнята на ~40 см над макушкой — лёгкий «верхний» ракурс. */
 export const PORTRAIT_CAMERA_Y_OFFSET = Number(
-  process.env.NEXT_PUBLIC_PORTRAIT_CAMERA_Y_OFFSET ?? "-0.20",
+  process.env.NEXT_PUBLIC_PORTRAIT_CAMERA_Y_OFFSET ?? "0.40",
 );
 
-/** Точка взгляда OrbitControls по Y от центра головы */
+/** Точка взгляда OrbitControls по Y от центра головы.
+ *  Чуть ниже макушки, чтобы взгляд падал на лицо/плечи. */
 export const PORTRAIT_TARGET_Y_OFFSET = Number(
-  process.env.NEXT_PUBLIC_PORTRAIT_TARGET_Y_OFFSET ?? "-0.15",
+  process.env.NEXT_PUBLIC_PORTRAIT_TARGET_Y_OFFSET ?? "-0.05",
 );
 
 /**

@@ -89,13 +89,15 @@ export function AssistantDockPanel() {
     <>
       <aside
         aria-label="AI-консультант"
-        className={`hidden lg:flex flex-col bg-white border-l border-[#e4e8eb] overflow-hidden sbbol-theme transition-[width] duration-200 ease-out flex-shrink-0 ${
-          collapsed ? "w-0 border-l-0" : "w-[360px]"
+        className={`hidden lg:flex flex-col bg-white border-l border-[#e4e8eb] overflow-hidden sbbol-theme transition-[width] duration-200 ease-out flex-shrink-0 sticky top-16 self-start h-[calc(100vh-4rem)] ${
+          collapsed ? "w-0 border-l-0" : "w-[400px] xl:w-[440px] 2xl:w-[480px]"
         }`}
       >
         <div
-          className={`flex flex-col h-full min-w-[360px] ${
-            collapsed ? "invisible" : "visible"
+          className={`flex flex-col h-full ${
+            collapsed
+              ? "invisible w-0"
+              : "visible min-w-[400px] xl:min-w-[440px] 2xl:min-w-[480px]"
           }`}
         >
           <DockHeader
