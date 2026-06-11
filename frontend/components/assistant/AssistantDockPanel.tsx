@@ -59,7 +59,7 @@ export function AssistantDockPanel() {
         )}
 
         {mobileOpen && (
-          <div className="fixed inset-x-0 bottom-0 z-[10050] flex flex-col bg-white border-t border-[#d0d7dd] overflow-hidden sbbol-theme rounded-t-2xl shadow-[0_-12px_48px_rgba(0,0,0,0.2)] h-[min(94dvh,780px)] max-h-[94dvh]">
+          <div className="fixed inset-x-0 bottom-0 z-[10050] flex flex-col bg-assistant-surface border-t border-assistant-surface-border overflow-hidden sbbol-theme rounded-t-2xl shadow-[0_-12px_48px_rgba(0,0,0,0.2)] h-[min(94dvh,780px)] max-h-[94dvh]">
             <div className="flex justify-center pt-2 pb-1 flex-shrink-0" aria-hidden>
               <div className="w-10 h-1 rounded-full bg-[#d0d7dd]" />
             </div>
@@ -89,7 +89,7 @@ export function AssistantDockPanel() {
     <>
       <aside
         aria-label="AI-консультант"
-        className={`hidden lg:flex flex-col bg-[#f4f6f9] overflow-hidden sbbol-theme transition-[right,width] duration-200 ease-out fixed top-16 bottom-0 z-30 w-[420px] xl:w-[460px] 2xl:w-[500px] border-0 ${
+        className={`hidden lg:flex flex-col bg-assistant-surface overflow-hidden sbbol-theme transition-[right,width] duration-200 ease-out fixed top-16 bottom-0 z-30 w-[420px] xl:w-[460px] 2xl:w-[500px] border-l border-assistant-surface-border ${
           collapsed
             ? "right-[-420px] xl:right-[-460px] 2xl:right-[-500px]"
             : "right-0"
@@ -125,7 +125,7 @@ export function AssistantDockPanel() {
         <button
           type="button"
           onClick={expand}
-          className="hidden lg:flex fixed right-0 top-1/2 -translate-y-1/2 z-40 items-center bg-[#f4f6f9] border-0 rounded-l-xl shadow-md p-3 hover:bg-[#eef1f4] transition-colors"
+          className="hidden lg:flex fixed right-0 top-1/2 -translate-y-1/2 z-40 items-center bg-assistant-surface border border-assistant-surface-border border-r-0 rounded-l-xl shadow-md p-3 hover:bg-[#f3f5f7] transition-colors"
           aria-label="Развернуть ИИ-ассистент"
           title="Развернуть ИИ-ассистент"
         >

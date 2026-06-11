@@ -419,7 +419,7 @@ export function AssistantPanel({ variant = "default", compactMobile = false, onR
   return (
     <div
       className={`relative flex flex-col h-full min-h-0 ${
-        embedded ? "bg-transparent" : "sber-panel border-l"
+        embedded ? "bg-assistant-surface" : "sber-panel border-l"
       }`}
     >
       <CharacterSettings />
@@ -626,7 +626,7 @@ export function AssistantPanel({ variant = "default", compactMobile = false, onR
       </div>
 
       {chatStarted && (
-        <div className={`flex-shrink-0 border-t ${embedded ? "border-gray-100" : "border-sber-border"}`}>
+        <div className={`flex-shrink-0 border-t ${embedded ? "border-assistant-surface-border bg-assistant-surface" : "border-sber-border"}`}>
           <ChatInput
             value={input}
             onChange={setInput}

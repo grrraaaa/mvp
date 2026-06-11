@@ -14,6 +14,7 @@ import {
 import { stripEnvironmentFromGlb } from "@/lib/assistant/filterGlbScene";
 import { fitObjectToFloor } from "@/lib/assistant/fitGlbModel";
 import { analyzeHead } from "@/lib/assistant/analyzeModel";
+import { ASSISTANT_SURFACE } from "@/lib/assistant/assistantSurface";
 
 interface Props {
   /** Полная высота канваса в px. Ширина — 100% контейнера. */
@@ -186,6 +187,7 @@ function PortraitRig({ headWorldY }: { headWorldY: number }) {
 function StudioLights() {
   return (
     <>
+      <color attach="background" args={[ASSISTANT_SURFACE]} />
       <ambientLight intensity={0.85} color="#ffffff" />
       <directionalLight position={[1.5, 2.5, 2.5]} intensity={1.0} color="#fff5e1" />
       <directionalLight position={[-2, 1.5, 1.5]} intensity={0.45} color="#dceeff" />
@@ -221,15 +223,15 @@ export function WelcomeCharacter3D({ height = 280, disableOrbit }: Props) {
 
   return (
     <div
-      style={{ height }}
-      className="relative w-full touch-none"
+      style={{ height, backgroundColor: ASSISTANT_SURFACE }}
+      className="relative w-full touch-none bg-assistant-surface rounded-xl overflow-hidden"
     >
       <Canvas
         className="!h-full !w-full"
         camera={{ position: [0, 1.6, 2.6], fov: 35, near: 0.05, far: 50 }}
         gl={{
           antialias: true,
-          alpha: true,
+          alpha: false,
           powerPreference: "high-performance",
         }}
         dpr={[1, 1.5]}

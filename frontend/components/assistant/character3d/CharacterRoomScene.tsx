@@ -23,6 +23,7 @@ import { PortraitCamera } from "./PortraitCamera";
 import { useCharacterStore } from "@/store/characterStore";
 import { useCharacterBehavior } from "@/hooks/useCharacterBehavior";
 import { useModelCapabilitiesStore } from "@/store/modelCapabilitiesStore";
+import { ASSISTANT_SURFACE } from "@/lib/assistant/assistantSurface";
 import {
   PORTRAIT_CAMERA_FOV,
   PORTRAIT_CAMERA_Y_OFFSET,
@@ -163,16 +164,8 @@ function SceneContent({
     ? [0, lookY, 0]
     : [0, lookYDefault, 0];
 
-  // Мягкий радиальный градиент фона: от тёплого teal-50 в центре к холодному
-  // frost-50 по краям. Сделан на canvas-цвете + fog, чтобы не было «кубика».
-  const bg = useMemo(() => {
-    if (light) return "#eef7f5";
-    return "#f4faf9";
-  }, [light]);
-  const fogColor = useMemo(() => {
-    if (light) return "#eef7f5";
-    return "#f4faf9";
-  }, [light]);
+  const bg = ASSISTANT_SURFACE;
+  const fogColor = ASSISTANT_SURFACE;
 
   return (
     <>
@@ -309,16 +302,11 @@ export function CharacterRoomScene(props: Props) {
       ? "h-[360px] sm:h-[440px]"
       : "h-[420px] sm:h-[560px] min-h-[360px]";
 
-  const borderClass = compact ? "border-gray-100" : "border-sber-border";
-  // Тёплый градиент: сверху бирюзово-светлый, внизу — белый с холодным
-  // оттенком. Подсвечивает модель снизу, как витрина магазина.
-  const wrapperBg = compact
-    ? "bg-gradient-to-b from-[#eef7f5] via-[#f4faf9] to-[#f2f4f7]"
-    : "bg-gradient-to-b from-[#e6f4f1] via-[#eef7f5] to-[#f2f4f7]";
+  const borderClass = compact ? "border-assistant-surface-border" : "border-sber-border";
 
   return (
     <div
-      className={`relative w-full ${height} border-b ${borderClass} overflow-hidden ${wrapperBg} shrink-0`}
+      className={`relative w-full ${height} border-b ${borderClass} overflow-hidden bg-assistant-surface shrink-0`}
     >
       <Canvas
         className="!h-full !w-full"

@@ -26,6 +26,10 @@
   --sbbol-primary: #138d8a;
   --sbbol-primary-dark: #0f7270;
   --sbbol-primary-light: #90d0cc;
+
+  /* Панель AI-чата и 3D-превью — оттенок белого, контраст с --sbbol-bg */
+  --assistant-surface: #fafbfc;
+  --assistant-surface-border: #e8ebef;
 }
 
 html,

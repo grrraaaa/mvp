@@ -1,7 +1,7 @@
 "use client";
 
 import dynamic from "next/dynamic";
-import { useCharacterStore } from "@/store/characterStore";
+import { ASSISTANT_SURFACE } from "@/lib/assistant/assistantSurface";
 
 const CharacterRoomScene = dynamic(
   () =>
@@ -10,13 +10,10 @@ const CharacterRoomScene = dynamic(
 );
 
 function CharacterStageFallback() {
-  const { config } = useCharacterStore();
   return (
     <div
-      className="w-full h-[380px] sm:h-[520px] border-b border-white/10 flex items-center justify-center"
-      style={{
-        background: `radial-gradient(ellipse at 50% 100%, ${config.primaryColor}44, #0b1220)`,
-      }}
+      className="w-full h-[380px] sm:h-[520px] border-b border-assistant-surface-border flex items-center justify-center bg-assistant-surface"
+      style={{ backgroundColor: ASSISTANT_SURFACE }}
     >
       <span className="text-gray-500 text-sm animate-pulse">Загрузка 3D…</span>
     </div>

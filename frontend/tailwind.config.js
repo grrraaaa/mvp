@@ -13,6 +13,10 @@ module.exports = {
         display: ['"Inter"', "sans-serif"],
       },
       colors: {
+        assistant: {
+          surface: "#fafbfc",
+          "surface-border": "#e8ebef",
+        },
         brand: {
           DEFAULT: "#21A038",
         },
