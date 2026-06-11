@@ -89,10 +89,10 @@ export function AssistantDockPanel() {
     <>
       <aside
         aria-label="AI-консультант"
-        className={`hidden lg:flex flex-col bg-white overflow-hidden sbbol-theme transition-[width] duration-200 ease-out flex-shrink-0 sticky top-16 self-start h-[calc(100vh-4rem)] z-30 ${
+        className={`hidden lg:flex flex-col bg-white overflow-hidden sbbol-theme transition-[right,width] duration-200 ease-out fixed top-16 bottom-0 z-30 w-[420px] xl:w-[460px] 2xl:w-[500px] ${
           collapsed
-            ? "w-0 border-0"
-            : "w-[420px] xl:w-[460px] 2xl:w-[500px] border-l border-b border-[#e4e8eb]"
+            ? "right-[-420px] xl:right-[-460px] 2xl:right-[-500px] border-0"
+            : "right-0 border-l border-b border-[#e4e8eb]"
         }`}
       >
         <div

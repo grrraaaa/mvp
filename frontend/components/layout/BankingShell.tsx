@@ -13,6 +13,7 @@ import { useBankingStore } from "@/store/bankingStore";
 import { useAuthStore } from "@/store/authStore";
 import { fetchNotifications } from "@/lib/api/banking";
 import { useDocumentDeepLink } from "@/hooks/useDocumentDeepLink";
+import { useAssistantDockStore } from "@/store/assistantDockStore";
 function DocumentDeepLinkHandler() {
   useDocumentDeepLink();
   return null;
@@ -38,6 +39,10 @@ export function BankingShell({ children }: Props) {
 
   const activeTab = getActiveTab(pathname);
   const subHeaderTitle = getSubHeaderTitle(activeTab);
+  const dockCollapsed = useAssistantDockStore((s) => s.collapsed);
+  const dockRightPad = dockCollapsed
+    ? ""
+    : "lg:pr-[420px] xl:pr-[460px] 2xl:pr-[500px]";
 
   useEffect(() => {
     if (!user) return;
@@ -78,7 +83,7 @@ export function BankingShell({ children }: Props) {
       <div className="flex-1 flex flex-col md:flex-row relative">
         <Sidebar mobileOpen={mobileSidebarOpen} setMobileOpen={setMobileSidebarOpen} />
 
-        <div className="flex-1 md:pl-[130px] flex flex-col min-w-0 w-full">
+        <div className={`flex-1 md:pl-[130px] flex flex-col min-w-0 w-full transition-[padding] duration-200 ${dockRightPad}`}>
           <div className="md:hidden bg-white border-b border-gray-150 px-4 py-2.5 flex items-center justify-between z-10">
             <button
               onClick={() => setMobileSidebarOpen(true)}
