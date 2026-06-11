@@ -6,8 +6,7 @@
     "next": "^15.5.18"
   },
   "scripts": {
-    "build:mobile": "npm run build --prefix \"web mobile\" && node scripts/copy-mobile.mjs",
-    "build": "npm run build:mobile && npm run build --prefix frontend",
-    "vercel-build": "npm run build:mobile && npm run build --prefix frontend"
+    "build": "npm run build --prefix frontend",
+    "vercel-build": "npm run build --prefix frontend"
   }
 }

@@ -32,4 +32,22 @@ Thumbs.db
 # Logs
 *.log
 logs/
+logs_*.err
+logs_*.out
+_uvicorn.err
+_uvicorn.out
 .vercel
+
+# Dev / debug artifacts
+auth.json
+balance.json
+health.json
+test_*.json
+test_*.html
+test_*.py
+test_home.html
+print_balance.py
+make_ai_button.ps1
+_probe_*.ps1
+_probe_*.py
+_e2e_*.py

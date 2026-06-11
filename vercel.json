@@ -6,7 +6,7 @@
       "master": false
     }
   },
-  "installCommand": "npm install && cd frontend && npm install && cd \"../web mobile\" && npm install",
+  "installCommand": "npm install && cd frontend && npm install",
   "buildCommand": "npm run vercel-build",
   "outputDirectory": "frontend/.next",
   "framework": "nextjs",
