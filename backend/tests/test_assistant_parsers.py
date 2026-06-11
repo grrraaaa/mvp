@@ -97,6 +97,32 @@ def test_open_counterparty_intent():
     assert not q.is_open_counterparty_query("создай платёж на 100")
 
 
+def test_repeat_last_payment_intent():
+    from services.banking.repeat_payment import is_repeat_last_payment_query
+
+    assert is_repeat_last_payment_query("Повтори последний платёж")
+    assert is_repeat_last_payment_query("повтори последний документ")
+    assert not is_repeat_last_payment_query("последний платёж")
+    assert not is_repeat_last_payment_query("Платежи Иванова за март")
+
+
+def test_instant_actions_from_document():
+    from services.banking.repeat_payment import _instant_actions_from_document
+
+    class _Doc:
+        amount = 1500.0
+        purpose = "Аренда офиса"
+        counterparty = "ООО Ромашка"
+        doc_date = "05.06.2026"
+
+    actions = _instant_actions_from_document(_Doc())
+    by_field = {a.field.split(".")[-1]: a.value for a in actions}
+    assert by_field.get("COMMON_COLUMNS_AMOUNT") == "1500"
+    assert by_field.get("PAYMENT_PURPOSE") == "Аренда офиса"
+    assert by_field.get("CONTRAGENT_ID") == "ООО Ромашка"
+    assert by_field.get("COMMON_COLUMNS_DOC_DATE") == "05.06.2026"
+
+
 def test_payments_by_name_intent():
     assert q.is_payments_by_name_query("Платежи Иванова за март")
     assert q.is_payments_by_name_query("переводы ООО Ромашка")
@@ -308,7 +334,7 @@ def test_payment_hints_read_filled_by_field_name():
         "forms.INSTANT_PAYMENT_ORDER.PAYMENT_PURPOSE": "тест",
         "forms.INSTANT_PAYMENT_ORDER.COMMON_COLUMNS_CUSTOMER_ACCOUNT": "крутой",
     }
-    hints = _payment_hints_from_state(filled, schema=schema)
+    hints = _payment_hints_from_state(filled, schema=schema, include_ok=True)
     assert "🟢" in hints
     assert "назначение" in hints.lower() or "Назначение" in hints
 

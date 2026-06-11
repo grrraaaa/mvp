@@ -1512,11 +1512,6 @@ class AssistantService:
             if status == "complete" and not has_critical:
                 action_btns = [
                     ActionButton(
-                        label="Подписать и отправить в шлюз",
-                        message="Подпиши документ и отправь в шлюз",
-                        variant="primary",
-                    ),
-                    ActionButton(
                         label="Проверить реквизиты",
                         message="Проверь реквизиты платежа",
                         variant="secondary",
@@ -1733,6 +1728,7 @@ class AssistantService:
             )
         if not result:
             return None
+        form_actions = result.get("form_actions")
         return AssistantResponse(
             message=result["message"],
             session_id=session_id,
@@ -1741,6 +1737,8 @@ class AssistantService:
             charts=[ChartSpec(**c) for c in result.get("charts", [])] or None,
             chart_payload=result.get("chart_payload"),
             ui_actions=[UiAction(**u) for u in result.get("ui_actions", [])] or None,
+            form_actions=[FormFieldAction(**a) for a in form_actions] if form_actions else None,
+            form_fill_status=result.get("form_fill_status"),
             pending_form_fields=result.get("pending_form_fields"),
             suggested_chips=result.get("suggested_chips"),
         )

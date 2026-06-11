@@ -1378,6 +1378,16 @@ async def handle_banking_query(
     if statement_reply:
         return statement_reply
 
+    from services.banking.repeat_payment import (
+        is_repeat_last_payment_query,
+        repeat_last_payment_reply,
+    )
+
+    if is_repeat_last_payment_query(message):
+        repeat_reply = await repeat_last_payment_reply(session, org_id)
+        if repeat_reply:
+            return repeat_reply
+
     open_doc_reply = await _open_document_by_number_reply(session, message, org_id)
     if open_doc_reply:
         return open_doc_reply
@@ -1614,7 +1624,9 @@ async def handle_banking_query(
 
     low = message.lower()
 
-    if re.search(r"последн\w*\s+документ|последн\w*\s+плат[её]ж", low):
+    if re.search(r"последн\w*\s+документ|последн\w*\s+плат[её]ж", low) and not is_repeat_last_payment_query(
+        message
+    ):
         result = await session.execute(
             select(BankDocument)
             .where(BankDocument.org_id == org_id)
@@ -2122,32 +2134,4 @@ async def handle_banking_query(
                 ],
             }
 
-    if re.search(r"повтор\w*\s+последн|последн\w*\s+(?:платёж|платеж|документ)", low):
-        result = await session.execute(
-            select(BankDocument)
-            .where(BankDocument.org_id == org_id)
-            .order_by(BankDocument.doc_date.desc())
-            .limit(1)
-        )
-        doc = result.scalars().first()
-        if doc:
-            return {
-                "message": (
-                    f"Последний документ: {doc.doc_number} от {doc.doc_date}, "
-                    f"{doc.counterparty}, {doc.amount} {doc.currency} ({doc.status})."
-                ),
-                "sources": [
-                    {
-                        "index": 1,
-                        "label": f"Источник 1: {doc.doc_number}",
-                        "kind": "document",
-                        "id": doc.id,
-                        "url": document_view_url(doc.id),
-                    }
-                ],
-                "action_buttons": [
-                    {"label": "Повторить платёж", "message": f"Создай платёжку на {doc.amount} BYN для {doc.counterparty}", "variant": "primary"},
-                    {"label": "Расчёты", "url": "/payments", "variant": "secondary"},
-                ],
-            }
     return None
