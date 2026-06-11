@@ -259,10 +259,6 @@ export function WelcomeCharacter3D({ height = 280, disableOrbit }: Props) {
           )}
         </Suspense>
       </Canvas>
-
-      <div className="pointer-events-none absolute bottom-2 right-2 hidden sm:flex items-center gap-1 bg-white/70 backdrop-blur-sm rounded-full px-2 py-0.5 text-[9px] font-bold text-[#0d6e68]">
-        <span>↻ перетащите</span>
-      </div>
     </div>
   );
 }

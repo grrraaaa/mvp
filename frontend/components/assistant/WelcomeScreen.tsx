@@ -1,7 +1,6 @@
 "use client";
 
 import { Search, ScanLine, Database, ShieldCheck, GraduationCap, MoreHorizontal, Lightbulb, Wand2, ChevronRight, MessageSquare } from "lucide-react";
-import { IconAiSpark } from "./IconAiSpark";
 import { WelcomeCharacter3D } from "./character3d/WelcomeCharacter3D";
 import { useAuthStore } from "@/store/authStore";
 import { useCharacterStore } from "@/store/characterStore";
@@ -118,12 +117,6 @@ export function WelcomeScreen({ onSendPrompt, onStartChat, compact }: Props) {
       >
         {/* 3D-канвас на всю карточку (можно вращать, зумить) */}
         <WelcomeCharacter3D height={avatarHeight} />
-
-        {/* Sparkles-чип в углу */}
-        <div className="absolute top-2.5 left-2.5 flex items-center gap-1 bg-white/70 backdrop-blur-sm rounded-full px-2 py-1 text-[10px] font-bold text-[#0d6e68]">
-          <IconAiSpark size={12} />
-          <span>AI · персонализировано</span>
-        </div>
       </div>
 
       {/* Заголовок */}

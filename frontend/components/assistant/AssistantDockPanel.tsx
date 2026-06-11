@@ -22,7 +22,6 @@ export function AssistantDockPanel() {
   const ttsEnabled = useTtsStore((s) => s.enabled);
   const toggleTts = useTtsStore((s) => s.toggleEnabled);
   const sessionId = useAssistantStore((s) => s.sessionId);
-  const characterName = useCharacterStore((s) => s.config.name);
   const collapsed = useAssistantDockStore((s) => s.collapsed);
   const setCollapsed = useAssistantDockStore((s) => s.setCollapsed);
   const expand = useAssistantDockStore((s) => s.expand);
@@ -65,7 +64,6 @@ export function AssistantDockPanel() {
               <div className="w-10 h-1 rounded-full bg-[#d0d7dd]" />
             </div>
             <DockHeader
-              characterName={characterName}
               ttsEnabled={ttsEnabled}
               toggleTts={toggleTts}
               onArchive={() => setArchiveOpen(true)}
@@ -91,10 +89,10 @@ export function AssistantDockPanel() {
     <>
       <aside
         aria-label="AI-консультант"
-        className={`hidden lg:flex flex-col bg-white overflow-hidden sbbol-theme transition-[right,width] duration-200 ease-out fixed top-16 bottom-0 z-30 w-[420px] xl:w-[460px] 2xl:w-[500px] ${
+        className={`hidden lg:flex flex-col bg-[#f4f6f9] overflow-hidden sbbol-theme transition-[right,width] duration-200 ease-out fixed top-16 bottom-0 z-30 w-[420px] xl:w-[460px] 2xl:w-[500px] border-0 ${
           collapsed
-            ? "right-[-420px] xl:right-[-460px] 2xl:right-[-500px] border-0"
-            : "right-0 border-l border-b border-[#e4e8eb]"
+            ? "right-[-420px] xl:right-[-460px] 2xl:right-[-500px]"
+            : "right-0"
         }`}
       >
         <div
@@ -105,7 +103,6 @@ export function AssistantDockPanel() {
           }`}
         >
           <DockHeader
-            characterName={characterName}
             ttsEnabled={ttsEnabled}
             toggleTts={toggleTts}
             onArchive={() => setArchiveOpen(true)}
@@ -128,17 +125,11 @@ export function AssistantDockPanel() {
         <button
           type="button"
           onClick={expand}
-          className="hidden lg:flex fixed right-0 top-1/2 -translate-y-1/2 z-40 flex-col items-center gap-2 bg-white border border-[#e4e8eb] border-r-0 rounded-l-xl shadow-md px-2 py-4 hover:bg-[#f6faf9] transition-colors"
+          className="hidden lg:flex fixed right-0 top-1/2 -translate-y-1/2 z-40 items-center bg-[#f4f6f9] border-0 rounded-l-xl shadow-md p-3 hover:bg-[#eef1f4] transition-colors"
           aria-label="Развернуть ИИ-ассистент"
           title="Развернуть ИИ-ассистент"
         >
           <IconAiSpark size={20} />
-          <span
-            className="text-[11px] font-semibold text-[#0d6e68] tracking-wide"
-            style={{ writingMode: "vertical-rl", transform: "rotate(180deg)" }}
-          >
-            ИИ-ассистент
-          </span>
         </button>
       )}
     </>
@@ -146,7 +137,6 @@ export function AssistantDockPanel() {
 }
 
 function DockHeader({
-  characterName,
   ttsEnabled,
   toggleTts,
   onArchive,
@@ -154,7 +144,6 @@ function DockHeader({
   onOpenAbilities,
   compact = false,
 }: {
-  characterName: string;
   ttsEnabled: boolean;
   toggleTts: () => void;
   onArchive: () => void;
@@ -164,27 +153,10 @@ function DockHeader({
 }) {
   return (
     <div
-      className={`flex items-center justify-between flex-shrink-0 border-b border-[#e4e8eb] bg-white ${
+      className={`flex items-center justify-end flex-shrink-0 bg-transparent ${
         compact ? "px-3 py-2" : "px-4 py-2.5"
       }`}
     >
-      <div className="flex items-center gap-2.5 min-w-0">
-        <div
-          className="w-9 h-9 rounded-lg bg-white flex items-center justify-center shrink-0 shadow-sm border border-[#e4e8eb]"
-          aria-hidden
-        >
-          <IconAiSpark size={22} />
-        </div>
-        <div className="flex flex-col min-w-0">
-          <span className="text-sm font-bold text-[#1f1f22] truncate leading-tight">
-            Ассистент {characterName}
-          </span>
-          <span className="text-[11px] font-medium text-[#0a8064] flex items-center gap-1 leading-tight">
-            <span className="w-1.5 h-1.5 rounded-full bg-[#10b981] inline-block" />
-            Онлайн
-          </span>
-        </div>
-      </div>
       <div className="flex items-center gap-0.5 shrink-0">
         <button
           type="button"

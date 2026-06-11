@@ -356,15 +356,6 @@ export function CharacterRoomScene(props: Props) {
           </p>
         </div>
       )}
-
-      {/* Подсказка: «перетащите, чтобы вращать» — показываем только в
-          встраиваемом/компактном режиме, где раньше юзер не понимал, что
-          можно крутить. */}
-      {!compactMobile && (
-        <div className="pointer-events-none absolute top-2 left-2 hidden sm:flex items-center gap-1 bg-white/70 backdrop-blur-sm rounded-full px-2 py-0.5 text-[9px] font-bold text-[#0d6e68]">
-          <span>↻ перетащите — вращайте</span>
-        </div>
-      )}
     </div>
   );
 }
