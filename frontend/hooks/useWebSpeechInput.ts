@@ -76,7 +76,11 @@ export function useWebSpeechInput(
   const recognitionRef = useRef<SpeechRecognitionLike | null>(null);
   const baseValueRef = useRef("");
   const spokenFinalRef = useRef("");
+  const interimRef = useRef("");
   const lastErrorRef = useRef(false);
+  /** Push-to-talk: при ручном stop() мы сами шлём накопленное и скипаем
+   *  авто-отправку в onend (иначе будет дубль). */
+  const suppressOnEndRef = useRef(false);
   const onTranscriptRef = useRef(onTranscript);
   const onCompleteRef = useRef(options.onComplete);
   const disabledRef = useRef(options.disabled);
@@ -101,15 +105,18 @@ export function useWebSpeechInput(
     const recognition = new Ctor();
     recognition.lang = "ru-RU";
     recognition.interimResults = true;
-    recognition.continuous = false;
+    /** continuous=true, чтобы запись шла пока юзер держит кнопку/M, а не
+     *  обрывалась через секунду тишины. Сами останавливаем через stop(). */
+    recognition.continuous = true;
     recognition.maxAlternatives = 1;
 
     recognition.onstart = () => {
       lastErrorRef.current = false;
       spokenFinalRef.current = "";
+      interimRef.current = "";
       setIsListening(true);
       setStatusKind("listening");
-      setStatus("Слушаю… говорите команду или данные для формы.");
+      setStatus("Слушаю… отпустите, чтобы отправить.");
     };
 
     recognition.onresult = (event) => {
@@ -126,6 +133,7 @@ export function useWebSpeechInput(
         }
       }
 
+      interimRef.current = interimText;
       if (finalText) {
         spokenFinalRef.current = baseValueRef.current
           ? `${baseValueRef.current} ${finalText}`.trim()
@@ -152,10 +160,22 @@ export function useWebSpeechInput(
 
     recognition.onend = () => {
       setIsListening(false);
-      if (lastErrorRef.current) return;
+      if (lastErrorRef.current) {
+        lastErrorRef.current = false;
+        spokenFinalRef.current = "";
+        interimRef.current = "";
+        return;
+      }
+      if (suppressOnEndRef.current) {
+        suppressOnEndRef.current = false;
+        spokenFinalRef.current = "";
+        interimRef.current = "";
+        return;
+      }
 
       const text = spokenFinalRef.current.trim();
       spokenFinalRef.current = "";
+      interimRef.current = "";
 
       if (text && onCompleteRef.current && !disabledRef.current) {
         setStatusKind("listening");
@@ -190,46 +210,81 @@ export function useWebSpeechInput(
     };
   }, []);
 
+  /** Push-to-talk: явный старт записи. */
+  const startListening = useCallback(
+    (baseValue?: string) => {
+      const recognition = recognitionRef.current;
+      if (!recognition) return false;
+      if (isListening) return true;
+
+      baseValueRef.current = (baseValue ?? "").trim();
+      spokenFinalRef.current = "";
+      interimRef.current = "";
+      lastErrorRef.current = false;
+      suppressOnEndRef.current = false;
+      setStatusKind("listening");
+      setStatus("Запрашиваю доступ к микрофону...");
+
+      try {
+        recognition.start();
+        return true;
+      } catch {
+        setStatusKind("error");
+        setStatus("Микрофон уже запускается. Попробуйте ещё раз.");
+        return false;
+      }
+    },
+    [isListening],
+  );
+
+  /** Push-to-talk: явный стоп + отправка накопленного текста. */
   const stopListening = useCallback(() => {
     const recognition = recognitionRef.current;
-    if (recognition && isListening) {
+    if (!recognition) return;
+
+    // Снимем то, что есть прямо сейчас (final + interim) и пошлём руками,
+    // чтобы onend с continuous=true не «потерял» последний кусок.
+    const finalTxt = spokenFinalRef.current.trim();
+    const interimTxt = interimRef.current.trim();
+    const text = (finalTxt + (interimTxt ? " " + interimTxt : "")).trim();
+
+    suppressOnEndRef.current = true;
+
+    if (isListening) {
       try {
         recognition.stop();
       } catch {
         /* ignore */
       }
     }
+
+    if (text && onCompleteRef.current && !disabledRef.current) {
+      setStatusKind("listening");
+      setStatus("Отправляю…");
+      onCompleteRef.current(text);
+      window.setTimeout(() => {
+        setStatusKind("idle");
+        setStatus("");
+      }, 400);
+    } else {
+      setStatusKind("idle");
+      setStatus("");
+    }
+    spokenFinalRef.current = "";
+    interimRef.current = "";
     setIsListening(false);
-    setStatusKind("idle");
-    setStatus("");
   }, [isListening]);
 
+  /** Tap-to-toggle: для пользователей без мыши/клавиатуры (a11y). */
   const toggleListening = useCallback(
     (currentValue: string) => {
-      const recognition = recognitionRef.current;
-      if (!recognition) return;
-
       if (isListening) {
-        recognition.stop();
-        setStatusKind("listening");
-        setStatus("Останавливаю запись...");
-        return;
-      }
-
-      baseValueRef.current = currentValue.trim();
-      spokenFinalRef.current = "";
-      lastErrorRef.current = false;
-      setStatusKind("listening");
-      setStatus("Запрашиваю доступ к микрофону...");
-
-      try {
-        recognition.start();
-      } catch {
-        setStatusKind("error");
-        setStatus("Микрофон уже запускается. Попробуйте ещё раз.");
+        stopListening();
+      } else {
+        startListening(currentValue);
       }
     },
-    [isListening],
+    [isListening, startListening, stopListening],
   );
 
   const clearStatus = useCallback(() => {
@@ -242,8 +297,9 @@ export function useWebSpeechInput(
     isListening,
     status,
     statusKind,
-    toggleListening,
+    startListening,
     stopListening,
+    toggleListening,
     clearStatus,
   };
 }

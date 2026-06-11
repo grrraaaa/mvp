@@ -1,10 +1,11 @@
 "use client";
 
 import { useEffect, useState } from "react";
-import { Volume2, VolumeX, History, MoreHorizontal, X, MessageSquare } from "lucide-react";
+import { Volume2, VolumeX, History, X, MessageSquare } from "lucide-react";
 import { AssistantPanel } from "./AssistantPanel";
 import { ChatArchive } from "./ChatArchive";
 import { IconAiSpark } from "./IconAiSpark";
+import { PersonalizationMenu } from "./PersonalizationMenu";
 import { useIsMobile } from "@/hooks/useIsMobile";
 import { useTtsStore } from "@/store/ttsStore";
 import { useAssistantStore } from "@/store/assistantStore";
@@ -25,6 +26,7 @@ export function AssistantDockPanel() {
   const collapsed = useAssistantDockStore((s) => s.collapsed);
   const setCollapsed = useAssistantDockStore((s) => s.setCollapsed);
   const expand = useAssistantDockStore((s) => s.expand);
+  const setSettingsOpen = useCharacterStore((s) => s.setSettingsOpen);
   const [archiveOpen, setArchiveOpen] = useState(false);
   const [mobileOpen, setMobileOpen] = useState(false);
 
@@ -108,6 +110,7 @@ export function AssistantDockPanel() {
             toggleTts={toggleTts}
             onArchive={() => setArchiveOpen(true)}
             onClose={() => setCollapsed(true)}
+            onOpenAbilities={() => setSettingsOpen(true)}
           />
           <div className="flex-1 min-h-0 flex flex-col overflow-hidden relative">
             <AssistantPanel variant="embedded" />
@@ -148,6 +151,7 @@ function DockHeader({
   toggleTts,
   onArchive,
   onClose,
+  onOpenAbilities,
   compact = false,
 }: {
   characterName: string;
@@ -155,6 +159,7 @@ function DockHeader({
   toggleTts: () => void;
   onArchive: () => void;
   onClose: () => void;
+  onOpenAbilities: () => void;
   compact?: boolean;
 }) {
   return (
@@ -208,16 +213,12 @@ function DockHeader({
           aria-label="Свернуть"
           title="Свернуть"
         >
-          {compact ? <X className="w-4 h-4" /> : <X className="w-4 h-4" />}
+          <X className="w-4 h-4" />
         </button>
-        <button
-          type="button"
-          className="hidden xl:flex w-8 h-8 items-center justify-center rounded text-[#7d838a] hover:bg-[#f2f4f7] hover:text-[#0d6e68]"
-          aria-label="Меню"
-          title="Меню"
-        >
-          <MoreHorizontal className="w-4 h-4" />
-        </button>
+        <PersonalizationMenu
+          onOpenAbilities={onOpenAbilities}
+          compact={compact}
+        />
       </div>
     </div>
   );
