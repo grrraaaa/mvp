@@ -72,8 +72,9 @@ class Settings(BaseSettings):
     DEEPGRAM_TTS_VOICE: str = "arcas"
     DEEPGRAM_TTS_MODEL: str = "aura-2-arcas-en"
 
-    # Голос по умолчанию в UI (id из Google или Deepgram каталога)
-    TTS_DEFAULT_VOICE: str = "ru-RU-DmitryNeural"
+    # Голос по умолчанию в UI. Приоритет фактического выбора: Google → Qwen → Edge.
+    # Если Google сконфигурён, фронт перевыберет на ru-RU-Wavenet-B / Wavenet-A по полу модели.
+    TTS_DEFAULT_VOICE: str = "ru-RU-Wavenet-B"
 
     # gTTS — fallback без API-ключей
     GTTS_VOICE: str = "ru-male"

@@ -104,20 +104,9 @@ export function WelcomeScreen({ onSendPrompt, onStartChat, compact }: Props) {
   const avatarHeight = compact ? 160 : 260;
 
   return (
-    <div className={`flex flex-col w-full bg-white ${compact ? "px-3 py-2" : "px-4 py-3"}`}>
-      {/* Карточка ассистента — внутри полноразмерный 3D-канвас */}
-      <div
-        className={`relative w-full overflow-hidden rounded-2xl ${
-          compact ? "h-40" : "h-64 sm:h-72"
-        }`}
-        style={{
-          background:
-            "linear-gradient(135deg, #b8d8d3 0%, #c8e4dd 35%, #d6ece5 70%, #e3f1ea 100%)",
-        }}
-      >
-        {/* 3D-канвас на всю карточку (можно вращать, зумить) */}
-        <WelcomeCharacter3D height={avatarHeight} />
-      </div>
+    <div className={`flex flex-col w-full ${compact ? "px-3 py-2" : "px-4 py-3"}`}>
+      {/* 3D-персонаж — прямо на фоне, без мятной карточки-подложки */}
+      <WelcomeCharacter3D height={avatarHeight} />
 
       {/* Заголовок */}
       <div className={`${compact ? "mt-3" : "mt-4"} text-left`}>

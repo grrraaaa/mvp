@@ -5,6 +5,8 @@ import {
   Check,
   Mic,
   UserCircle2,
+  User,
+  UserRound,
   X,
   RotateCcw,
   Play,
@@ -18,6 +20,7 @@ import {
 } from "@/store/characterStore";
 import { useTtsStore, type TtsVoiceOption } from "@/store/ttsStore";
 import { previewVoiceSample, type PreviewHandle } from "@/lib/tts/previewVoice";
+import { ModelPreview3D } from "./character3d/ModelPreview3D";
 
 interface Props {
   /** Открыть большую панель «Способности ИИ» (для отдельной кнопки). */
@@ -38,7 +41,7 @@ interface ModelEntry {
 /** Кебаб-меню «⋯» в шапке ассистента: быстрый выбор голоса и внешнего вида
  *  без открытия полной панели CharacterSettings. Полная панель со способностями
  *  вызывается из того же меню. */
-export function PersonalizationMenu({ onOpenAbilities, compact }: Props) {
+export function PersonalizationMenu({ onOpenAbilities }: Props) {
   const [open, setOpen] = useState(false);
   const [previewModel, setPreviewModel] = useState<ModelEntry | null>(null);
   const [playingVoiceId, setPlayingVoiceId] = useState<string | null>(null);
@@ -136,14 +139,15 @@ export function PersonalizationMenu({ onOpenAbilities, compact }: Props) {
   const previewGenderLabel =
     filteredGender === "male" ? "мужской" : filteredGender === "female" ? "женский" : "авто";
 
+  // Какая модель показывается в 3D-превью: ховер/фокус → активная.
+  const previewTarget = previewModel ?? activeModel ?? null;
+
   return (
     <div className="relative" ref={wrapRef}>
       <button
         type="button"
         onClick={() => setOpen((p) => !p)}
-        className={`${
-          compact ? "w-8 h-8" : "w-8 h-8"
-        } flex items-center justify-center rounded text-[#7d838a] hover:bg-[#f2f4f7] hover:text-[#0d6e68] transition-colors`}
+        className="w-8 h-8 flex items-center justify-center rounded text-[#7d838a] hover:bg-[#f2f4f7] hover:text-[#0d6e68] transition-colors"
         title="Меню"
         aria-label="Меню"
         aria-expanded={open}
@@ -175,16 +179,36 @@ export function PersonalizationMenu({ onOpenAbilities, compact }: Props) {
             </button>
           </div>
 
-          {/* Внешний вид — превью текущей/наводимой модели */}
+          {/* Внешний вид — реальный 3D-превью текущей/наводимой модели */}
           <Section icon={<UserCircle2 className="w-3.5 h-3.5" />} title="Внешний вид">
-            <ModelPreview
-              model={previewModel ?? activeModel}
-              isPreview={Boolean(previewModel)}
-            />
+            <ModelPreview3D modelPath={previewTarget?.path} height={140} />
+            <div className="mt-2 flex items-center gap-1.5 min-w-0">
+              <div className="min-w-0 flex-1">
+                <div className="flex items-center gap-1.5">
+                  <span className="text-[12.5px] font-bold text-gray-800 truncate">
+                    {previewTarget?.label ?? "—"}
+                  </span>
+                  {previewModel && (
+                    <span className="text-[9px] uppercase font-bold tracking-wider text-amber-700 bg-amber-100 px-1.5 py-0.5 rounded shrink-0">
+                      превью
+                    </span>
+                  )}
+                </div>
+                <div className="text-[10px] text-gray-500">
+                  Пол: {previewTarget
+                    ? previewTarget.gender === "male"
+                      ? "мужской"
+                      : "женский"
+                    : "—"}{" "}
+                  · Голос: автоподбор
+                </div>
+              </div>
+            </div>
             <div className="mt-2 space-y-1">
               {PERSONALIZATION_GLB_CATALOG.map((m) => {
                 const isActive = currentModelPath === m.path;
                 const isPreviewing = previewModel?.id === m.id;
+                const isMale = m.gender === "male";
                 return (
                   <button
                     key={m.id}
@@ -207,21 +231,25 @@ export function PersonalizationMenu({ onOpenAbilities, compact }: Props) {
                     }`}
                   >
                     <span
-                      className={`w-8 h-8 rounded-full bg-gradient-to-br flex items-center justify-center text-base shrink-0 border ${
-                        m.gender === "male"
-                          ? "from-blue-100 to-blue-50 border-blue-200/60"
-                          : "from-pink-100 to-pink-50 border-pink-200/60"
+                      className={`w-8 h-8 rounded-full flex items-center justify-center shrink-0 border ${
+                        isMale
+                          ? "bg-blue-100/80 border-blue-200/60 text-blue-600"
+                          : "bg-pink-100/80 border-pink-200/60 text-pink-600"
                       }`}
                       aria-hidden
                     >
-                      {m.gender === "male" ? "🧑" : "👩"}
+                      {isMale ? (
+                        <User className="w-4 h-4" />
+                      ) : (
+                        <UserRound className="w-4 h-4" />
+                      )}
                     </span>
                     <span className="flex-1 min-w-0">
                       <span className="block text-xs font-semibold text-gray-800 truncate">
                         {m.label}
                       </span>
                       <span className="block text-[10px] text-gray-500">
-                        {m.gender === "male" ? "Мужской персонаж" : "Женский персонаж"}
+                        {isMale ? "Мужской персонаж" : "Женский персонаж"}
                       </span>
                     </span>
                     {isActive && <Check className="w-3.5 h-3.5 text-sber-green shrink-0" />}
@@ -258,6 +286,7 @@ export function PersonalizationMenu({ onOpenAbilities, compact }: Props) {
                           voiceId === v.id ||
                           (voiceOverride === v.id && voiceId !== null);
                         const isPlaying = playingVoiceId === v.id;
+                        const isFemale = v.gender === "female";
                         return (
                           <div
                             key={v.id}
@@ -276,14 +305,18 @@ export function PersonalizationMenu({ onOpenAbilities, compact }: Props) {
                               title={isActive ? "Активный голос" : "Выбрать голос"}
                             >
                               <span
-                                className={`w-6 h-6 rounded-full flex items-center justify-center text-xs shrink-0 ${
-                                  v.gender === "female"
+                                className={`w-6 h-6 rounded-full flex items-center justify-center shrink-0 ${
+                                  isFemale
                                     ? "bg-pink-100 text-pink-600"
                                     : "bg-blue-100 text-blue-600"
                                 }`}
                                 aria-hidden
                               >
-                                {v.gender === "female" ? "♀" : "♂"}
+                                {isFemale ? (
+                                  <UserRound className="w-3.5 h-3.5" />
+                                ) : (
+                                  <User className="w-3.5 h-3.5" />
+                                )}
                               </span>
                               <span className="flex-1 min-w-0">
                                 <span className="block text-xs font-semibold text-gray-800 truncate">
@@ -380,56 +413,6 @@ function Section({
         {title}
       </div>
       {children}
-    </div>
-  );
-}
-
-function ModelPreview({
-  model,
-  isPreview,
-}: {
-  model: ModelEntry | undefined;
-  isPreview: boolean;
-}) {
-  if (!model) return null;
-  const isMale = model.gender === "male";
-  return (
-    <div
-      className={`relative overflow-hidden rounded-xl border ${
-        isPreview
-          ? isMale
-            ? "border-blue-300/70 bg-gradient-to-br from-blue-50 to-white"
-            : "border-pink-300/70 bg-gradient-to-br from-pink-50 to-white"
-          : "border-gray-200 bg-gradient-to-br from-slate-50 to-white"
-      }`}
-    >
-      <div className="flex items-center gap-3 p-2.5">
-        <div
-          className={`w-12 h-12 rounded-full flex items-center justify-center text-2xl shrink-0 border ${
-            isMale
-              ? "bg-blue-100/80 border-blue-200/60"
-              : "bg-pink-100/80 border-pink-200/60"
-          }`}
-          aria-hidden
-        >
-          {isMale ? "🧑" : "👩"}
-        </div>
-        <div className="min-w-0 flex-1">
-          <div className="flex items-center gap-1.5">
-            <span className="text-[12.5px] font-bold text-gray-800 truncate">
-              {model.label}
-            </span>
-            {isPreview && (
-              <span className="text-[9px] uppercase font-bold tracking-wider text-amber-700 bg-amber-100 px-1.5 py-0.5 rounded">
-                превью
-              </span>
-            )}
-          </div>
-          <div className="text-[10px] text-gray-500">
-            Пол: {isMale ? "мужской" : "женский"} · Голос: автоподбор
-          </div>
-        </div>
-      </div>
     </div>
   );
 }

@@ -213,7 +213,7 @@ export function WelcomeCharacter3D({ height = 280, disableOrbit }: Props) {
     return (
       <div
         style={{ height }}
-        className="w-full bg-gradient-to-br from-[#e8f1ee] via-[#eef7f5] to-[#e5f0ec]"
+        className="w-full"
         aria-hidden
       />
     );
@@ -222,7 +222,7 @@ export function WelcomeCharacter3D({ height = 280, disableOrbit }: Props) {
   return (
     <div
       style={{ height }}
-      className="relative w-full bg-gradient-to-br from-[#e8f1ee] via-[#eef7f5] to-[#e5f0ec] touch-none"
+      className="relative w-full touch-none"
     >
       <Canvas
         className="!h-full !w-full"

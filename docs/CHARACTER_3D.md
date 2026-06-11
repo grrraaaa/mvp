@@ -110,6 +110,9 @@ NEXT_PUBLIC_CHARACTER_HEAD_PORTRAIT=false
 | `GlbCharacter3D.tsx` | Загрузка GLB, липсинг, портрет |
 | `CharacterRoomScene.tsx` | Canvas, свет, OrbitControls |
 | `PortraitCamera.tsx` | Позиция камеры в портрете |
+| `WelcomeCharacter3D.tsx` | Полноразмерный 3D-канвас для `WelcomeScreen` (drag-to-rotate, OrbitControls) |
+| `ModelPreview3D.tsx` | **Компактный 3D-превью** для дропдауна `PersonalizationMenu` (фиксированный портретный ракурс, idle-rotation, без OrbitControls) |
+| `CharacterAvatar3D.tsx` | Обёртка для основного аватара в чате |
 | `filterGlbScene.ts` | Удаление мебели/окружения из сцены |
 | `mouthVertexDeform.ts` | Липсинг без morph targets |
 | `analyzeModel.ts` | Якорь головы / рта |
@@ -117,6 +120,24 @@ NEXT_PUBLIC_CHARACTER_HEAD_PORTRAIT=false
 | `fitGlbModel.ts` | Масштаб ~1.65 m |
 | `lipSync.ts` | Таймлайн открытия рта по тексту |
 | `modelCapabilitiesStore.ts` | Флаги portrait / morph |
+
+---
+
+## `ModelPreview3D` — компактное превью в `PersonalizationMenu`
+
+Используется в дропдауне «⋯» (выбор модели/голоса) вместо плоского эмодзи-аватара. По `modelPath` грузит GLB и показывает его на миниатюрном канвасе (по умолчанию 140 px высотой). Без OrbitControls — фиксированный портретный ракурс, тонкая idle-rotation (`sin(t*0.6) * 0.12` rad по Y) для эффекта «живого» персонажа.
+
+| Параметр | Поведение |
+|----------|-----------|
+| `modelPath` | Обязательный путь к GLB (`/models/...`). При `null/undefined` использует `DEFAULT_GLB_PATH` |
+| `height` | Высота канваса в px (default 150) |
+| Камера | `position=(0, headY+0.12, 2.0)`, `fov=32` — голова/плечи в кадре |
+| Свет | 1 ambient + 3 directional, как в `WelcomeCharacter3D` |
+| Suspense fallback | Wireframe-torus (мятный `#21A038`) на y=1.45 |
+| Idle | Запускает первый клип с подстрокой `idle` (если есть); иначе микро-rotation |
+| Morph reset | Обнуляет все `morphTargetInfluences` при монтировании, чтобы дефолтный `jawOpen=1` из GLB не «залипал» открытым ртом |
+
+В `PersonalizationMenu` превью перерисовывается при hover/focus на пункт списка моделей — пользователь сразу видит смену внешности до клика.
 
 ---
 
