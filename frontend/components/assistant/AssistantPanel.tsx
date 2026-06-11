@@ -23,7 +23,7 @@ import { useAssistantSpeech } from "@/hooks/useAssistantSpeech";
 import { SourceChips } from "./SourceChips";
 import { documentViewPath, isDocumentUuid } from "@/lib/banking/documentDeepLink";
 import { buildHighlightUrl } from "@/lib/sbbol/fieldHighlight";
-import { NotificationBanner } from "./NotificationBanner";
+import { NotificationSummary } from "./NotificationSummary";
 import { fetchNotifications, fetchOrgProfile, type SmartNotification } from "@/lib/api/banking";
 import { fetchChatHistory, streamChatMessage } from "@/lib/api/chat";
 import { useCharacterBehaviorStore } from "@/store/characterBehaviorStore";
@@ -447,13 +447,11 @@ export function AssistantPanel({ variant = "default", compactMobile = false, onR
 
       <div ref={scrollRef} className={`flex-1 overflow-y-auto ${compactMobile ? "p-2" : "p-4"}`}>
         {notifications.length > 0 && (
-          <div className={`text-left w-full max-w-md mx-auto ${inputCompact ? "mb-2" : "mb-4"}`}>
-            <NotificationBanner
-              notifications={notifications}
-              compact={inputCompact}
-              onAsk={(n) => void sendMessage(`Расскажи про напоминание «${n.title}»`)}
-            />
-          </div>
+          <NotificationSummary
+            notifications={notifications}
+            compact={inputCompact}
+            onAsk={(n) => void sendMessage(`Расскажи про напоминание «${n.title}»`)}
+          />
         )}
         {!chatStarted && messages.length === 0 && inputCompact && (
           <WelcomeScreen
