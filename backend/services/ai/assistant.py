@@ -539,6 +539,8 @@ def _parse_pending_value(
     )
 
     if pending_key == "COMMON_COLUMNS_AMOUNT":
+        if re.search(r"\bдата\b", text, re.I) and DATE_PATTERN.search(text):
+            return None
         amount = parse_amount_value(text)
         if amount:
             return FormFieldAction(
@@ -753,6 +755,11 @@ def _rule_based_form_fill(
                             label=fld.get("label"),
                         )
                     ]
+
+    # Явное «дата документа …» / «сумма …» важнее ответа на pending (следующее пустое поле).
+    bare = _parse_bare_segment(message.strip(), schema)
+    if bare:
+        return bare
 
     if pending_key:
         pending_action = _parse_pending_value(message, pending_key, schema)

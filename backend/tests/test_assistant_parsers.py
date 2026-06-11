@@ -111,6 +111,22 @@ def test_statement_period_from_text():
     assert q._statement_period_from_text("выписка за квартал")[0] == "quarter"
     assert q._statement_period_from_text("выписка за год")[0] == "year"
     assert q._statement_period_from_text("выписка за апрель 2026")[0] == "2026-04"
+    assert q._statement_period_from_text("выписка за сегодня")[0] == "today"
+
+
+def test_build_statement_url_today():
+    url, period, label = q.build_statement_url("выписка за сегодня")
+    assert period == "today"
+    assert "period=today" in url
+    assert "date_from=" in url
+    assert "autoload=1" in url
+    assert label == "сегодня"
+
+
+def test_is_statement_query():
+    assert q.is_statement_query("выписка за сегодня")
+    assert q.is_statement_query("скачать выписку в pdf")
+    assert not q.is_statement_query("открой платежи")
 
 
 def test_balance_intent_typos():

@@ -289,9 +289,11 @@ def match_demo_route(message: str, page_route: str | None = None) -> Optional[st
     msg = message.lower().strip()
 
     try:
-        from services.banking.queries import is_banking_document_command
+        from services.banking.queries import is_banking_document_command, is_statement_query
 
         if is_banking_document_command(message, page_route):
+            return None
+        if is_statement_query(message):
             return None
     except Exception:
         pass

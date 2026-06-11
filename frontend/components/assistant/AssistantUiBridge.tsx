@@ -71,6 +71,17 @@ export function AssistantUiBridge() {
         return;
       }
 
+      const stmtPeriodRoutes: Record<string, string> = {
+        "statement-today": "/statement?period=today&autoload=1",
+        "statement-month": "/statement?period=month&autoload=1",
+        "statement-quarter": "/statement?period=quarter&autoload=1",
+        "statement-period": "/statement?period=year&autoload=1",
+      };
+      if (action in stmtPeriodRoutes) {
+        router.push(stmtPeriodRoutes[action]);
+        return;
+      }
+
       const route = ROUTE_BY_ACTION[action];
       if (route) {
         router.push(route);

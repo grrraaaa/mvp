@@ -184,8 +184,33 @@ PAGE_REGISTRY: dict[str, list[dict]] = {
             "description": "Справки об остатках и оборотах — для банков, налоговой, контрагентов",
         },
         {
+            "target": "statement-today",
+            "labels": ["за сегодня", "сегодня", "today"],
+            "description": "Выписка за сегодня",
+        },
+        {
+            "target": "statement-month",
+            "labels": ["за месяц", "месяц", "за отчётный месяц"],
+            "description": "Выписка за текущий отчётный месяц",
+        },
+        {
+            "target": "statement-quarter",
+            "labels": ["за квартал", "квартал"],
+            "description": "Выписка за квартал",
+        },
+        {
+            "target": "statement-period",
+            "labels": ["за год", "год"],
+            "description": "Выписка за год",
+        },
+        {
+            "target": "download-statement",
+            "labels": ["скачать выписк", "pdf выписк", "выгрузи выписк"],
+            "description": "Скачать выписку в PDF",
+        },
+        {
             "target": "generate-statement",
-            "labels": ["сформировать выписку", "сформируй выписку", "покажи выписку", "показать выписку"],
+            "labels": ["сформировать выписку", "сформируй выписку", "обновить выписку"],
             "description": "Сформировать выписку за выбранный период — показать операции",
         },
     ],
@@ -894,6 +919,14 @@ def _match_action(message: str, page_route: Optional[str]) -> Optional[dict]:
     if not any(re.search(p, msg) for p in CLICK_PATTERNS):
         return None
 
+    try:
+        from services.banking.queries import is_statement_query
+
+        if is_statement_query(message):
+            return None
+    except Exception:
+        pass
+
     # Журнал документов с фильтрами — banking (queries.py), не reset-filters / навигация.
     try:
         from services.banking.queries import is_banking_document_command
@@ -1042,6 +1075,14 @@ def handle_page_ui_action(
 
     # Клик по action target
     click_value: Optional[str] = None
+    _stmt_period_targets = {
+        "statement-today": "today",
+        "statement-month": "month",
+        "statement-quarter": "quarter",
+        "statement-period": "year",
+    }
+    if target in _stmt_period_targets:
+        click_value = _stmt_period_targets[target]
     if target in {"filter-year", "filter-month", "filter-range"}:
         click_value = _extract_filter_value(target, message)
         if target == "filter-year" and not click_value:

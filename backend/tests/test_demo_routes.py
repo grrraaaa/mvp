@@ -33,10 +33,14 @@ def test_url_still_navigates_without_verb():
 
 
 def test_other_navigation_still_works():
-    # «открой выписку» → no strong rule matched, falls to weak /statement
-    assert match_demo_route("открой выписку") == "/statement"
     assert match_demo_route("покажи кредиты") == "/products/credits"
     assert match_demo_route("перейди в настройки") == "/settings"
+
+
+def test_statement_period_not_demo_navigation():
+    assert match_demo_route("выписка за сегодня") is None
+    assert match_demo_route("покажи выписку за месяц") is None
+    assert not is_navigation_message("выписка за сегодня")
 
 
 if __name__ == "__main__":

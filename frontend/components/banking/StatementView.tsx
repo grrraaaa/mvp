@@ -14,7 +14,8 @@ import {
   ChevronDown,
 } from "lucide-react";
 import type { BankDocument } from "@/lib/banking/types";
-import { fetchStatement, type StatementLine } from "@/lib/api/banking";
+import { downloadStatementPdf, fetchStatement, type StatementLine } from "@/lib/api/banking";
+import { ASSISTANT_ACTION_EVENT, type AssistantActionDetail } from "@/lib/assistant/uiBridge";
 import { bankingToast } from "@/lib/banking/toast";
 import { useBankingStore } from "@/store/bankingStore";
 import { useAuthStore } from "@/store/authStore";
@@ -98,8 +99,7 @@ export default function StatementView() {
   } | null>(null);
   const [loadError, setLoadError] = useState<string | null>(null);
   const [queryReady, setQueryReady] = useState(false);
-  const autoLoadedRef = useRef(false);
-  const initialQueryAppliedRef = useRef(false);
+  const lastQueryKeyRef = useRef("");
 
   const resetFilters = () => {
     setSelectedAccount('all');
@@ -112,6 +112,16 @@ export default function StatementView() {
     setLoadError(null);
   };
 
+  const resolveAccountId = useCallback(
+    (raw: string | null) => {
+      if (!raw) return undefined;
+      if (accounts.some((a) => a.id === raw)) return raw;
+      const byIban = accounts.find((a) => a.id === raw || raw.includes(a.id));
+      return byIban?.id;
+    },
+    [accounts],
+  );
+
   const handleGenerateStatement = useCallback(() => {
     if (!authToken) {
       bankingToast("Войдите в систему для формирования выписки", "err");
@@ -120,7 +130,7 @@ export default function StatementView() {
     setIsLoading(true);
     setReportGenerated(false);
     setLoadError(null);
-    const accId = selectedAccount !== "all" ? selectedAccount : undefined;
+    const accId = selectedAccount !== "all" ? resolveAccountId(selectedAccount) : undefined;
     const periodKey = apiPeriodOverride ?? periodToApiKey(selectedPeriod);
     void fetchStatement(accId, periodKey)
       .then((lines) => {
@@ -169,35 +179,86 @@ export default function StatementView() {
         setReportGenerated(true);
       })
       .finally(() => setIsLoading(false));
-  }, [authToken, selectedAccount, selectedPeriod, apiPeriodOverride, accounts]);
+  }, [authToken, selectedAccount, selectedPeriod, apiPeriodOverride, accounts, resolveAccountId]);
+
+  const applyPeriodFromAssistant = useCallback((periodKey: string) => {
+    const mapped = apiKeyToPeriod(periodKey);
+    setSelectedPeriod(mapped);
+    setApiPeriodOverride(/^20\d{2}-(0[1-9]|1[0-2])$/.test(periodKey) ? periodKey : null);
+  }, []);
 
   useEffect(() => {
-    if (!bankingLoaded || initialQueryAppliedRef.current) return;
-    initialQueryAppliedRef.current = true;
+    if (!bankingLoaded) return;
     const rawPeriod = searchParams.get("period");
     const period = apiKeyToPeriod(rawPeriod);
-    const account = searchParams.get("account") ?? searchParams.get("account_id");
+    const account =
+      searchParams.get("account_id") ??
+      searchParams.get("account") ??
+      null;
     setSelectedPeriod(period);
     setApiPeriodOverride(/^20\d{2}-(0[1-9]|1[0-2])$/.test(rawPeriod ?? "") ? rawPeriod : null);
-    if (account && accounts.some((a) => a.id === account)) {
-      setSelectedAccount(account);
-    }
+    const accId = resolveAccountId(account);
+    if (accId) setSelectedAccount(accId);
     setQueryReady(true);
-  }, [accounts, bankingLoaded, searchParams]);
+
+    const queryKey = `${rawPeriod ?? ""}|${account ?? ""}|${searchParams.get("autoload") ?? ""}`;
+    if (queryKey !== lastQueryKeyRef.current) {
+      lastQueryKeyRef.current = queryKey;
+      if (authToken && searchParams.get("autoload") === "1") {
+        requestAnimationFrame(() => handleGenerateStatement());
+      }
+    }
+  }, [accounts, authToken, bankingLoaded, handleGenerateStatement, resolveAccountId, searchParams]);
 
   useEffect(() => {
-    if (authToken && bankingLoaded && queryReady && !autoLoadedRef.current) {
-      autoLoadedRef.current = true;
-      handleGenerateStatement();
-    }
-  }, [authToken, bankingLoaded, handleGenerateStatement, queryReady]);
+    const handler = (e: Event) => {
+      const { action, value } = (e as CustomEvent<AssistantActionDetail>).detail;
+      if (!action) return;
+      const periodMap: Record<string, string> = {
+        "statement-today": "today",
+        "statement-month": "month",
+        "statement-quarter": "quarter",
+        "statement-period": "year",
+      };
+      if (action in periodMap) {
+        applyPeriodFromAssistant(periodMap[action]);
+        requestAnimationFrame(() => handleGenerateStatement());
+        return;
+      }
+      if (action === "generate-statement") {
+        if (value) applyPeriodFromAssistant(String(value));
+        requestAnimationFrame(() => handleGenerateStatement());
+        return;
+      }
+      if (action === "download-statement") {
+        const periodKey = apiPeriodOverride ?? periodToApiKey(selectedPeriod);
+        const accId = selectedAccount !== "all" ? resolveAccountId(selectedAccount) : undefined;
+        void downloadStatementPdf(periodKey, accId).catch(() =>
+          bankingToast("Не удалось скачать PDF выписки", "err"),
+        );
+      }
+    };
+    window.addEventListener(ASSISTANT_ACTION_EVENT, handler);
+    return () => window.removeEventListener(ASSISTANT_ACTION_EVENT, handler);
+  }, [
+    apiPeriodOverride,
+    applyPeriodFromAssistant,
+    handleGenerateStatement,
+    resolveAccountId,
+    selectedAccount,
+    selectedPeriod,
+  ]);
 
   const triggerPrint = () => {
     window.print();
   };
 
   const triggerPdfDownload = () => {
-    alert('Имитация PDF: Отчет банковской выписки сформирован и сохранен на диск как SberBank_Statement_2026.pdf!');
+    const periodKey = apiPeriodOverride ?? periodToApiKey(selectedPeriod);
+    const accId = selectedAccount !== "all" ? resolveAccountId(selectedAccount) : undefined;
+    void downloadStatementPdf(periodKey, accId)
+      .then(() => bankingToast("PDF выписки сохранён", "ok"))
+      .catch(() => bankingToast("Не удалось скачать PDF выписки", "err"));
   };
 
   return (

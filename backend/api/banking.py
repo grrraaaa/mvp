@@ -794,6 +794,79 @@ async def get_statement(
     ]
 
 
+@router.get("/statement/pdf")
+async def download_statement_pdf(
+    period: str = "month",
+    account_id: str | None = None,
+    db: AsyncSession = Depends(get_db),
+    current_user: User = Depends(get_current_user),
+):
+    """PDF выписки за период (те же фильтры, что GET /statement)."""
+    from fastapi import Response
+
+    from services.banking.pdf_export import render_statement_pdf
+    from services.banking.queries import _statement_period_dates, _statement_period_from_text
+
+    org_id = user_org_id(current_user)
+    stmt = select(StatementLine).where(StatementLine.org_id == org_id)
+    if account_id:
+        stmt = stmt.where(StatementLine.account_id == account_id)
+    stmt = stmt.order_by(StatementLine.operation_date.desc())
+    result = await db.execute(stmt)
+    rows = list(result.scalars().all())
+    rows = _filter_statement_period(rows, period)
+
+    _, period_label = _statement_period_from_text(f"выписка за {period}")
+    date_from, date_to = _statement_period_dates(period)
+    date_from = date_from or ""
+    date_to = date_to or ""
+
+    total_debit = sum(r.debit for r in rows)
+    total_credit = sum(r.credit for r in rows)
+    closing = rows[0].balance_after if rows else 0.0
+    acc = await db.get(BankAccount, account_id) if account_id else None
+    acc_label = (
+        f"{acc.iban} ({acc.label or acc.currency})" if acc else "Все счета организации"
+    )
+    currency = acc.currency if acc else "BYN"
+    org = await db.get(OrganizationProfile, org_id)
+
+    line_dicts = [
+        {
+            "operation_date": r.operation_date,
+            "counterparty": r.counterparty,
+            "debit": r.debit,
+            "credit": r.credit,
+            "balance_after": r.balance_after,
+            "purpose": r.purpose,
+        }
+        for r in rows
+    ]
+    pdf_bytes = render_statement_pdf(
+        org_name=org.org_name if org else "DEMO ЮРИДИЧЕСКОЕ ЛИЦО",
+        period_label=period_label,
+        date_from=date_from,
+        date_to=date_to,
+        account_label=acc_label,
+        lines=line_dicts,
+        summary={
+            "total_debit": total_debit,
+            "total_credit": total_credit,
+            "closing_balance": closing,
+            "currency": currency,
+        },
+    )
+    safe_period = re.sub(r"[^\w-]+", "_", period)
+    return Response(
+        content=pdf_bytes,
+        media_type="application/pdf",
+        headers={
+            "Content-Disposition": f'attachment; filename="statement_{safe_period}.pdf"',
+            "Cache-Control": "no-store",
+        },
+    )
+
+
 @router.post("/requests", response_model=PaymentRequestOut)
 async def create_payment_request(
     body: CreatePaymentRequest,

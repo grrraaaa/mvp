@@ -1,6 +1,8 @@
 "use client";
 
 import { useRouter } from "next/navigation";
+import { apiUrl } from "@/lib/api/baseUrl";
+import { authHeaders } from "@/lib/auth/tokenRef";
 import type { ActionButton } from "@/store/assistantStore";
 
 interface Props {
@@ -37,6 +39,39 @@ export function ActionButtons({ buttons, onSendMessage, compact }: Props) {
         }
 
         if (!btn.url) return null;
+
+        if (btn.url.startsWith("/api/")) {
+          return (
+            <button
+              key={i}
+              type="button"
+              onClick={() => {
+                void fetch(apiUrl(btn.url!), {
+                  credentials: "same-origin",
+                  headers: authHeaders(),
+                })
+                  .then((res) => {
+                    if (!res.ok) throw new Error(`HTTP ${res.status}`);
+                    return res.blob();
+                  })
+                  .then((blob) => {
+                    const url = URL.createObjectURL(blob);
+                    const a = document.createElement("a");
+                    a.href = url;
+                    a.download = "statement.pdf";
+                    document.body.appendChild(a);
+                    a.click();
+                    a.remove();
+                    URL.revokeObjectURL(url);
+                  })
+                  .catch(() => undefined);
+              }}
+              className={className}
+            >
+              {btn.label}
+            </button>
+          );
+        }
 
         if (btn.url.startsWith("/")) {
           return (

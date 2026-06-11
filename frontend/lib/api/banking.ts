@@ -292,6 +292,28 @@ export function fetchStatement(accountId?: string, period = "month"): Promise<St
   return fetchJson<StatementLine[]>(`/api/banking/statement?${params}`);
 }
 
+export async function downloadStatementPdf(
+  period = "month",
+  accountId?: string,
+): Promise<void> {
+  const params = new URLSearchParams({ period });
+  if (accountId) params.set("account_id", accountId);
+  const res = await fetch(apiUrl(`/api/banking/statement/pdf?${params}`), {
+    credentials: "same-origin",
+    headers: authHeaders(),
+  });
+  if (!res.ok) throw new Error(`HTTP ${res.status}`);
+  const blob = await res.blob();
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement("a");
+  a.href = url;
+  a.download = `statement_${period}.pdf`;
+  document.body.appendChild(a);
+  a.click();
+  a.remove();
+  URL.revokeObjectURL(url);
+}
+
 export function createPaymentRequest(requestType: string, payload: Record<string, unknown>) {
   return postJson<{ id: string; request_type: string; status: string }>("/api/banking/requests", {
     request_type: requestType,

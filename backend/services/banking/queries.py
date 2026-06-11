@@ -355,6 +355,18 @@ def is_open_counterparty_query(message: str) -> bool:
     )
 
 
+def is_statement_query(message: str) -> bool:
+    """Запрос банковской выписки (не навигация в раздел без периода)."""
+    low = message.lower()
+    return bool(
+        re.search(
+            r"выписк|операци\w*\s+по\s+сч[её]т|оборот\w*\s+по\s+сч[её]т|"
+            r"скачать\s+выписк|выгруз\w*\s+выписк|pdf\s+выписк",
+            low,
+        )
+    )
+
+
 def _statement_period_from_text(message: str) -> tuple[str, str]:
     low = message.lower()
     if re.search(r"квартал|q[1-4]|отч[её]тн\w*\s+кварт", low):
@@ -389,6 +401,86 @@ def _statement_period_from_text(message: str) -> tuple[str, str]:
     return "month", "месяц"
 
 
+def _statement_anchor_datetime():
+    from datetime import datetime
+
+    from core.config import settings
+
+    raw = (getattr(settings, "DEMO_STATEMENT_ANCHOR", None) or "06.06.2026").strip()
+    parts = raw.split(".")
+    if len(parts) == 3:
+        d, m, y = int(parts[0]), int(parts[1]), int(parts[2])
+        if y < 100:
+            y += 2000
+        return datetime(y, m, d)
+    return datetime(2026, 6, 6)
+
+
+def _statement_period_dates(period: str) -> tuple[str | None, str | None]:
+    """Вернуть (date_from, date_to) в формате DD.MM.YYYY для query-параметров."""
+    from datetime import timedelta
+
+    anchor = _statement_anchor_datetime()
+
+    p = (period or "month").lower()
+    if p in ("today", "сегодня"):
+        d = anchor.strftime("%d.%m.%Y")
+        return d, d
+    if p in ("yesterday", "вчера"):
+        d = (anchor - timedelta(days=1)).strftime("%d.%m.%Y")
+        return d, d
+    if p in ("week", "5days", "5дней"):
+        return (anchor - timedelta(days=5)).strftime("%d.%m.%Y"), anchor.strftime("%d.%m.%Y")
+
+    ym = re.match(r"^(20\d{2})-(0[1-9]|1[0-2])$", p)
+    if ym:
+        year, month = int(ym.group(1)), int(ym.group(2))
+        import calendar
+
+        last = calendar.monthrange(year, month)[1]
+        return f"01.{month:02d}.{year}", f"{last}.{month:02d}.{year}"
+
+    if p in ("month", "месяц"):
+        import calendar
+
+        last = calendar.monthrange(anchor.year, anchor.month)[1]
+        return (
+            f"01.{anchor.month:02d}.{anchor.year}",
+            f"{last}.{anchor.month:02d}.{anchor.year}",
+        )
+
+    if p in ("quarter", "квартал"):
+        q_start = ((anchor.month - 1) // 3) * 3 + 1
+        q_end = q_start + 2
+        import calendar
+
+        last = calendar.monthrange(anchor.year, q_end)[1]
+        return (
+            f"01.{q_start:02d}.{anchor.year}",
+            f"{last}.{q_end:02d}.{anchor.year}",
+        )
+
+    if p in ("year", "год"):
+        return f"01.01.{anchor.year}", f"31.12.{anchor.year}"
+
+    return None, None
+
+
+def build_statement_url(message: str, account_iban: str | None = None) -> tuple[str, str, str]:
+    """URL выписки + period key + человекочитаемая подпись периода."""
+    period, period_label = _statement_period_from_text(message)
+    date_from, date_to = _statement_period_dates(period)
+    params: list[str] = [f"period={quote(period)}"]
+    if date_from and date_to:
+        params.append(f"date_from={quote(date_from)}")
+        params.append(f"date_to={quote(date_to)}")
+    if account_iban:
+        params.append(f"account_id={quote(account_iban)}")
+    params.append("autoload=1")
+    url = f"/statement?{'&'.join(params)}"
+    return url, period, period_label
+
+
 async def _match_statement_account(
     session: AsyncSession, org_id: str, message: str
 ) -> BankAccount | None:
@@ -417,20 +509,26 @@ async def _match_statement_account(
 async def _statement_reply(
     session: AsyncSession, message: str, org_id: str
 ) -> dict | None:
-    low = message.lower()
-    if not re.search(r"выписк|операци\w*\s+по\s+сч[её]т|оборот\w*\s+по\s+сч[её]т", low):
+    if not is_statement_query(message):
         return None
-    period, period_label = _statement_period_from_text(message)
     account = await _match_statement_account(session, org_id, message)
-    url = f"/statement?period={period}"
+    url, period, period_label = build_statement_url(
+        message, account.iban if account else None
+    )
     account_text = "по всем счетам"
     if account:
-        url += f"&account={quote(account.iban)}"
         account_text = f"по счёту {account.iban} ({account.label or account.currency})"
+    wants_pdf = bool(
+        re.search(r"скачать|pdf|выгруз|загрузи\s+выписк", message.lower())
+    )
+    pdf_path = f"/api/banking/statement/pdf?period={quote(period)}"
+    if account:
+        pdf_path += f"&account_id={quote(account.iban)}"
     return {
         "message": (
             f"Открываю выписку за **{period_label}** {account_text}. "
-            "На странице сразу применю фильтры и сформирую список операций."
+            "На странице применю временной интервал и сформирую операции."
+            + (" Можно сразу скачать PDF." if wants_pdf else "")
         ),
         "sources": [
             {
@@ -440,11 +538,26 @@ async def _statement_reply(
                 "url": url,
             }
         ],
-        "ui_actions": [{"type": "navigate", "target": url}],
+        "ui_actions": [
+            {"type": "navigate", "target": url},
+            *(
+                [{"type": "click", "target": "download-statement", "value": period}]
+                if wants_pdf
+                else []
+            ),
+        ],
         "action_buttons": [
             {"label": "Открыть выписку", "url": url, "variant": "primary"},
-            {"label": "За квартал", "message": "Покажи выписку за отчётный квартал", "variant": "secondary"},
-            {"label": "За год", "message": "Покажи выписку за год", "variant": "secondary"},
+            {
+                "label": "Скачать PDF",
+                "url": pdf_path,
+                "variant": "secondary",
+            },
+            {
+                "label": "Выписка за сегодня",
+                "message": "Выписка за сегодня",
+                "variant": "secondary",
+            },
         ],
     }
 

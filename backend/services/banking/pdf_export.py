@@ -123,3 +123,75 @@ def render_document_pdf(doc: dict, org_name: str = "") -> bytes:
         pdf.cell(0, 8, "Ожидает подписи уполномоченного лица")
 
     return bytes(pdf.output())
+
+
+def render_statement_pdf(
+    *,
+    org_name: str,
+    period_label: str,
+    date_from: str,
+    date_to: str,
+    account_label: str,
+    lines: list[dict],
+    summary: dict,
+) -> bytes:
+    """PDF банковской выписки по строкам statement_lines."""
+    pdf = _DocPdf(orientation="P", unit="mm", format="A4")
+    pdf.add_font("DejaVu", "", str(_FONTS_DIR / "DejaVuSans.ttf"))
+    pdf.add_font("DejaVu", "B", str(_FONTS_DIR / "DejaVuSans-Bold.ttf"))
+    pdf.set_auto_page_break(auto=True, margin=16)
+    pdf.add_page()
+
+    pdf.set_font("DejaVu", "B", 15)
+    pdf.set_text_color(*TEAL)
+    pdf.cell(0, 10, "Банковская выписка", new_x="LMARGIN", new_y="NEXT")
+    pdf.set_font("DejaVu", "", 10)
+    pdf.set_text_color(20, 28, 40)
+    pdf.cell(0, 7, org_name or "Организация", new_x="LMARGIN", new_y="NEXT")
+    pdf.ln(2)
+
+    _row(pdf, "Период", f"{period_label} ({date_from} — {date_to})")
+    _row(pdf, "Счёт", account_label or "Все счета")
+    _row(
+        pdf,
+        "Обороты",
+        f"Дебет {summary.get('total_debit', 0):,.2f} / "
+        f"Кредит {summary.get('total_credit', 0):,.2f} {summary.get('currency', 'BYN')}",
+    )
+    _row(
+        pdf,
+        "Остаток на конец",
+        f"{summary.get('closing_balance', 0):,.2f} {summary.get('currency', 'BYN')}",
+        bold_value=True,
+    )
+    pdf.ln(4)
+
+    pdf.set_font("DejaVu", "B", 9)
+    pdf.set_fill_color(240, 244, 248)
+    col_w = [22, 48, 22, 22, 22, 54]
+    headers = ["Дата", "Контрагент", "Дебет", "Кредит", "Остаток", "Назначение"]
+    for i, h in enumerate(headers):
+        pdf.cell(col_w[i], 8, h, border=1, fill=True)
+    pdf.ln()
+
+    pdf.set_font("DejaVu", "", 8)
+    for line in lines[:80]:
+        vals = [
+            str(line.get("operation_date") or ""),
+            (str(line.get("counterparty") or ""))[:28],
+            f"{float(line.get('debit') or 0):,.2f}" if line.get("debit") else "",
+            f"{float(line.get('credit') or 0):,.2f}" if line.get("credit") else "",
+            f"{float(line.get('balance_after') or 0):,.2f}",
+            (str(line.get("purpose") or ""))[:40],
+        ]
+        for i, v in enumerate(vals):
+            pdf.cell(col_w[i], 7, v, border=1)
+        pdf.ln()
+
+    if len(lines) > 80:
+        pdf.ln(2)
+        pdf.set_font("DejaVu", "", 8)
+        pdf.set_text_color(*GRAY)
+        pdf.cell(0, 6, f"Показаны первые 80 из {len(lines)} операций.", new_x="LMARGIN", new_y="NEXT")
+
+    return bytes(pdf.output())

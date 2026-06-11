@@ -159,7 +159,12 @@ def parse_amount_value(raw: str) -> Optional[str]:
             return f"{int(whole)}.{frac.ljust(2, '0')[:2]}"
         return str(int(whole))
 
+    if re.fullmatch(r"\d{1,2}[./]\d{1,2}[./]\d{2,4}", compact):
+        return None
+
     num = parse_grouped_integer(text)
+    if num is not None and re.search(r"\d{1,2}[./]\d{1,2}[./]\d{2,4}", text):
+        return None
     return str(num) if num is not None else None
 
 
