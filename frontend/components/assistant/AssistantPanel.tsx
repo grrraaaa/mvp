@@ -621,7 +621,7 @@ export function AssistantPanel({ variant = "default", compactMobile = false, onR
               (m.streaming || m.awaitingVoice || m.revealing),
           ) && (
           <div className="mb-3">
-            <MessageBubble message={{ role: "assistant", content: "…" }} isTyping />
+            <MessageBubble message={{ role: "assistant", content: "", streaming: true }} compact={compactMobile} />
           </div>
         )}
 

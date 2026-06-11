@@ -1,18 +1,31 @@
 "use client";
 
+import { useMemo } from "react";
+import { Mic } from "lucide-react";
 import { CHARACTER_PRESETS } from "@/lib/assistant/characterPresets";
-import { useCharacterStore } from "@/store/characterStore";
+import { resolveModelPath, useCharacterStore } from "@/store/characterStore";
+import { VoicePicker } from "@/components/assistant/VoicePicker";
+import type { CharacterGender } from "@/lib/tts/assistantVoices";
+import { PERSONALIZATION_GLB_CATALOG } from "@/store/characterStore";
 
 export function CharacterSettings() {
   const {
     config,
     activePresetId,
+    modelOverride,
     settingsOpen,
     setSettingsOpen,
     setConfig,
     applyPreset,
     resetCharacter,
   } = useCharacterStore();
+
+  const characterGender: CharacterGender = useMemo(() => {
+    const path = resolveModelPath({ modelOverride, config });
+    const model = PERSONALIZATION_GLB_CATALOG.find((m) => m.path === path);
+    if (model?.gender) return model.gender;
+    return config.styleId === "human-f" ? "female" : "male";
+  }, [config, modelOverride]);
 
   if (!settingsOpen) return null;
 
@@ -36,8 +49,8 @@ export function CharacterSettings() {
 
       <div className="flex-1 overflow-y-auto p-4 space-y-5">
         <p className="text-xs text-gray-500 leading-relaxed">
-          Выберите набор способностей ИИ-консультанта. Под выбранный режим
-          автоматически подставятся 3D-модель и голос (мужской/женский).
+          Выберите набор способностей ИИ-консультанта и голос озвучки (Голос 1 /
+          Голос 2 для мужского или женского персонажа).
         </p>
 
         <section>
@@ -87,6 +100,14 @@ export function CharacterSettings() {
               );
             })}
           </div>
+        </section>
+
+        <section>
+          <p className="text-xs text-gray-500 uppercase tracking-wide mb-2 flex items-center gap-1.5">
+            <Mic className="w-3.5 h-3.5" />
+            Голос озвучки
+          </p>
+          <VoicePicker characterGender={characterGender} />
         </section>
 
         <section className="space-y-3">

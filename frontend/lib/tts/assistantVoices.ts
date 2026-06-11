@@ -55,11 +55,27 @@ export const ASSISTANT_VOICE_GROUPS: TtsVoiceGroup[] = [
 export type CharacterGender = "male" | "female";
 
 export function assistantVoiceGroups(groups: TtsVoiceGroup[]): TtsVoiceGroup[] {
+  const staticVoices = ASSISTANT_VOICE_GROUPS[0]?.voices ?? [];
   const inworld = groups.find((g) => g.id === "inworld");
-  if (inworld?.voices.length) {
-    return [{ ...inworld, label: "Голос" }];
+  if (!inworld?.voices.length) {
+    return ASSISTANT_VOICE_GROUPS;
   }
-  return ASSISTANT_VOICE_GROUPS;
+
+  const byId = new Map(staticVoices.map((v) => [v.id, v]));
+  for (const voice of inworld.voices) {
+    byId.set(voice.id, { ...byId.get(voice.id), ...voice });
+  }
+  for (const voice of staticVoices) {
+    if (!byId.has(voice.id)) byId.set(voice.id, voice);
+  }
+
+  return [
+    {
+      id: "inworld",
+      label: "Голос",
+      voices: Array.from(byId.values()),
+    },
+  ];
 }
 
 export function allAssistantVoices(groups: TtsVoiceGroup[]): TtsVoiceOption[] {

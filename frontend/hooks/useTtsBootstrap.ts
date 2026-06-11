@@ -3,6 +3,7 @@
 import { useEffect } from "react";
 import {
   ASSISTANT_DEFAULT_VOICE,
+  allAssistantVoices,
   assistantVoiceGroups,
 } from "@/lib/tts/assistantVoices";
 import {
@@ -12,7 +13,7 @@ import {
 } from "@/lib/tts/combinedVoices";
 import { fetchTtsStatus, fetchTtsVoices } from "@/lib/api/tts";
 import { useTtsStore } from "@/store/ttsStore";
-import { pickVoiceForCharacter } from "@/lib/tts/matchVoiceForCharacter";
+import { pickVoiceForCharacter, styleIdToGender } from "@/lib/tts/matchVoiceForCharacter";
 import { useCharacterStore } from "@/store/characterStore";
 import type { TtsVoiceGroup } from "@/store/ttsStore";
 
@@ -21,7 +22,22 @@ export function syncVoiceToCurrentCharacter() {
   const char = useCharacterStore.getState();
   const charStyleId = char.config.styleId;
   if (charStyleId !== "human-m" && charStyleId !== "human-f") return;
+
   const tts = useTtsStore.getState();
+  const voices = allAssistantVoices(tts.voiceGroups);
+
+  if (char.voiceOverride) {
+    const manual = voices.find((v) => v.id === char.voiceOverride);
+    if (manual && tts.voiceId !== char.voiceOverride) {
+      tts.setVoiceId(char.voiceOverride);
+    }
+    return;
+  }
+
+  const gender = styleIdToGender(charStyleId);
+  const current = voices.find((v) => v.id === tts.voiceId);
+  if (current?.gender === gender) return;
+
   const wanted = pickVoiceForCharacter(tts.voiceGroups, charStyleId, tts.voiceId);
   if (wanted && tts.voiceId !== wanted) {
     tts.setVoiceId(wanted);
@@ -33,7 +49,7 @@ function mergeVoiceGroups(apiGroups: TtsVoiceGroup[]): TtsVoiceGroup[] {
   return groups.length ? groups : COMBINED_VOICE_GROUPS;
 }
 
-/** Загрузка каталога голосов (мужской / женский, без выбора языка). */
+/** Загрузка каталога голосов (2 мужских + 2 женских). */
 export function useTtsBootstrap() {
   const setServerTts = useTtsStore((s) => s.setServerTts);
   const setVoiceGroups = useTtsStore((s) => s.setVoiceGroups);
@@ -45,7 +61,7 @@ export function useTtsBootstrap() {
       .then((status) => {
         setServerTts(Boolean(status.enabled), {
           defaultVoice: status.voice ?? staticFallback.defaultVoice,
-          voiceSelection: status.voice_selection !== false,
+          voiceSelection: true,
         });
         return fetchTtsVoices();
       })
@@ -56,7 +72,7 @@ export function useTtsBootstrap() {
         syncVoiceToCurrentCharacter();
       })
       .catch(() => {
-        setServerTts(true, { defaultVoice: COMBINED_DEFAULT_VOICE });
+        setServerTts(true, { defaultVoice: COMBINED_DEFAULT_VOICE, voiceSelection: true });
         setVoiceGroups(COMBINED_VOICE_GROUPS, COMBINED_DEFAULT_VOICE);
         syncVoiceToCurrentCharacter();
       });

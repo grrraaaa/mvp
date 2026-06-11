@@ -5,6 +5,7 @@ import { AssistantChart } from "@/components/assistant/AssistantChart";
 import { ChoiceCards } from "@/components/assistant/ChoiceCards";
 import { IconAiSpark } from "@/components/assistant/IconAiSpark";
 import { renderAssistantMessageContent } from "@/lib/assistant/renderMessageContent";
+import { AssistantPendingIndicator } from "@/components/assistant/AssistantPendingIndicator";
 
 interface Props {
   message: ChatMessage;
@@ -19,6 +20,7 @@ export function MessageBubble({ message, isTyping, compact, onChoice }: Props) {
     isTyping ||
     Boolean(message.awaitingVoice) ||
     (Boolean(message.streaming) && !message.content.trim());
+  const pendingMode = message.awaitingVoice ? "voice" : "thinking";
 
   // Сообщения ассистента: маленький sparkles-аватар слева (та же иконка, что
   // в Nav у "ИИ-ассистент") + белый бабл с тонкой границей. Строгий стиль:
@@ -40,15 +42,7 @@ export function MessageBubble({ message, isTyping, compact, onChoice }: Props) {
           } bg-white text-[#1f1f22] border border-[#e4e8eb] rounded-2xl rounded-tl-md shadow-sm`}
         >
           {pendingReply ? (
-            <span className="flex gap-1 py-0.5">
-              {[0, 1, 2].map((i) => (
-                <span
-                  key={i}
-                  className="w-1.5 h-1.5 bg-[#108c7c] rounded-full animate-bounce"
-                  style={{ animationDelay: `${i * 0.15}s` }}
-                />
-              ))}
-            </span>
+            <AssistantPendingIndicator mode={pendingMode} compact={compact} />
           ) : (
             <>
               {renderAssistantMessageContent(message.content)}

@@ -9,8 +9,6 @@ import {
   UserRound,
   X,
   RotateCcw,
-  Play,
-  Square,
   Ellipsis,
 } from "lucide-react";
 import {
@@ -19,14 +17,8 @@ import {
   useCharacterStore,
 } from "@/store/characterStore";
 import { useTtsStore } from "@/store/ttsStore";
-import { previewVoiceSample, type PreviewHandle } from "@/lib/tts/previewVoice";
-import { syncVoiceToCurrentCharacter } from "@/hooks/useTtsBootstrap";
-import {
-  allAssistantVoices,
-  voiceForGender,
-  voicesForGender,
-  type CharacterGender,
-} from "@/lib/tts/assistantVoices";
+import { allAssistantVoices, voiceForGender, type CharacterGender } from "@/lib/tts/assistantVoices";
+import { VoicePicker } from "@/components/assistant/VoicePicker";
 import { ModelPreview3D } from "./character3d/ModelPreview3D";
 
 interface Props {
@@ -51,14 +43,11 @@ interface ModelEntry {
 export function PersonalizationMenu({ onOpenAbilities }: Props) {
   const [open, setOpen] = useState(false);
   const [previewModel, setPreviewModel] = useState<ModelEntry | null>(null);
-  const [playingVoiceId, setPlayingVoiceId] = useState<string | null>(null);
-  const previewRef = useRef<PreviewHandle | null>(null);
   const wrapRef = useRef<HTMLDivElement>(null);
 
   const { config, modelOverride, setModelOverride, resetCharacter } = useCharacterStore();
-  const voiceGroups = useTtsStore((s) => s.voiceGroups);
   const voiceId = useTtsStore((s) => s.voiceId);
-  const setVoiceId = useTtsStore((s) => s.setVoiceId);
+  const voiceGroups = useTtsStore((s) => s.voiceGroups);
 
   // Закрытие по клику снаружи / Esc
   useEffect(() => {
@@ -79,21 +68,11 @@ export function PersonalizationMenu({ onOpenAbilities }: Props) {
     };
   }, [open]);
 
-  // Останавливаем превью при закрытии меню / размонтировании
   useEffect(() => {
     if (!open) {
-      previewRef.current?.stop();
-      previewRef.current = null;
-      setPlayingVoiceId(null);
       setPreviewModel(null);
     }
   }, [open]);
-
-  useEffect(() => {
-    return () => {
-      previewRef.current?.stop();
-    };
-  }, []);
 
   const currentModelPath = resolveModelPath({ modelOverride, config });
 
@@ -107,40 +86,14 @@ export function PersonalizationMenu({ onOpenAbilities }: Props) {
     return config.styleId === "human-f" ? "female" : "male";
   }, [activeModel?.gender, config.styleId]);
 
-  const genderVoices = useMemo(
-    () => voicesForGender(voiceGroups, characterGender),
-    [voiceGroups, characterGender],
-  );
-
   const activeVoice = useMemo(() => {
     const picked = allAssistantVoices(voiceGroups).find((v) => v.id === voiceId);
     if (picked?.gender === characterGender) return picked;
     return voiceForGender(voiceGroups, characterGender);
   }, [voiceGroups, voiceId, characterGender]);
 
-  useEffect(() => {
-    syncVoiceToCurrentCharacter();
-  }, [characterGender, voiceGroups]);
-
   const handleReset = () => {
-    previewRef.current?.stop();
-    setPlayingVoiceId(null);
     resetCharacter();
-  };
-
-  const handleTogglePlayVoice = (voice: { id: string }) => {
-    if (playingVoiceId === voice.id) {
-      previewRef.current?.stop();
-      previewRef.current = null;
-      setPlayingVoiceId(null);
-      return;
-    }
-    previewRef.current?.stop();
-    previewRef.current = previewVoiceSample(voice.id);
-    setPlayingVoiceId(voice.id);
-    void previewRef.current.done.finally(() => {
-      setPlayingVoiceId((cur) => (cur === voice.id ? null : cur));
-    });
   };
 
   // Какая модель показывается в 3D-превью: ховер/фокус → активная.
@@ -264,57 +217,7 @@ export function PersonalizationMenu({ onOpenAbilities }: Props) {
           </Section>
 
           <Section icon={<Mic className="w-3.5 h-3.5" />} title="Голос озвучки">
-            {!genderVoices.length ? (
-              <p className="text-[10px] text-gray-400 px-1 py-1">Голоса загружаются…</p>
-            ) : (
-              <div className="space-y-1">
-                {genderVoices.map((v) => {
-                  const isActive = activeVoice?.id === v.id;
-                  const isPlaying = playingVoiceId === v.id;
-                  return (
-                    <div
-                      key={v.id}
-                      className={`flex items-center gap-1.5 px-1.5 py-1.5 rounded-lg transition-colors ${
-                        isActive
-                          ? "bg-emerald-50/60 ring-1 ring-sber-green/30"
-                          : "hover:bg-gray-50"
-                      } ${isPlaying ? "bg-amber-50 ring-amber-200" : ""}`}
-                    >
-                      <button
-                        type="button"
-                        onClick={() => setVoiceId(v.id)}
-                        className="flex-1 min-w-0 text-left"
-                      >
-                        <div className="text-xs font-semibold text-gray-800 truncate">
-                          {v.short ?? v.name}
-                        </div>
-                        <div className="text-[10px] text-gray-500">
-                          {characterGender === "male" ? "Мужской" : "Женский"}
-                        </div>
-                      </button>
-                      <button
-                        type="button"
-                        onClick={() => handleTogglePlayVoice(v)}
-                        className={`w-7 h-7 rounded-full flex items-center justify-center shrink-0 transition-colors ${
-                          isPlaying
-                            ? "bg-amber-500 text-white hover:bg-amber-600"
-                            : "bg-gray-100 text-gray-600 hover:bg-emerald-100 hover:text-emerald-700"
-                        }`}
-                        title={isPlaying ? "Остановить" : "Прослушать"}
-                        aria-label={isPlaying ? "Остановить" : "Прослушать"}
-                      >
-                        {isPlaying ? (
-                          <Square className="w-3 h-3" aria-hidden />
-                        ) : (
-                          <Play className="w-3 h-3 ml-0.5" aria-hidden />
-                        )}
-                      </button>
-                      {isActive && <Check className="w-3.5 h-3.5 text-sber-green shrink-0" />}
-                    </div>
-                  );
-                })}
-              </div>
-            )}
+            <VoicePicker characterGender={characterGender} />
           </Section>
 
           <div className="border-t border-gray-100 bg-slate-50 px-2 py-1.5 flex items-center justify-between gap-1">

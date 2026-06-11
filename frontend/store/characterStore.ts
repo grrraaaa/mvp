@@ -56,12 +56,17 @@ export const PERSONALIZATION_GLB_CATALOG = CHARACTER_GLB_CATALOG.map((m) => ({
   gender: m.gender,
 }));
 
-/** Авто-выбор голоса по полу модели. */
+/** Авто-выбор голоса по полу модели (не перетирает ручной выбор). */
 function autoPickVoice(styleId: "human-m" | "human-f") {
   if (typeof window === "undefined") return;
+  const { voiceOverride } = useCharacterStore.getState();
   void import("@/store/ttsStore").then(({ useTtsStore }) => {
     const tts = useTtsStore.getState();
-    const voice = pickVoiceForCharacter(tts.voiceGroups, styleId);
+    if (voiceOverride) {
+      if (tts.voiceId !== voiceOverride) tts.setVoiceId(voiceOverride);
+      return;
+    }
+    const voice = pickVoiceForCharacter(tts.voiceGroups, styleId, tts.voiceId);
     if (voice && tts.voiceId !== voice) {
       tts.setVoiceId(voice);
     }
@@ -91,7 +96,11 @@ export const useCharacterStore = create<CharacterState>()(
       applyPreset: (presetId) => {
         const preset = CHARACTER_PRESETS.find((p) => p.id === presetId);
         if (!preset) return;
-        set({ config: { ...preset.config }, activePresetId: presetId });
+        set({
+          config: { ...preset.config },
+          activePresetId: presetId,
+          voiceOverride: null,
+        });
         autoPickVoice(preset.config.styleId);
       },
 
@@ -124,11 +133,12 @@ export const useCharacterStore = create<CharacterState>()(
         // (если он не override'нут руками) перевыбрался корректно.
         const name = displayNameForModel(path);
         const styleId = styleIdForModel(path);
+        const prevStyleId = get().config.styleId;
         set((state) => ({
           modelOverride: path,
           config: { ...state.config, name, styleId },
           activePresetId: null,
-          voiceOverride: null,
+          voiceOverride: prevStyleId === styleId ? state.voiceOverride : null,
         }));
         autoPickVoice(styleId);
       },

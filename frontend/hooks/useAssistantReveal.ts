@@ -2,7 +2,8 @@
 
 import { useCallback, useEffect, useRef } from "react";
 import { charDelayForSpeech, revealTextGradually } from "@/lib/assistant/revealText";
-import { prefetchSpeech, playPreparedSpeech } from "@/lib/tts/voiceProvider";
+import { playPreparedSpeech } from "@/lib/tts/voiceProvider";
+import { prefetchSpeechWithTimeout } from "@/lib/tts/prefetchSpeech";
 import { useAssistantStore, type ChatMessage } from "@/store/assistantStore";
 import { useCharacterBehaviorStore } from "@/store/characterBehaviorStore";
 import { buildLipTimeline } from "@/lib/assistant/lipSync";
@@ -59,13 +60,17 @@ export function useAssistantReveal() {
       let speechBlob: Blob | null = null;
 
       if (ttsEnabled && text && voiceId) {
-        try {
-          speechBlob = await prefetchSpeech(text, voiceId);
-        } catch {
-          speechBlob = null;
-        }
+        const result = await prefetchSpeechWithTimeout(text, voiceId, { signal: ac.signal });
         if (ac.signal.aborted) return;
+        speechBlob = result.blob;
+        if (result.timedOut) {
+          console.warn("[TTS] prefetch timeout (10s)");
+        } else if (result.error && result.error !== "aborted") {
+          console.warn("[TTS] prefetch failed:", result.error);
+        }
       }
+
+      if (ac.signal.aborted) return;
 
       updateLastAssistant({ awaitingVoice: false, revealing: true });
 

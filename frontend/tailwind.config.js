@@ -102,10 +102,21 @@ module.exports = {
           from: { opacity: "0", transform: "scale(0.96)" },
           to: { opacity: "1", transform: "scale(1)" },
         },
+        assistantWave: {
+          "0%, 100%": { transform: "scaleY(0.35)", opacity: "0.45" },
+          "50%": { transform: "scaleY(1)", opacity: "1" },
+        },
+        assistantEllipsis: {
+          "0%, 20%": { opacity: "0.2" },
+          "50%": { opacity: "1" },
+          "80%, 100%": { opacity: "0.2" },
+        },
       },
       animation: {
         fadeIn: "fadeIn 0.2s ease-out",
         scaleIn: "scaleIn 0.18s ease-out",
+        "assistant-wave": "assistantWave 0.9s ease-in-out infinite",
+        "assistant-ellipsis": "assistantEllipsis 1.4s ease-in-out infinite",
       },
       borderColor: {
         "sber-border": "rgba(33, 160, 56, 0.28)",
