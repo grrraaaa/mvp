@@ -15,7 +15,8 @@ from services.forms.ocr_llm_parser import parse_ocr_text_with_llm
 from services.forms.ocr_text_parser import parse_ocr_text_to_form_actions
 from services.chat.enrichment import enrich_response
 from services.ocr.demo_fallback import demo_ocr_from_image_b64, is_pdf_data_url
-from services.ocr.imagetotext import OcrError, recognize_base64_image
+from services.ocr.imagetotext import OcrError
+from services.ocr.recognize import recognize_payment_image
 
 router = APIRouter()
 
@@ -58,10 +59,17 @@ async def ocr_fill_form(request: OcrFillRequest):
 
         demo_mode = False
         demo_note = ""
-        has_keys = bool(settings.IMAGETOTEXT_API_KEY and settings.IMAGETOTEXT_API_SECRET)
-        if has_keys:
+        has_ocr = bool(
+            (settings.IMAGETOTEXT_API_KEY and settings.IMAGETOTEXT_API_SECRET)
+            or settings.OCR_SPACE_API_KEY
+        )
+        if has_ocr:
             try:
-                ocr_text = await recognize_base64_image(b64)
+                ocr_text, ocr_provider = await recognize_payment_image(b64)
+                if ocr_provider == "ocrspace":
+                    demo_note = (
+                        "\n\n_(Распознано через резервный OCR OCR.space — проверьте поля.)_"
+                    )
             except OcrError as exc:
                 raise HTTPException(
                     status_code=exc.status_code or 502,

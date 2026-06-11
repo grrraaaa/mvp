@@ -53,6 +53,11 @@ class Settings(BaseSettings):
     IMAGETOTEXT_API_KEY: str = ""
     IMAGETOTEXT_API_SECRET: str = ""
 
+    # OCR.space — резервный OCR, если ImageToText не отвечает
+    OCR_SPACE_API_KEY: str = ""
+    OCR_SPACE_LANGUAGE: str = "rus"
+    OCR_SPACE_TIMEOUT: float = 45.0
+
     # Inworld AI TTS (streaming, сервер)
     # Значение: Base64 после "Basic " или полная строка "Basic ..."
     INWORLD_API_KEY: str = ""
