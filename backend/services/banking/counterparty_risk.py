@@ -1,35 +1,43 @@
 """Counterparty due diligence — risk scoring."""
 from __future__ import annotations
 
+import re
 from typing import Any
 
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from db.models import Counterparty
+from services.banking.queries import lookup_counterparty, normalize_counterparty_query
 
 
 async def get_counterparty_risk(
     session: AsyncSession, org_id: str, name_or_unp: str
 ) -> dict[str, Any] | None:
-    low = name_or_unp.lower().strip()
-    result = await session.execute(select(Counterparty).where(Counterparty.org_id == org_id))
-    rows = result.scalars().all()
-    best: Counterparty | None = None
-    for c in rows:
-        if low in c.name.lower() or (c.unp and c.unp in name_or_unp):
-            best = c
-            break
-    if not best:
+    raw = (name_or_unp or "").strip()
+    unp_digits = re.sub(r"\D", "", raw)
+    if len(unp_digits) == 9:
+        result = await session.execute(
+            select(Counterparty).where(
+                Counterparty.org_id == org_id,
+                Counterparty.unp == unp_digits,
+            )
+        )
+        row = result.scalar_one_or_none()
+    else:
+        row = await lookup_counterparty(session, org_id, normalize_counterparty_query(raw))
+
+    if not row:
         return None
-    score = getattr(best, "risk_score", None) or 50.0
-    level = getattr(best, "risk_level", None) or _level_from_score(score)
-    notes = getattr(best, "risk_notes", None) or ""
+
+    score = getattr(row, "risk_score", None) or 50.0
+    level = getattr(row, "risk_level", None) or _level_from_score(score)
+    notes = getattr(row, "risk_notes", None) or ""
     return {
-        "id": best.id,
-        "name": best.name,
-        "unp": best.unp,
-        "account": best.account,
+        "id": row.id,
+        "name": row.name,
+        "unp": row.unp,
+        "account": row.account,
         "risk_score": score,
         "risk_level": level,
         "risk_notes": notes,

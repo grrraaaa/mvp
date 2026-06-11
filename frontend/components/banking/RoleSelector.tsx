@@ -9,11 +9,13 @@ interface Props {
   onLogout?: () => void;
   /** Скрыть подпись «Права» (оставить только чип). */
   compact?: boolean;
+  /** Только иконка щита (мобильная шапка). */
+  iconOnly?: boolean;
 }
 
 /** Топ-уровневый селектор роли (прав доступа) в навбаре. Виден сразу,
  *  не прячется в аватар. */
-export function RoleSelector({ onLogout, compact }: Props) {
+export function RoleSelector({ onLogout, compact, iconOnly }: Props) {
   const { role, roleId, setRoleId } = useRole();
   const [open, setOpen] = useState(false);
   const wrapRef = useRef<HTMLDivElement>(null);
@@ -46,28 +48,37 @@ export function RoleSelector({ onLogout, compact }: Props) {
         aria-haspopup="menu"
         aria-expanded={open}
         title="Права доступа"
-        className={`flex items-center gap-1.5 sm:gap-2 px-2 sm:px-2.5 py-1.5 z-15 border bg-white rounded-full transition-all text-xs font-semibold focus:outline-none shrink-0 cursor-pointer shadow-sm ${
+        className={`flex items-center justify-center z-15 border bg-white transition-all text-xs font-semibold focus:outline-none shrink-0 cursor-pointer shadow-sm ${
+          iconOnly
+            ? "w-9 h-9 rounded-full p-0"
+            : "gap-1.5 sm:gap-2 px-2 sm:px-2.5 py-1.5 rounded-full"
+        } ${
           open
             ? "border-sber-green text-sber-green"
             : "border-gray-200 hover:border-gray-300 text-gray-700 hover:bg-gray-50"
         }`}
+        aria-label={iconOnly ? `Права: ${role.position}` : "Права доступа"}
       >
-        <Shield className="w-4 h-4 text-sber-green" />
-        <span className="flex flex-col items-start leading-none">
-          {!compact && (
-            <span className="text-[8px] uppercase tracking-wider text-gray-400 font-bold">
-              Права
+        <Shield className={`text-sber-green ${iconOnly ? "w-5 h-5" : "w-4 h-4"}`} />
+        {!iconOnly && (
+          <>
+            <span className="flex flex-col items-start leading-none">
+              {!compact && (
+                <span className="text-[8px] uppercase tracking-wider text-gray-400 font-bold">
+                  Права
+                </span>
+              )}
+              <span className="text-[11px] font-bold uppercase tracking-wide">
+                {role.position}
+              </span>
             </span>
-          )}
-          <span className="text-[11px] font-bold uppercase tracking-wide">
-            {role.position}
-          </span>
-        </span>
-        <ChevronDown
-          className={`w-3 h-3 text-gray-400 stroke-[2.5] transition-transform ${
-            open ? "rotate-180" : ""
-          }`}
-        />
+            <ChevronDown
+              className={`w-3 h-3 text-gray-400 stroke-[2.5] transition-transform ${
+                open ? "rotate-180" : ""
+              }`}
+            />
+          </>
+        )}
       </button>
 
       {open && (

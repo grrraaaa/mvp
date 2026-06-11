@@ -1,6 +1,6 @@
 "use client";
 
-import { Search, ScanLine, Database, ShieldCheck, GraduationCap, MoreHorizontal, Lightbulb, Wand2, ChevronRight, MessageSquare } from "lucide-react";
+import { Search, ScanLine, Database, ShieldCheck, GraduationCap, MoreHorizontal, Lightbulb, ChevronRight, MessageSquare } from "lucide-react";
 import { WelcomeCharacter3D } from "./character3d/WelcomeCharacter3D";
 import { useAuthStore } from "@/store/authStore";
 import { useCharacterStore } from "@/store/characterStore";
@@ -76,11 +76,6 @@ const SPECIAL_TILES = [
     label: "Налоговые подсказки",
     icon: <Lightbulb className="w-4 h-4" />,
     message: "Подскажи по налогам на этой неделе",
-  },
-  {
-    label: "Создать паттерны",
-    icon: <Wand2 className="w-4 h-4" />,
-    message: "Создай паттерн для регулярных платежей",
   },
 ];
 

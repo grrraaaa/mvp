@@ -67,37 +67,93 @@ def _build_search_payload(message: str, hits: list, sources: list[dict], text: s
     return payload
 
 
+_CP_LOOKUP_STOPWORDS = frozenset(
+    {
+        "ооо",
+        "оао",
+        "зао",
+        "ип",
+        "пао",
+        "уп",
+        "рб",
+        "бел",
+        "by",
+        "byn",
+        "контрагент",
+        "контрагента",
+        "контрагенту",
+        "получатель",
+        "получателя",
+        "получателю",
+        "поставщик",
+        "поставщика",
+        "наименование",
+        "проверь",
+        "проверить",
+        "открой",
+        "открыть",
+        "покажи",
+        "карточку",
+        "карточка",
+    }
+)
+
+
+def normalize_counterparty_query(name: str) -> str:
+    """Убрать служебные слова: «контрагент ООО Ромашка» → «ООО Ромашка»."""
+    text = (name or "").strip().strip("«»\"'.,;")
+    text = re.sub(
+        r"^(?:получател\w*|контрагент\w*|поставщик\w*|наименование\s+контрагент\w*)\s*[:—-]?\s*",
+        "",
+        text,
+        flags=re.I,
+    ).strip()
+    text = text.replace('"', "").replace("«", "").replace("»", "").strip()
+    return text
+
+
 async def lookup_counterparty(
     session: AsyncSession, org_id: str, name: str
 ) -> Counterparty | None:
     """Найти контрагента организации в PostgreSQL по имени (с учётом падежей)."""
     from services.banking.search import _match_variants
 
-    query = (name or "").strip()
+    query = normalize_counterparty_query(name)
     if len(query) < 2:
         return None
-    result = await session.execute(
-        select(Counterparty)
-        .where(Counterparty.org_id == org_id, Counterparty.name.ilike(f"%{query}%"))
-        .limit(1)
-    )
-    row = result.scalar_one_or_none()
+
+    async def _best_ilike_match(pattern: str) -> Counterparty | None:
+        result = await session.execute(
+            select(Counterparty)
+            .where(Counterparty.org_id == org_id, Counterparty.name.ilike(f"%{pattern}%"))
+            .order_by(Counterparty.name)
+            .limit(8)
+        )
+        rows = result.scalars().all()
+        if not rows:
+            return None
+        pattern_low = pattern.lower()
+        for row in rows:
+            if pattern_low in row.name.lower():
+                return row
+        return rows[0]
+
+    row = await _best_ilike_match(query)
     if row:
         return row
 
-    # Fallback: попробовать по отдельным значимым токенам с нормализацией падежей
-    tokens = [t for t in re.split(r"\s+", query) if len(t) >= 3]
+    # Fallback: значимые токены (без «ООО», «контрагент» и т.п.), длинные первыми
+    tokens = [
+        t
+        for t in re.split(r"\s+", query)
+        if len(t) >= 3 and t.lower() not in _CP_LOOKUP_STOPWORDS
+    ]
+    tokens.sort(key=len, reverse=True)
     for token in tokens:
         for variant in _match_variants(token.lower()):
-            result = await session.execute(
-                select(Counterparty)
-                .where(
-                    Counterparty.org_id == org_id,
-                    Counterparty.name.ilike(f"%{variant}%"),
-                )
-                .limit(1)
-            )
-            row = result.scalar_one_or_none()
+            if variant in _CP_LOOKUP_STOPWORDS:
+                continue
+            row = await _best_ilike_match(variant)
             if row:
                 return row
     return None
@@ -1119,10 +1175,10 @@ async def handle_banking_query(
 
     if re.search(r"провер\w*\s+контрагент|благонадёжност|due\s+diligence|риск.?\s+скор", low):
         name_m = re.search(r"(?:контрагент\w*|поставщик\w*)\s+(.+)", message, re.I)
-        query = name_m.group(1).strip() if name_m else ""
-        for token in ["проверь", "проверить", "контрагента", "контрагент", "благонадёжность", "риск", "скор"]:
-            query = re.sub(token, "", query, flags=re.I).strip()
-        query = query.strip("«»\"' ,.")
+        query = normalize_counterparty_query(name_m.group(1) if name_m else message)
+        for token in ["проверь", "проверить", "благонадёжность", "риск", "скор", "due diligence"]:
+            query = re.sub(re.escape(token), "", query, flags=re.I).strip()
+        query = normalize_counterparty_query(query)
 
         if not query:
             # Без имени — спрашиваем и предлагаем чипы с реальными
@@ -1660,12 +1716,12 @@ async def handle_banking_query(
         }
 
     if is_open_counterparty_query(message):
-        query = re.sub(
-            r"откро\w*|покажи|показать|открыть|карточк\w*|контрагент\w*|клиент\w*|поставщик\w*",
-            "",
+        open_m = re.search(
+            r"(?:откро\w*|покажи|показать|открыть)\s+(?:карточк\w*\s+)?(?:контрагент\w*|клиент\w*|поставщик\w*)?\s*(.+)$",
             message,
-            flags=re.I,
-        ).strip(" .«»\"'")
+            re.I,
+        )
+        query = normalize_counterparty_query(open_m.group(1) if open_m else message)
         cp = await lookup_counterparty(session, org_id, query) if query else None
         if cp:
             url = f"/services/counterparty?cp={cp.id}"

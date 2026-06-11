@@ -80,7 +80,7 @@ export function BankingShell({ children }: Props) {
         }}
       />
 
-      <div className="flex-1 flex flex-col md:flex-row relative">
+      <div className="flex-1 flex flex-col md:flex-row relative pt-16">
         <Sidebar mobileOpen={mobileSidebarOpen} setMobileOpen={setMobileSidebarOpen} />
 
         <div className={`flex-1 md:pl-[130px] flex flex-col min-w-0 w-full transition-[padding] duration-200 ${dockRightPad}`}>

@@ -1,7 +1,7 @@
 "use client";
 
 import { useEffect, useState } from "react";
-import { Volume2, VolumeX, History, X, MessageSquare } from "lucide-react";
+import { Volume2, VolumeX, History, X } from "lucide-react";
 import { AssistantPanel } from "./AssistantPanel";
 import { ChatArchive } from "./ChatArchive";
 import { IconAiSpark } from "./IconAiSpark";
@@ -15,7 +15,7 @@ import { useAssistantDockStore } from "@/store/assistantDockStore";
 /**
  * Док-панель AI-чата в правой колонке (как Copilot).
  * - Desktop ≥ lg: зафиксированная колонка 360px, сворачивается в вертикальный таб
- * - Mobile < lg: FAB + bottom sheet (как раньше)
+ * - Mobile < lg: bottom sheet (открывается из navbar)
  */
 export function AssistantDockPanel() {
   const isMobile = useIsMobile(1024);
@@ -25,30 +25,15 @@ export function AssistantDockPanel() {
   const collapsed = useAssistantDockStore((s) => s.collapsed);
   const setCollapsed = useAssistantDockStore((s) => s.setCollapsed);
   const expand = useAssistantDockStore((s) => s.expand);
+  const mobileOpen = useAssistantDockStore((s) => s.mobileOpen);
+  const setMobileOpen = useAssistantDockStore((s) => s.setMobileOpen);
   const setSettingsOpen = useCharacterStore((s) => s.setSettingsOpen);
   const [archiveOpen, setArchiveOpen] = useState(false);
-  const [mobileOpen, setMobileOpen] = useState(false);
 
-  // Mobile: bottom sheet + FAB
+  // Mobile: bottom sheet (открывается из navbar «ИИ-ассистент»)
   if (isMobile) {
     return (
       <>
-        {!mobileOpen && (
-          <button
-            type="button"
-            onClick={() => setMobileOpen(true)}
-            className="fixed z-[10050] flex flex-col items-center gap-1.5 group right-4 bottom-4 sm:right-6 sm:bottom-6"
-            aria-label="AI-консультант"
-          >
-            <span className="hidden sm:block opacity-0 group-hover:opacity-100 transition-opacity text-xs text-[#565b62] bg-white px-2 py-1 rounded shadow-sm whitespace-nowrap">
-              AI-консультант
-            </span>
-            <span className="scale-90 sm:scale-100">
-              <MessageSquare className="w-6 h-6 text-[#0d6e68]" />
-            </span>
-          </button>
-        )}
-
         {mobileOpen && (
           <button
             type="button"

@@ -12,7 +12,12 @@ from core.config import settings
 logger = logging.getLogger(__name__)
 from models.schemas import AssistantResponse, NavigationStep, BankProduct, ActionButton, ChartSpec, FormFieldAction, SourceRef, UiAction
 from db.database import AsyncSessionLocal
-from services.banking.queries import handle_banking_query, get_org_profile, lookup_counterparty
+from services.banking.queries import (
+    handle_banking_query,
+    get_org_profile,
+    lookup_counterparty,
+    normalize_counterparty_query,
+)
 from services.onec.assistant import handle_onec_query
 from services.ui.page_actions import get_page_help, get_page_quick_actions, handle_page_ui_action
 from services.banking.services_consult import find_service, format_service_reply, compare_tariffs
@@ -288,6 +293,55 @@ def _wants_form_fill_help(message: str) -> bool:
     )
 
 
+_OCR_PHOTO_PAYMENT_PATTERNS = (
+    r"по\s+фото\s+сч",
+    r"фото\s+сч",
+    r"сч[её]т.*(?:фото|скан|изображен)",
+    r"(?:фото|скан|изображен).*сч[её]т",
+    r"сканир\w*.*сч",
+    r"распозна\w*.*(?:сч|платеж|платёж|реквизит)",
+    r"заполн\w*.*(?:фото|скан|изображен)",
+    r"(?:фото|скан|изображен).*(?:заполн|платеж|платёж|реквизит)",
+    r"прикреп\w*.*(?:фото|сч|изображен)",
+    r"\bocr\b",
+)
+
+
+def _wants_ocr_photo_payment_help(message: str) -> bool:
+    msg = message.lower()
+    return any(re.search(pat, msg, re.I) for pat in _OCR_PHOTO_PAYMENT_PATTERNS)
+
+
+def _ocr_photo_payment_reply(
+    session_id: str,
+    *,
+    form_type: Optional[str] = None,
+) -> AssistantResponse:
+    """Подсказка по заполнению платежа с фото счёта (OCR)."""
+    camera_hint = (
+        "Нажмите **иконку камеры** внизу чата и прикрепите фото счёта — "
+        "я распознаю реквизиты и заполню форму."
+    )
+    if form_type:
+        return AssistantResponse(
+            message=camera_hint,
+            session_id=session_id,
+            suggested_chips=["Сумма 1500", "Назначение — услуги"],
+        )
+
+    route = "/payments/instant"
+    label = DEMO_ROUTE_LABELS.get(route, "Мгновенный платёж")
+    return AssistantResponse(
+        message=f"Открываю «{label}». {camera_hint}",
+        session_id=session_id,
+        ui_actions=[UiAction(type="navigate", target=route)],
+        action_buttons=[
+            ActionButton(label=f"Перейти: {label}", url=route, variant="primary"),
+        ],
+        suggested_chips=["Сумма 1500", "Назначение — услуги"],
+    )
+
+
 _FIELD_HINT_PATTERNS = (
     r"сумм",
     r"назначени",
@@ -484,10 +538,11 @@ def _parse_pending_value(
             return FormFieldAction(field=meta["name"], value=value.rstrip(".,;"), label=meta.get("label"))
 
     if pending_key in ("CONTRAGENT_ID", "CONTRAGENT_ACCOUNT"):
-        if len(text) >= 2 and not re.match(
-            r"^(сумм|номер|дата|очеред|заполн|помог)", text, re.I
+        value = normalize_counterparty_query(text)
+        if len(value) >= 2 and not re.match(
+            r"^(сумм|номер|дата|очеред|заполн|помог)", value, re.I
         ):
-            return FormFieldAction(field=meta["name"], value=text.rstrip(".,;"), label=meta.get("label"))
+            return FormFieldAction(field=meta["name"], value=value, label=meta.get("label"))
 
     return None
 
@@ -515,6 +570,10 @@ async def _enrich_counterparty_from_db(
         if c_field:
             recipient_value = filled.get(c_field["name"], "")
 
+    if not recipient_value:
+        return actions
+
+    recipient_value = normalize_counterparty_query(recipient_value)
     if not recipient_value:
         return actions
 
@@ -674,7 +733,9 @@ def _rule_based_form_fill(
         re.I,
     )
     if recipient:
-        value = (recipient.group(1) or recipient.group(2) or "").strip().rstrip(".,;")
+        value = normalize_counterparty_query(
+            (recipient.group(1) or recipient.group(2) or "").strip().rstrip(".,;")
+        )
         field = next((f for f in fields if f["key"] == "CONTRAGENT_ID"), None)
         if field and value:
             actions.append(
@@ -754,7 +815,7 @@ def _parse_bare_segment(part: str, schema: dict) -> Optional[List[FormFieldActio
         re.I,
     )
     if recipient:
-        value = recipient.group(1).strip().rstrip(".,;")
+        value = normalize_counterparty_query(recipient.group(1).strip().rstrip(".,;"))
         field = next((f for f in fields if f["key"] == "CONTRAGENT_ID"), None)
         if field and len(value) >= 2:
             return [
@@ -918,6 +979,12 @@ class AssistantService:
         except Exception as exc:  # noqa: BLE001
             # Любая ошибка реформатора — не ломаем основной pipeline.
             logger.warning("Reformulator skipped: %s", exc)
+
+        if _wants_ocr_photo_payment_help(message):
+            return self._attach_reformulation(
+                _ocr_photo_payment_reply(session_id, form_type=form_type),
+                reformulation_meta,
+            )
 
         if is_navigation_message(message):
             demo_nav = self._maybe_demo_navigation(message, session_id)

@@ -363,7 +363,7 @@ export function AssistantPanel({ variant = "default", compactMobile = false, onR
         addMessage({
           role: "assistant",
           content:
-            "Загрузка фото работает на страницах платёжных форм.\n\nОткройте, например:\n• /payments/paydocbyn\n• /payments/instant\n• /payments/paydoccur\n\nи снова прикрепите изображение — поля заполнятся через OCR.",
+            "Загрузка фото счёта работает на странице **Мгновенный платёж**.\n\nОткройте /payments/instant и нажмите иконку камеры внизу чата — я распознаю реквизиты и заполню форму.",
         });
         return;
       }

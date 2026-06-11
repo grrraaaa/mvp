@@ -141,6 +141,13 @@ body {
     background: #cbd5e1;
   }
 
+  /* На mobile ассистент только из шапки — без плавающей кнопки внизу */
+  @media (max-width: 1023px) {
+    .ChatButton-chatButton-QWFO {
+      display: none !important;
+    }
+  }
+
   .sbbol-btn-primary {
     @apply inline-flex items-center justify-center rounded-md font-semibold text-white transition-colors;
     background-color: var(--sbbol-primary);

@@ -204,6 +204,34 @@ def test_insurance_reply_handler_is_sync():
     assert not inspect.iscoroutinefunction(AssistantService._maybe_insurance_reply)
 
 
+# ─── OCR photo payment help ───────────────────────────────────────────────────
+
+def test_ocr_photo_payment_intent_detected():
+    from services.ai.assistant import _wants_ocr_photo_payment_help
+
+    assert _wants_ocr_photo_payment_help("Помоги заполнить платёж по фото счёта")
+    assert _wants_ocr_photo_payment_help("сканируй счёт и заполни платёж")
+    assert not _wants_ocr_photo_payment_help("найди платёж за март")
+
+
+def test_ocr_photo_payment_navigates_to_instant():
+    from services.ai.assistant import _ocr_photo_payment_reply
+
+    resp = _ocr_photo_payment_reply("sess-1")
+    assert "мгновенн" in resp.message.lower()
+    assert "иконку камеры" in resp.message.lower()
+    assert resp.ui_actions
+    assert resp.ui_actions[0].target == "/payments/instant"
+
+
+def test_ocr_photo_payment_on_form_page_no_navigate():
+    from services.ai.assistant import _ocr_photo_payment_reply
+
+    resp = _ocr_photo_payment_reply("sess-1", form_type="instant")
+    assert resp.ui_actions is None
+    assert "иконку камеры" in resp.message.lower()
+
+
 if __name__ == "__main__":
     failures = 0
     for name, fn in sorted(globals().items()):

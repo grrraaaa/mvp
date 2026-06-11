@@ -43,18 +43,24 @@ export default function Navbar({
   }, [profileOpen]);
 
   return (
-    <header className="sticky top-0 z-50 w-full bg-white border-b border-gray-200 shadow-sm px-3 sm:px-6 h-16 flex items-center justify-between gap-2">
-      <div className="flex items-center gap-2 sm:gap-3 min-w-0">
+    <header className="fixed top-0 left-0 right-0 z-50 w-full bg-white border-b border-gray-200 shadow-sm px-3 sm:px-6 h-16 flex items-center justify-between gap-2">
+      <div className="flex items-center gap-2 sm:gap-3 min-w-0 flex-1">
         <SberBrandLogo />
         <div className="hidden md:block h-6 w-[1px] bg-gray-200" />
-        <RoleSelector onLogout={onLogout} />
+        <div className="md:hidden">
+          <RoleSelector onLogout={onLogout} iconOnly />
+        </div>
+        <div className="hidden md:block">
+          <RoleSelector onLogout={onLogout} />
+        </div>
       </div>
 
-      <div className="flex items-center gap-2 sm:gap-4">
+      <div className="flex items-center gap-1 sm:gap-2 md:gap-4 shrink-0">
         <button
           onClick={openChat}
           className="flex items-center gap-1.5 px-2 sm:px-3.5 py-1.5 z-15 border border-gray-200 hover:border-gray-300 bg-white hover:bg-gray-50 text-gray-700 rounded-full transition-all text-xs font-semibold focus:outline-none shrink-0 cursor-pointer shadow-sm"
           title="Интеллектуальный ИИ-ассистент"
+          aria-label="ИИ-ассистент"
         >
           <div className="relative flex items-center justify-center">
             <svg
@@ -96,7 +102,7 @@ export default function Navbar({
 
         <button
           onClick={onOpenNotifications}
-          className="p-2 text-gray-400 hover:text-emerald-700 hover:bg-gray-50 rounded-full transition-colors relative group"
+          className="hidden md:flex p-2 text-gray-400 hover:text-emerald-700 hover:bg-gray-50 rounded-full transition-colors relative group"
           title="Уведомления"
         >
           <Bell className="w-5 h-5 stroke-[1.8]" />
@@ -110,7 +116,7 @@ export default function Navbar({
 
         <button
           onClick={onOpenMessages}
-          className="p-2 text-gray-400 hover:text-emerald-700 hover:bg-gray-50 rounded-full transition-colors relative group"
+          className="hidden md:flex p-2 text-gray-400 hover:text-emerald-700 hover:bg-gray-50 rounded-full transition-colors relative group"
           title="Почтовые сообщения"
         >
           <MessageSquare className="w-5 h-5 stroke-[1.8]" />
