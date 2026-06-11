@@ -111,6 +111,13 @@ export function ChatInput({
     onSend();
   };
 
+  /** Метка времени последнего pointerup на кнопке-микрофоне. Используется,
+   *  чтобы отличить «настоящий» клик (клавиатура, программный) от
+   *  синтетического click, который браузер всё-таки диспатчит после pointerup
+   *  в обход preventDefault — иначе он перезапускает запись через
+   *  toggleListening. */
+  const lastPointerUpAtRef = useRef(0);
+
   /** Кнопка-микрофон: push-to-talk. pointerdown → start,
    *  pointerup/pointerleave/pointercancel → stop. */
   const handleMicPressStart = (e: React.PointerEvent<HTMLButtonElement>) => {
@@ -129,6 +136,7 @@ export function ChatInput({
     } catch {
       /* ignore */
     }
+    lastPointerUpAtRef.current = Date.now();
     stopListening();
   };
 
@@ -169,8 +177,12 @@ export function ChatInput({
     };
   }, [supported, disabled, value, startListening, stopListening]);
 
-  /** Tap-to-toggle (a11y fallback для пользователей без удержания). */
+  /** Tap-to-toggle (a11y fallback для пользователей без удержания).
+   *  Синтетический click после pointerup игнорируем — иначе он перезапустит
+   *  запись, противореча push-to-talk. Реальный клик (клавиатура, программный)
+   *  пройдёт нормально. */
   const handleMicClick = () => {
+    if (Date.now() - lastPointerUpAtRef.current < 350) return;
     if (!supported || disabled) return;
     toggleListening(value);
   };

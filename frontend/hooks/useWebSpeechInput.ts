@@ -237,7 +237,11 @@ export function useWebSpeechInput(
     [isListening],
   );
 
-  /** Push-to-talk: явный стоп + отправка накопленного текста. */
+  /** Push-to-talk: явный стоп + отправка накопленного текста.
+   *  Всегда вызываем `recognition.stop()` (с try/catch), даже если
+   *  `isListening` в замыкании ещё `false` — иначе при pointerup сразу после
+   *  pointerdown, когда onstart не успел пробросить state в React, микрофон
+   *  остаётся включённым. */
   const stopListening = useCallback(() => {
     const recognition = recognitionRef.current;
     if (!recognition) return;
@@ -250,12 +254,10 @@ export function useWebSpeechInput(
 
     suppressOnEndRef.current = true;
 
-    if (isListening) {
-      try {
-        recognition.stop();
-      } catch {
-        /* ignore */
-      }
+    try {
+      recognition.stop();
+    } catch {
+      /* recognition не был запущен — ок, ничего не делаем */
     }
 
     if (text && onCompleteRef.current && !disabledRef.current) {
@@ -273,7 +275,7 @@ export function useWebSpeechInput(
     spokenFinalRef.current = "";
     interimRef.current = "";
     setIsListening(false);
-  }, [isListening]);
+  }, []);
 
   /** Tap-to-toggle: для пользователей без мыши/клавиатуры (a11y). */
   const toggleListening = useCallback(
