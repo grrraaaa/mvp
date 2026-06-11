@@ -495,12 +495,18 @@ def _parse_pending_value(
         return None
 
     text = message.strip()
+    from services.forms.number_parse import (
+        is_valid_calendar_date,
+        parse_amount_value,
+        parse_doc_number_value,
+    )
+
     if pending_key == "COMMON_COLUMNS_AMOUNT":
-        m = AMOUNT_ONLY_PATTERN.match(text) or AMOUNT_PATTERN.search(text)
-        if m:
+        amount = parse_amount_value(text)
+        if amount:
             return FormFieldAction(
                 field=meta["name"],
-                value=m.group(1).replace(",", "."),
+                value=amount,
                 label=meta.get("label"),
             )
 
@@ -508,17 +514,21 @@ def _parse_pending_value(
         m = DATE_PATTERN.search(text)
         if m:
             d, mo, y = m.groups()
-            y = y if len(y) == 4 else f"20{y}"
-            return FormFieldAction(
-                field=meta["name"],
-                value=f"{d.zfill(2)}.{mo.zfill(2)}.{y}",
-                label=meta.get("label"),
-            )
+            year = int(y if len(y) == 4 else f"20{y}")
+            day, month = int(d), int(mo)
+            if is_valid_calendar_date(day, month, year):
+                return FormFieldAction(
+                    field=meta["name"],
+                    value=f"{day:02d}.{month:02d}.{year}",
+                    label=meta.get("label"),
+                )
 
     if pending_key == "COMMON_COLUMNS_DOC_NUMBER":
-        m = re.match(r"^\s*(\d+)\s*$", text)
-        if m:
-            return FormFieldAction(field=meta["name"], value=m.group(1), label=meta.get("label"))
+        doc_num = parse_doc_number_value(text)
+        if doc_num:
+            return FormFieldAction(
+                field=meta["name"], value=doc_num, label=meta.get("label")
+            )
 
     if pending_key == "PAYMENT_URGENCY":
         urgency_val = _parse_urgency_value(text)
@@ -659,18 +669,26 @@ def _rule_based_form_fill(
     actions: List[FormFieldAction] = []
     fields = schema.get("fields", [])
 
+    from services.forms.number_parse import (
+        extract_doc_number_fragment,
+        is_valid_calendar_date,
+        parse_amount_value,
+        parse_doc_number_value,
+    )
+
     amount_match = (
         SUM_LABELED_PATTERN.search(message)
         or AMOUNT_ONLY_PATTERN.match(message.strip())
         or AMOUNT_PATTERN.search(message)
     )
     if amount_match and _message_mentions_amount(message):
+        amount = parse_amount_value(amount_match.group(1))
         field = next((f for f in fields if f["key"] == "COMMON_COLUMNS_AMOUNT"), None)
-        if field:
+        if field and amount:
             actions.append(
                 FormFieldAction(
                     field=field["name"],
-                    value=amount_match.group(1).replace(",", "."),
+                    value=amount,
                     label=field.get("label"),
                 )
             )
@@ -680,25 +698,23 @@ def _rule_based_form_fill(
         any(w in msg for w in ["дата", "date"]) or pending_key == "COMMON_COLUMNS_DOC_DATE"
     ):
         d, mo, y = date_match.groups()
-        y = y if len(y) == 4 else f"20{y}"
+        year = int(y if len(y) == 4 else f"20{y}")
+        day, month = int(d), int(mo)
         field = next((f for f in fields if f["key"] == "COMMON_COLUMNS_DOC_DATE"), None)
-        if field:
+        if field and is_valid_calendar_date(day, month, year):
             actions.append(
                 FormFieldAction(
                     field=field["name"],
-                    value=f"{d.zfill(2)}.{mo.zfill(2)}.{y}",
+                    value=f"{day:02d}.{month:02d}.{year}",
                     label=field.get("label"),
                 )
             )
 
-    doc_num = re.search(
-        r"(?:номер|№)\s*(?:документ\w*)?\s*[:№]?\s*(\d+)|документ\s*(?:№|номер)?\s*(\d+)",
-        msg,
-    )
-    if doc_num:
-        num = doc_num.group(1) or doc_num.group(2)
+    doc_frag = extract_doc_number_fragment(message)
+    if doc_frag:
+        num = parse_doc_number_value(doc_frag)
         field = next((f for f in fields if f["key"] == "COMMON_COLUMNS_DOC_NUMBER"), None)
-        if field:
+        if field and num:
             actions.append(
                 FormFieldAction(field=field["name"], value=num, label=field.get("label"))
             )
@@ -822,18 +838,21 @@ def _parse_bare_segment(part: str, schema: dict) -> Optional[List[FormFieldActio
                 FormFieldAction(field=field["name"], value=value, label=field.get("label"))
             ]
 
+    from services.forms.number_parse import parse_amount_value, parse_doc_number_value
+
     amount_labeled = re.match(
-        r"^сумм\w*\s*[:—-]?\s*(\d+(?:[.,]\d+)?)\s*(?:руб|byn|р\.?)?\s*$",
+        r"^сумм\w*\s*[:—-]?\s*(.+?)\s*(?:руб|byn|р\.?)?\s*$",
         text,
         re.I,
     )
     if amount_labeled:
+        amount = parse_amount_value(amount_labeled.group(1))
         field = next((f for f in fields if f["key"] == "COMMON_COLUMNS_AMOUNT"), None)
-        if field:
+        if field and amount:
             return [
                 FormFieldAction(
                     field=field["name"],
-                    value=amount_labeled.group(1).replace(",", "."),
+                    value=amount,
                     label=field.get("label"),
                 )
             ]
@@ -850,14 +869,30 @@ def _parse_bare_segment(part: str, schema: dict) -> Optional[List[FormFieldActio
                 )
             ]
 
-    amount_only = re.match(r"^\s*(\d+(?:[.,]\d+)?)\s*(?:руб|byn|р\.?)?\s*$", text, re.I)
-    if amount_only and not re.search(URGENCY_WORD_RE, text, re.I):
+    amount_only = re.match(r"^\s*(.+?)\s*(?:руб|byn|р\.?)?\s*$", text, re.I)
+    if amount_only and re.search(r"\d|[а-яё]", text, re.I) and not re.search(
+        URGENCY_WORD_RE, text, re.I
+    ):
+        amount = parse_amount_value(amount_only.group(1))
         field = next((f for f in fields if f["key"] == "COMMON_COLUMNS_AMOUNT"), None)
-        if field:
+        if field and amount and not re.search(r"документ|номер", text, re.I):
             return [
                 FormFieldAction(
                     field=field["name"],
-                    value=amount_only.group(1).replace(",", "."),
+                    value=amount,
+                    label=field.get("label"),
+                )
+            ]
+
+    doc_only = re.match(r"^(?:номер\w*\s*)?(?:документ\w*\s*)?(.+)$", text, re.I)
+    if doc_only and re.search(r"документ|номер", text, re.I):
+        doc_num = parse_doc_number_value(doc_only.group(1))
+        field = next((f for f in fields if f["key"] == "COMMON_COLUMNS_DOC_NUMBER"), None)
+        if field and doc_num:
+            return [
+                FormFieldAction(
+                    field=field["name"],
+                    value=doc_num,
                     label=field.get("label"),
                 )
             ]

@@ -5,6 +5,12 @@ import re
 from decimal import Decimal, InvalidOperation
 from typing import Any, Optional
 
+from services.forms.number_parse import (
+    is_valid_calendar_date,
+    parse_amount_value,
+    parse_doc_number_value,
+)
+
 IBAN_PATTERN = re.compile(r"BY\d{2}[A-Z0-9]{4}\d{20}", re.I)
 DATE_PATTERN = re.compile(r"(\d{1,2})[./](\d{1,2})[./](\d{2,4})")
 
@@ -68,11 +74,11 @@ def normalize_field_value(key: str, value: str) -> Optional[str]:
         return None
 
     if key == "COMMON_COLUMNS_AMOUNT":
-        cleaned = re.sub(r"[^\d.,]", "", raw.replace(" ", "")).replace(",", ".")
-        if not cleaned:
+        parsed = parse_amount_value(raw)
+        if not parsed:
             return None
         try:
-            num = Decimal(cleaned)
+            num = Decimal(parsed)
             if num < 0:
                 return None
             if num == num.to_integral_value():
@@ -86,12 +92,14 @@ def normalize_field_value(key: str, value: str) -> Optional[str]:
         if not match:
             return None
         day, month, year = match.groups()
-        year = year if len(year) == 4 else f"20{year}"
-        return f"{int(day):02d}.{int(month):02d}.{year}"
+        y = int(year if len(year) == 4 else f"20{year}")
+        d, m = int(day), int(month)
+        if not is_valid_calendar_date(d, m, y):
+            return None
+        return f"{d:02d}.{m:02d}.{y}"
 
     if key == "COMMON_COLUMNS_DOC_NUMBER":
-        digits = re.sub(r"\D", "", raw)
-        return digits or None
+        return parse_doc_number_value(raw)
 
     if key == "CONTRAGENT_UNP":
         digits = re.sub(r"\D", "", raw)
