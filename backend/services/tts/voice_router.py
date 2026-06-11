@@ -37,6 +37,12 @@ def _edge_voice_for_gender(gender: str) -> str:
 
 
 def _qwen_gender(voice_id: str) -> str:
+    # Точное попадание в каталог
+    from services.tts.qwen_voices import QWEN_VOICE_IDS, VOICE_CATALOG as Q_VOICE_CATALOG
+    if voice_id in QWEN_VOICE_IDS:
+        for v in Q_VOICE_CATALOG:
+            if v["id"] == voice_id:
+                return v["gender"]
     if voice_id in ("qwen-female", "Serena"):
         return "female"
     return "male"
@@ -44,6 +50,13 @@ def _qwen_gender(voice_id: str) -> str:
 
 def _google_gender(voice_id: str) -> str:
     """Извлекает пол из id голоса Google (Wavenet/Neural2/Standard A/B/C/D)."""
+    # Точное попадание в каталог
+    from services.tts.google_voices import GOOGLE_VOICE_IDS, VOICE_CATALOG as G_VOICE_CATALOG
+    if voice_id in GOOGLE_VOICE_IDS:
+        for v in G_VOICE_CATALOG:
+            if v["id"] == voice_id:
+                return v["gender"]
+    # Эвристика по суффиксу
     low = voice_id.lower()
     if any(tag in low for tag in ("-a", "-c", "female", "woman", "serena")):
         return "female"

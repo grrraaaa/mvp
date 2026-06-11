@@ -152,6 +152,72 @@ const EMPTY_FILTERS: FilterState = {
   q: "",
 };
 
+/** Поэлементное равенство фильтров. Используется, чтобы НЕ дёргать
+ *  setFilters(new object), когда новый объект содержит те же значения —
+ *  иначе useEffect(load) пересоздаёт callback и шлёт лишний fetch. */
+function filtersEqual(a: FilterState, b: FilterState): boolean {
+  return (
+    a.year === b.year &&
+    a.month === b.month &&
+    a.dateFrom === b.dateFrom &&
+    a.dateTo === b.dateTo &&
+    a.status === b.status &&
+    a.docTypeFilter === b.docTypeFilter &&
+    a.counterparty === b.counterparty &&
+    a.minAmount === b.minAmount &&
+    a.maxAmount === b.maxAmount &&
+    a.q === b.q
+  );
+}
+
+/** Строит начальное состояние фильтров из текущего URL.
+ *  Вызывается ОДИН раз (lazy init useState), чтобы первый рендер
+ *  сразу содержал правильные фильтры — иначе URL-sync-эффект на маунте
+ *  сначала сносит URL в пустую строку (потому что filters=EMPTY), а
+ *  потом URL→state-эффект восстанавливает — отсюда 3 лишних fetch. */
+function buildInitialFilters(
+  isAllDocsPage: boolean,
+  searchParams: ReturnType<typeof useSearchParams>,
+): FilterState {
+  if (!isAllDocsPage) return EMPTY_FILTERS;
+  const sp = parseDocumentsSearchParams(searchParams);
+  const hasAnyUrlFilter =
+    sp.year != null ||
+    sp.month != null ||
+    sp.dateFrom != null ||
+    sp.dateTo != null ||
+    sp.status != null ||
+    sp.statuses.length > 0 ||
+    sp.docType != null ||
+    sp.counterparty != null ||
+    (sp.q ?? "") !== "" ||
+    sp.minAmount != null ||
+    sp.maxAmount != null;
+  if (!hasAnyUrlFilter) {
+    const def = getDefaultLastMonth();
+    return {
+      ...EMPTY_FILTERS,
+      year: def.year,
+      month: def.month,
+      minAmount: "",
+      maxAmount: "",
+    };
+  }
+  return {
+    ...EMPTY_FILTERS,
+    year: sp.year,
+    month: sp.month,
+    dateFrom: sp.dateFrom,
+    dateTo: sp.dateTo,
+    status: sp.status,
+    docTypeFilter: sp.docType,
+    counterparty: sp.counterparty,
+    q: sp.q ?? "",
+    minAmount: sp.minAmount != null ? String(sp.minAmount) : "",
+    maxAmount: sp.maxAmount != null ? String(sp.maxAmount) : "",
+  };
+}
+
 function filtersToParams(f: FilterState, opts: { limit?: number } = {}): NonNullable<Parameters<typeof fetchDocuments>[0]> {
   const p: NonNullable<Parameters<typeof fetchDocuments>[0]> = {};
   if (f.year != null) p.year = f.year;
@@ -231,8 +297,11 @@ export default function ProductDocumentsView({
   const [signing, setSigning] = useState(false);
   const [facets, setFacets] = useState<DocumentFacets | null>(null);
 
-  // Расширенные фильтры
-  const [filters, setFilters] = useState<FilterState>(EMPTY_FILTERS);
+  // Расширенные фильтры — инициализируем СРАЗУ из URL, чтобы на маунте
+  // не было «пустого» fetch и сноса URL в "" (см. buildInitialFilters).
+  const [filters, setFilters] = useState<FilterState>(() =>
+    buildInitialFilters(isAllDocsPage, searchParams),
+  );
   const [filtersOpen, setFiltersOpen] = useState(false);
   const [yearMenuOpen, setYearMenuOpen] = useState(false);
   const [monthMenuOpen, setMonthMenuOpen] = useState(false);
@@ -304,13 +373,17 @@ export default function ProductDocumentsView({
     // Если есть явный статус — переключаем вкладку на соответствующую
     if (sp.status) {
       const tabByStatus = TABS.find((t) => t.status === sp.status);
-      if (tabByStatus) setActiveTab(tabByStatus.key);
+      if (tabByStatus) {
+        setActiveTab((prev) => (prev === tabByStatus.key ? prev : tabByStatus.key));
+      }
     } else if (sp.statuses?.length) {
-      setActiveTab("all");
+      setActiveTab((prev) => (prev === "all" ? prev : "all"));
     } else if (!sp.q) {
-      setActiveTab("all");
+      setActiveTab((prev) => (prev === "all" ? prev : "all"));
     }
-    setFilters(next);
+    // Bail-out: если next поэлементно равен текущему — не setState.
+    // Иначе useEffect(load) пересоздаёт callback и шлёт лишний fetch.
+    setFilters((prev) => (filtersEqual(prev, next) ? prev : next));
   }, [isAllDocsPage, searchParams]);
 
   // ── Закрытие дропдаунов по клику вне ──────────────────────────────────────
@@ -401,7 +474,9 @@ export default function ProductDocumentsView({
       .then((data) => {
         if (!cancelled) setFacets(data);
       })
-      .catch(() => setFacets(null));
+      .catch(() => {
+        if (!cancelled) setFacets(null);
+      });
     return () => {
       cancelled = true;
     };
@@ -440,6 +515,11 @@ export default function ProductDocumentsView({
     const current = `${pathname}${searchParams.toString() ? "?" + searchParams.toString() : ""}`;
     if (url !== current) {
       window.history.replaceState(null, "", url);
+      // ВАЖНО: помечаем URL как «уже применённый», иначе URL→state-эффект
+      // на следующем ре-рендере (useSearchParams обновляется после
+      // replaceState) увидит «новый» URL и снова дёрнет setFilters →
+      // load пересоздаётся → лишний fetch → список «дёргается».
+      lastAppliedUrlRef.current = qs;
     }
   }, [filters, isAllDocsPage, pathname, searchParams]);
 

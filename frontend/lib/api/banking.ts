@@ -108,8 +108,15 @@ export interface DocumentFacets {
   total: number;
 }
 
-export function fetchDocumentFacets(): Promise<DocumentFacets> {
-  return fetchJson<DocumentFacets>("/api/banking/documents/facets");
+export function fetchDocumentFacets(): Promise<DocumentFacets | null> {
+  // Эндпоинта может не быть в старых деплоях — не шумим в консоли 404'ой,
+  // просто вернём null, и дропдауны останутся пустыми (не критично).
+  return fetchJson<DocumentFacets>("/api/banking/documents/facets").catch(
+    (e: unknown) => {
+      if (e instanceof Error && /404/.test(e.message)) return null;
+      throw e;
+    },
+  );
 }
 
 /** Парсит query string (?year=2026&month=3&from=...) в объект фильтров */

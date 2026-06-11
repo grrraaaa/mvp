@@ -31,6 +31,44 @@ interface Props {
 
 type ModelGender = "male" | "female";
 
+/** Ранг для сортировки голосов: премиум выше, бюджет ниже. */
+function tierRank(tier: string | null | undefined): number {
+  switch (tier) {
+    case "neural2":
+      return 0;
+    case "qwen":
+    case "cosyvoice":
+      return 1;
+    case "wavenet":
+      return 2;
+    case "standard":
+      return 3;
+    default:
+      return 4;
+  }
+}
+
+/** Бейдж качества голоса для UI. */
+function TierBadge({ tier }: { tier: string | null | undefined }) {
+  if (!tier) return null;
+  const config: Record<string, { label: string; cls: string }> = {
+    neural2: { label: "Premium", cls: "bg-gradient-to-r from-amber-100 to-yellow-100 text-amber-800 ring-1 ring-amber-300" },
+    qwen: { label: "Qwen", cls: "bg-emerald-100 text-emerald-700" },
+    cosyvoice: { label: "Cosy", cls: "bg-violet-100 text-violet-700" },
+    wavenet: { label: "HD", cls: "bg-blue-50 text-blue-700" },
+    standard: { label: "Базовый", cls: "bg-gray-100 text-gray-500" },
+  };
+  const c = config[tier];
+  if (!c) return null;
+  return (
+    <span
+      className={`text-[9px] uppercase font-bold tracking-wider px-1.5 py-0.5 rounded shrink-0 ${c.cls}`}
+    >
+      {c.label}
+    </span>
+  );
+}
+
 interface ModelEntry {
   id: string;
   label: string;
@@ -105,7 +143,10 @@ export function PersonalizationMenu({ onOpenAbilities }: Props) {
     return voiceGroups
       .map((g) => ({
         ...g,
-        voices: g.voices.filter((v) => v.gender === filteredGender),
+        // Сортировка: сначала премиум, потом дефолт, потом стандарт
+        voices: g.voices
+          .filter((v) => v.gender === filteredGender)
+          .sort((a, b) => tierRank(a.tier) - tierRank(b.tier)),
       }))
       .filter((g) => g.voices.length > 0);
   }, [voiceGroups, filteredGender]);
@@ -200,7 +241,7 @@ export function PersonalizationMenu({ onOpenAbilities }: Props) {
                       ? "мужской"
                       : "женский"
                     : "—"}{" "}
-                  · Голос: автоподбор
+                  · Голос: {voiceOverride ? "выбран вручную" : "автоподбор"}
                 </div>
               </div>
             </div>
@@ -319,10 +360,18 @@ export function PersonalizationMenu({ onOpenAbilities }: Props) {
                                 )}
                               </span>
                               <span className="flex-1 min-w-0">
-                                <span className="block text-xs font-semibold text-gray-800 truncate">
-                                  {v.name}
-                                </span>
-                                {v.locale && (
+                                <div className="flex items-center gap-1.5 min-w-0">
+                                  <span className="block text-xs font-semibold text-gray-800 truncate">
+                                    {v.name}
+                                  </span>
+                                  <TierBadge tier={v.tier} />
+                                </div>
+                                {v.description && (
+                                  <span className="block text-[10px] text-gray-500 truncate">
+                                    {v.description}
+                                  </span>
+                                )}
+                                {v.locale && !v.description && (
                                   <span className="block text-[10px] text-gray-500">
                                     {v.locale}
                                   </span>

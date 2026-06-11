@@ -25,8 +25,11 @@ function readVoiceId(): string | null {
 export interface TtsVoiceOption {
   id: string;
   name: string;
+  short?: string | null;
   gender?: string | null;
   locale?: string | null;
+  tier?: string | null;
+  description?: string | null;
   preview_audio?: string | null;
 }
 
