@@ -86,5 +86,5 @@ def tts_status_payload() -> dict:
         "puter_available": False,
         "language": "auto",
         "voice": voice,
-        "voice_selection": False,
+        "voice_selection": bool(catalog["groups"]),
     }

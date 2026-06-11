@@ -22,7 +22,7 @@ export function syncVoiceToCurrentCharacter() {
   const charStyleId = char.config.styleId;
   if (charStyleId !== "human-m" && charStyleId !== "human-f") return;
   const tts = useTtsStore.getState();
-  const wanted = pickVoiceForCharacter(tts.voiceGroups, charStyleId);
+  const wanted = pickVoiceForCharacter(tts.voiceGroups, charStyleId, tts.voiceId);
   if (wanted && tts.voiceId !== wanted) {
     tts.setVoiceId(wanted);
   }
@@ -45,7 +45,7 @@ export function useTtsBootstrap() {
       .then((status) => {
         setServerTts(Boolean(status.enabled), {
           defaultVoice: status.voice ?? staticFallback.defaultVoice,
-          voiceSelection: false,
+          voiceSelection: status.voice_selection !== false,
         });
         return fetchTtsVoices();
       })

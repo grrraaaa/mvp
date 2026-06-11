@@ -56,8 +56,8 @@ class Settings(BaseSettings):
     # Inworld AI TTS (streaming, сервер)
     # Значение: Base64 после "Basic " или полная строка "Basic ..."
     INWORLD_API_KEY: str = ""
-    INWORLD_VOICE_MALE: str = "merry-candle-6309__design-voice-6eaa5889"
-    INWORLD_VOICE_FEMALE: str = "Ashley"
+    INWORLD_VOICE_MALE: str = "Nikolai"
+    INWORLD_VOICE_FEMALE: str = "Svetlana"
     INWORLD_MODEL_ID: str = "inworld-tts-2"
     INWORLD_LANGUAGE: str = "AUTO"
     INWORLD_DELIVERY_MODE: str = "BALANCED"
