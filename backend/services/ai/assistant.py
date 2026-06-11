@@ -350,6 +350,7 @@ _FIELD_HINT_PATTERNS = (
     r"номер",
     r"дата",
     r"очеред",
+    r"со\s+сч[её]т",
     r"сч[её]т",
     r"iban",
 )
@@ -413,7 +414,9 @@ def _parse_urgency_value(text: str) -> Optional[str]:
 
 
 def _field_value_boundary() -> str:
-    return r"(?=\s*,\s*|\s+(?:назначени|получател|контрагент|номер|дата|очеред|сумм)|$)"
+    from services.forms.form_fill_segments import FIELD_VALUE_BOUNDARY
+
+    return FIELD_VALUE_BOUNDARY
 
 
 def _could_be_field_value(message: str) -> bool:
@@ -624,6 +627,63 @@ async def _enrich_counterparty_from_db(
     return actions
 
 
+async def _enrich_customer_account_from_db(
+    db,
+    org_id: str,
+    actions: List[FormFieldAction],
+    schema: dict,
+    filled: Dict[str, str],
+) -> List[FormFieldAction]:
+    """Подставить название/IBAN счёта плательщика по заметке или label."""
+    from sqlalchemy import select
+
+    from db.models import BankAccount
+    from services.forms.account_resolve import resolve_account_by_hint
+
+    fields = {f["key"]: f for f in schema.get("fields", [])}
+    fld = fields.get("COMMON_COLUMNS_CUSTOMER_ACCOUNT")
+    if not fld:
+        return actions
+
+    hint: str | None = None
+    idx = -1
+    for i, a in enumerate(actions):
+        if a.field == fld["name"]:
+            hint = a.value
+            idx = i
+            break
+    if not hint:
+        hint = filled.get(fld["name"], "")
+    if not hint:
+        return actions
+
+    compact = re.sub(r"\s+", "", hint).upper()
+    if compact.startswith("BY") and len(compact) >= 10:
+        return actions
+
+    result = await db.execute(
+        select(BankAccount).where(
+            BankAccount.org_id == org_id,
+            BankAccount.hidden.is_(False),
+        )
+    )
+    accounts = result.scalars().all()
+    acc = resolve_account_by_hint(accounts, hint)
+    if not acc:
+        return actions
+
+    label = (acc.label or hint).strip()
+    value = label or re.sub(r"\s+", "", acc.iban or "")
+    if idx >= 0:
+        actions[idx] = FormFieldAction(
+            field=actions[idx].field,
+            value=value,
+            label=actions[idx].label or fld.get("label"),
+        )
+        filled[actions[idx].field] = value
+    return actions
+
+
 def _rule_based_form_fill(
     message: str,
     form_type: str,
@@ -743,8 +803,24 @@ def _rule_based_form_fill(
                 )
             )
 
+    boundary = _field_value_boundary()
+
+    from services.forms.account_resolve import account_hint_from_message
+
+    account_hint = account_hint_from_message(message)
+    if account_hint:
+        field = next((f for f in fields if f["key"] == "COMMON_COLUMNS_CUSTOMER_ACCOUNT"), None)
+        if field:
+            actions.append(
+                FormFieldAction(
+                    field=field["name"],
+                    value=account_hint,
+                    label=field.get("label"),
+                )
+            )
+
     recipient = re.search(
-        r"получател\w*\s*[:—-]?\s*(.+)$|контрагент\w*\s*[:—-]?\s*(.+)$",
+        rf"получател\w*\s*[:—-]?\s*(.+?){boundary}|контрагент\w*\s*[:—-]?\s*(.+?){boundary}",
         message,
         re.I,
     )
@@ -786,10 +862,12 @@ def _rule_based_form_fill(
                 )
             )
 
-    boundary = _field_value_boundary()
     for fld in fields:
         for alias in fld.get("aliases", []) + [fld.get("label", "")]:
-            if not alias or fld.get("key") in ("PAYMENT_INDICATION",):
+            if not alias or fld.get("key") in (
+                "PAYMENT_INDICATION",
+                "COMMON_COLUMNS_CUSTOMER_ACCOUNT",
+            ):
                 continue
             alias_l = alias.lower()
             m = re.search(
@@ -825,8 +903,24 @@ def _parse_bare_segment(part: str, schema: dict) -> Optional[List[FormFieldActio
     fields = schema.get("fields", [])
     actions: List[FormFieldAction] = []
 
+    boundary = _field_value_boundary()
+
+    from services.forms.account_resolve import account_hint_from_message
+
+    account_hint = account_hint_from_message(text)
+    if account_hint:
+        field = next((f for f in fields if f["key"] == "COMMON_COLUMNS_CUSTOMER_ACCOUNT"), None)
+        if field:
+            return [
+                FormFieldAction(
+                    field=field["name"],
+                    value=account_hint,
+                    label=field.get("label"),
+                )
+            ]
+
     recipient = re.match(
-        r"^(?:получател\w*|контрагент\w*)\s*[:—-]?\s*(.+)$",
+        rf"^(?:получател\w*|контрагент\w*)\s*[:—-]?\s*(.+?){boundary}$",
         text,
         re.I,
     )
@@ -838,7 +932,11 @@ def _parse_bare_segment(part: str, schema: dict) -> Optional[List[FormFieldActio
                 FormFieldAction(field=field["name"], value=value, label=field.get("label"))
             ]
 
-    from services.forms.number_parse import parse_amount_value, parse_doc_number_value
+    from services.forms.number_parse import (
+        is_valid_calendar_date,
+        parse_amount_value,
+        parse_doc_number_value,
+    )
 
     amount_labeled = re.match(
         r"^сумм\w*\s*[:—-]?\s*(.+?)\s*(?:руб|byn|р\.?)?\s*$",
@@ -884,8 +982,25 @@ def _parse_bare_segment(part: str, schema: dict) -> Optional[List[FormFieldActio
                 )
             ]
 
+    date_match = DATE_PATTERN.search(text)
+    if date_match and re.search(r"дата", text, re.I):
+        d, mo, y = date_match.groups()
+        year = int(y if len(y) == 4 else f"20{y}")
+        day, month = int(d), int(mo)
+        field = next((f for f in fields if f["key"] == "COMMON_COLUMNS_DOC_DATE"), None)
+        if field and is_valid_calendar_date(day, month, year):
+            return [
+                FormFieldAction(
+                    field=field["name"],
+                    value=f"{day:02d}.{month:02d}.{year}",
+                    label=field.get("label"),
+                )
+            ]
+
     doc_only = re.match(r"^(?:номер\w*\s*)?(?:документ\w*\s*)?(.+)$", text, re.I)
-    if doc_only and re.search(r"документ|номер", text, re.I):
+    if doc_only and re.search(r"документ|номер", text, re.I) and not re.search(
+        r"^дата\b", text, re.I
+    ):
         doc_num = parse_doc_number_value(doc_only.group(1))
         field = next((f for f in fields if f["key"] == "COMMON_COLUMNS_DOC_NUMBER"), None)
         if field and doc_num:
@@ -937,16 +1052,13 @@ def _merge_form_fill_parsing(
     if not schema:
         return None
 
-    whole = _rule_based_form_fill(message, form_type)
-    parts = [p.strip() for p in re.split(r"[,;\n]+", message) if p.strip()]
+    from services.forms.form_fill_segments import split_form_fill_message
+
+    parts = split_form_fill_message(message)
     if len(parts) <= 1:
-        return whole
+        return _rule_based_form_fill(message, form_type, pending_key=pending_key)
 
     merged: Dict[str, FormFieldAction] = {}
-    if whole:
-        for action in whole:
-            merged[action.field] = action
-
     for part in parts:
         parsed = _rule_based_form_fill(part, form_type)
         if not parsed:
@@ -1216,6 +1328,9 @@ class AssistantService:
             async with AsyncSessionLocal() as _db:
                 before_fields = {a.field for a in new_actions}
                 new_actions = await _enrich_counterparty_from_db(
+                    _db, org_id, new_actions, schema, state.filled
+                )
+                new_actions = await _enrich_customer_account_from_db(
                     _db, org_id, new_actions, schema, state.filled
                 )
                 for a in new_actions:

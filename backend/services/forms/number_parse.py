@@ -163,20 +163,24 @@ def parse_amount_value(raw: str) -> Optional[str]:
     return str(num) if num is not None else None
 
 
+def _looks_like_date_fragment(frag: str) -> bool:
+    return bool(re.fullmatch(r"\d{1,2}[./]\d{1,2}[./]\d{2,4}", (frag or "").strip()))
+
+
 def extract_doc_number_fragment(message: str) -> Optional[str]:
     """Вырезать значение после «номер документа» / «документ №»."""
-    boundary = (
-        r"(?=\s*,\s*|\s+(?:назначени|получател|контрагент|номер|дата|очеред|сумм)|$)"
-    )
+    from services.forms.form_fill_segments import FIELD_VALUE_BOUNDARY
+
+    boundary = FIELD_VALUE_BOUNDARY
     patterns = (
         rf"(?:номер\w*|№)\s*(?:документ\w*)?\s*[:№]?\s*(.+?){boundary}",
-        rf"документ\w*\s*(?:№|номер\w*)?\s*(.+?){boundary}",
+        rf"(?<!дата\s)документ\w*\s*(?:№|номер\w+)\s*(.+?){boundary}",
     )
     for pat in patterns:
         m = re.search(pat, message, re.I)
         if m:
             frag = m.group(1).strip().rstrip(".,;")
-            if frag:
+            if frag and not _looks_like_date_fragment(frag):
                 return frag
     return None
 
