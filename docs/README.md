@@ -7,6 +7,7 @@
 | Документ | Содержание |
 |----------|------------|
 | **[FEATURE_MAP.md](./FEATURE_MAP.md)** | **Карта фич, mindmap, pipeline, матрица** |
+| **[ASSISTANT_COMMANDS.md](./ASSISTANT_COMMANDS.md)** | **Полный каталог команд ИИ (~130 запросов × 12 категорий) с маппингом на бэкенд** |
 | [../README.md](../README.md) | Обзор репозитория, быстрый старт |
 | [LOCAL_DEV.md](./LOCAL_DEV.md) | Локальный запуск, проверка API и ИИ |
 | [VERCEL_DEPLOY.md](./VERCEL_DEPLOY.md) | Деплой на Vercel (Next.js + FastAPI) |
@@ -16,6 +17,8 @@
 | [MODULES.md](./MODULES.md) | Модули frontend / backend |
 | [API.md](./API.md) | REST API (эндпоинты, примеры) |
 | [ASSISTANT.md](./ASSISTANT.md) | AI: только SBBOL, навигация, формы |
+| [WORKFLOW_DEMO.md](./WORKFLOW_DEMO.md) | 4 ключевых сценария приёмки демо |
+| [TZ-assistant-p1.md](./TZ-assistant-p1.md) | ТЗ: приоритеты ИИ-помощника P1/P2 |
 | [TTS.md](./TTS.md) | Speechify, выбор голоса |
 | [UI_AND_3D.md](./UI_AND_3D.md) | UI, адаптив, карта планет, чат |
 | [CHARACTER_3D.md](./CHARACTER_3D.md) | 3D-консультант, камера, липсинг |

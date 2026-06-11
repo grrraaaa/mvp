@@ -563,7 +563,7 @@ export default function MoneyView() {
 
           {/* SubSection 3: "Динамика оборотов по счетам, BYN" Collapsible Panel (Screenshot 5) */}
           <div className="bg-white rounded-2xl border border-gray-150 shadow-xs overflow-hidden">
-            <button 
+            <button
               onClick={() => setDynamicsOpen(prev => !prev)}
               className="w-full px-5 py-4 flex items-center justify-between hover:bg-slate-50/50 transition-colors border-b border-gray-100"
             >
@@ -579,7 +579,7 @@ export default function MoneyView() {
                 <span className="font-extrabold text-[#2c3e50] text-sm uppercase tracking-wider">
                   Динамика оборотов по счетам, BYN
                 </span>
-                <HelpCircle className="w-4 h-4 text-gray-300" onClick={(e) => { e.stopPropagation(); alert('График отражает движение денежных средств по всем вашим текущим счетам в BYN за последние 6 месяцев работы.'); }} />
+                <HelpCircle className="w-4 h-4 text-gray-300" onClick={(e) => { e.stopPropagation(); alert('График отражает движение денежных средств по всем вашим текущим счетам в BYN за последние 6 месяцев работы. Источник: агрегат statement_lines из PostgreSQL.'); }} />
               </div>
               {dynamicsOpen ? <ChevronUp className="w-4 h-4 text-gray-400" /> : <ChevronDown className="w-4 h-4 text-gray-400" />}
             </button>
@@ -590,18 +590,19 @@ export default function MoneyView() {
                 <div className="w-full">
                   <div className="flex items-center justify-between text-xs text-gray-500 mb-6 bg-slate-50 p-2.5 rounded-lg border border-gray-100">
                     <span className="font-medium">
-                      Период: <strong>{turnoverHistory[0]?.label ?? "—"} — {turnoverHistory[turnoverHistory.length - 1]?.label ?? "—"}</strong>
+                      Период: <strong>{turnoverWindowLabel(turnoverHistory)}</strong>
                     </span>
                     <span className="flex items-center gap-2 font-semibold">
-                      <span className="w-2.5 h-2.5 bg-[#138d8a] rounded" /> Поступления (дебет)
-                      <span className="w-2.5 h-2.5 bg-yellow-400 rounded" /> Расходы (кредит)
+                      {/* В БД credit = поступления (деньги пришли), debit = расходы (деньги ушли). */}
+                      <span className="w-2.5 h-2.5 bg-[#138d8a] rounded" /> Поступления (кредит)
+                      <span className="w-2.5 h-2.5 bg-yellow-400 rounded" /> Расходы (дебет)
                     </span>
                   </div>
 
                   <TurnoverSvgChart history={turnoverHistory} />
 
                   <div className="mt-4 text-[11px] text-gray-405 text-center font-medium italic">
-                    * Данные из PostgreSQL: суммы поступлений и расходов по орг-ии за последние 6 месяцев.
+                    * Данные из PostgreSQL: суммы поступлений (statement_lines.credit) и расходов (statement_lines.debit) по орг-ии за последние 6 месяцев.
                   </div>
                 </div>
               </div>
@@ -1040,8 +1041,37 @@ const RU_MONTH_SHORT_DYN = [
   "Июл", "Авг", "Сен", "Окт", "Ноя", "Дек",
 ];
 
+/** Подпись периода по календарному окну «текущий − 5 … текущий», а не по
+ *  первому/последнему элементу ответа API (которые могут быть пустыми). */
+function turnoverWindowLabel(history: BalanceHistoryMonth[]): string {
+  const today = new Date();
+  const first = new Date(today.getFullYear(), today.getMonth() - 5, 1);
+  const last = new Date(today.getFullYear(), today.getMonth(), 1);
+  const fmt = (d: Date) =>
+    `${RU_MONTH_SHORT_DYN[d.getMonth()]} ${d.getFullYear()}`;
+  // Если в окне вообще нет данных — покажем «—» чтобы было видно.
+  const hasAny = history.some((h) => h.credit > 0 || h.debit > 0);
+  return hasAny ? `${fmt(first)} — ${fmt(last)}` : `${fmt(first)} — ${fmt(last)}`;
+}
+
+/** Округляет max значения вверх до «человеческой» границы: 1/2/2.5/5/10 × 10^n.
+ *  Примеры: 1234 → 2500; 96500 → 100000; 1_200_000 → 2_000_000. */
+function niceMax(v: number): number {
+  if (v <= 0) return 1000;
+  const magnitude = Math.pow(10, Math.floor(Math.log10(v)));
+  const normalized = v / magnitude;
+  let nice: number;
+  if (normalized <= 1) nice = 1;
+  else if (normalized <= 2) nice = 2;
+  else if (normalized <= 2.5) nice = 2.5;
+  else if (normalized <= 5) nice = 5;
+  else nice = 10;
+  return nice * magnitude;
+}
+
 function TurnoverSvgChart({ history }: { history: BalanceHistoryMonth[] }) {
-  // Дозаполняем 6 месяцев подряд (текущий − 5 … текущий).
+  // Дозаполняем 6 месяцев подряд (текущий − 5 … текущий) — даже если в
+  // /api/banking/balance/summary вернулось меньше (нет проводок в эти месяцы).
   const today = new Date();
   const months: BalanceHistoryMonth[] = [];
   const idxByKey = new Map(history.map((h) => [h.month, h]));
@@ -1059,9 +1089,11 @@ function TurnoverSvgChart({ history }: { history: BalanceHistoryMonth[] }) {
     );
   }
 
-  // Лог-подобная шкала как в Sber-UI: 500, 2.5k, 5k, 10k → ticks 0/500/2500/5000/10000.
-  const TICKS = [10_000, 5_000, 2_500, 500, 0];
-  const MAX = 10_000;
+  // Y-шкала авто-скейлится по максимуму из реальных данных БД (а не 10k хардкодом).
+  // Округляем до "человеческой" границы (1/2/2.5/5/10 × 10^n) — 1 234 → 2 500.
+  const dataMax = Math.max(1, ...months.flatMap((m) => [m.credit, m.debit]));
+  const MAX = niceMax(dataMax);
+  const TICKS = [MAX, MAX * 0.75, MAX * 0.5, MAX * 0.25, 0];
   const Y_TOP = 30;
   const Y_BOTTOM = 200;
   const Y_RANGE = Y_BOTTOM - Y_TOP;
@@ -1078,20 +1110,41 @@ function TurnoverSvgChart({ history }: { history: BalanceHistoryMonth[] }) {
     );
   }
 
+  const fmtTick = (v: number) => {
+    if (v === 0) return "0";
+    if (v >= 1_000_000) return `${(v / 1_000_000).toFixed(v >= 10_000_000 ? 0 : 1)}M`;
+    if (v >= 1_000) return `${(v / 1_000).toFixed(v >= 10_000 ? 0 : 1)}k`;
+    return v.toFixed(0);
+  };
+
   return (
     <svg viewBox="0 0 600 240" className="w-full h-auto">
       {/* Сетка */}
-      <line x1="40" y1={yFor(10_000)} x2="580" y2={yFor(10_000)} stroke="#f1f5f9" strokeWidth="1" />
-      <line x1="40" y1={yFor(5_000)} x2="580" y2={yFor(5_000)} stroke="#f1f5f9" strokeWidth="1" />
-      <line x1="40" y1={yFor(2_500)} x2="580" y2={yFor(2_500)} stroke="#f1f5f9" strokeWidth="1" />
-      <line x1="40" y1={yFor(500)} x2="580" y2={yFor(500)} stroke="#f1f5f9" strokeWidth="1" />
+      {TICKS.map((t) => (
+        <line
+          key={t}
+          x1="40"
+          y1={yFor(t)}
+          x2="580"
+          y2={yFor(t)}
+          stroke="#f1f5f9"
+          strokeWidth="1"
+        />
+      ))}
       <line x1="40" y1={Y_BOTTOM} x2="580" y2={Y_BOTTOM} stroke="#94a3b8" strokeWidth="1.5" />
 
-      <text x="30" y={yFor(10_000) + 4} fill="#94a3b8" fontSize="10" textAnchor="end">10k</text>
-      <text x="30" y={yFor(5_000) + 4} fill="#94a3b8" fontSize="10" textAnchor="end">5k</text>
-      <text x="30" y={yFor(2_500) + 4} fill="#94a3b8" fontSize="10" textAnchor="end">2.5k</text>
-      <text x="30" y={yFor(500) + 4} fill="#94a3b8" fontSize="10" textAnchor="end">500</text>
-      <text x="30" y={Y_BOTTOM + 4} fill="#94a3b8" fontSize="10" textAnchor="end">0</text>
+      {TICKS.map((t) => (
+        <text
+          key={`l-${t}`}
+          x="30"
+          y={yFor(t) + 4}
+          fill="#94a3b8"
+          fontSize="10"
+          textAnchor="end"
+        >
+          {fmtTick(t)}
+        </text>
+      ))}
 
       {/* Бары по 6 месяцам. credit = поступления (зелёный), debit = расходы (жёлтый). */}
       {months.map((m, i) => {

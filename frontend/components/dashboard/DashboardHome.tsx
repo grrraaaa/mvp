@@ -231,13 +231,14 @@ export function DashboardHome() {
         <div className="flex items-center justify-between mb-4">
           <h3 className="text-base font-semibold text-[#1f1f22]">Динамика оборотов по счетам, BYN</h3>
           <span className="text-[11px] text-[#7d838a] flex items-center gap-1.5">
-            <span className="w-2.5 h-2.5 bg-[#107f8c] rounded" /> Поступления
-            <span className="w-2.5 h-2.5 bg-amber-400 rounded ml-2" /> Расходы
+            {/* В БД credit = поступления, debit = расходы. */}
+            <span className="w-2.5 h-2.5 bg-[#107f8c] rounded" /> Поступления (кредит)
+            <span className="w-2.5 h-2.5 bg-amber-400 rounded ml-2" /> Расходы (дебет)
           </span>
         </div>
         <TurnoverBars history={turnoverHistory} loading={turnoverLoading} />
         <p className="mt-3 text-[10px] text-[#7d838a]">
-          * Данные из PostgreSQL: агрегат statement_lines по орг-ии за последние 6 месяцев.
+          * Данные из PostgreSQL: агрегат statement_lines по орг-ии за последние 6 месяцев. credit = поступления, debit = расходы.
         </p>
       </section>
     </div>
@@ -256,7 +257,8 @@ function TurnoverBars({
   history: BalanceHistoryMonth[];
   loading: boolean;
 }) {
-  // Дозаполняем пустые месяцы нулями, чтобы было ровно 6 столбцов подряд.
+  // Дозаполняем пустые месяцы нулями, чтобы было ровно 6 столбцов подряд
+  // (даже если в /api/banking/balance/summary вернулось меньше — нет проводок).
   const today = new Date();
   const months: BalanceHistoryMonth[] = [];
   const idxByKey = new Map(history.map((h) => [h.month, h]));
@@ -273,13 +275,11 @@ function TurnoverBars({
       },
     );
   }
-  const maxVal = Math.max(
-    1,
-    ...months.map((m) => Math.max(m.debit, m.credit)),
-  );
-  // Лог-шкала снизу: 500, 2.5k, 5k, 10k — ступени как на исходном Sber-UI.
-  const ticks = [10_000, 5_000, 2_500, 500, 0];
-  const maxTick = 10_000;
+  // Y-шкала авто-скейлится по реальным данным из БД (а не 10k хардкодом).
+  // Округляем вверх до «человеческой» границы: 1/2/2.5/5/10 × 10^n.
+  const dataMax = Math.max(1, ...months.flatMap((m) => [m.credit, m.debit]));
+  const maxTick = niceMax(dataMax);
+  const ticks = [maxTick, maxTick * 0.75, maxTick * 0.5, maxTick * 0.25, 0];
 
   if (loading) {
     return (
@@ -297,6 +297,13 @@ function TurnoverBars({
     );
   }
 
+  const fmtTick = (v: number) => {
+    if (v === 0) return "0";
+    if (v >= 1_000_000) return `${(v / 1_000_000).toFixed(v >= 10_000_000 ? 0 : 1)}M`;
+    if (v >= 1_000) return `${(v / 1_000).toFixed(v >= 10_000 ? 0 : 1)}k`;
+    return v.toFixed(0);
+  };
+
   return (
     <div>
       <div className="h-48 flex items-end gap-2 px-1 relative">
@@ -308,11 +315,12 @@ function TurnoverBars({
             style={{ bottom: `${(t / maxTick) * 100}%` }}
           >
             <span className="absolute -top-2 right-1 bg-white px-0.5">
-              {t >= 1000 ? `${t / 1000}k` : t}
+              {fmtTick(t)}
             </span>
           </div>
         ))}
         {months.map((m) => {
+          // В БД credit = поступления, debit = расходы.
           const inH = (m.credit / maxTick) * 100;
           const outH = (m.debit / maxTick) * 100;
           return (
@@ -340,4 +348,19 @@ function TurnoverBars({
       </div>
     </div>
   );
+}
+
+/** Округляет max значения вверх до «человеческой» границы: 1/2/2.5/5/10 × 10^n.
+ *  Примеры: 1234 → 2500; 96500 → 100000; 1_200_000 → 2_000_000. */
+function niceMax(v: number): number {
+  if (v <= 0) return 1000;
+  const magnitude = Math.pow(10, Math.floor(Math.log10(v)));
+  const normalized = v / magnitude;
+  let nice: number;
+  if (normalized <= 1) nice = 1;
+  else if (normalized <= 2) nice = 2;
+  else if (normalized <= 2.5) nice = 2.5;
+  else if (normalized <= 5) nice = 5;
+  else nice = 10;
+  return nice * magnitude;
 }

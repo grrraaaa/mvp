@@ -652,6 +652,10 @@ def _build_documents_query_string(filters: dict) -> str:
         parts.append(f"q={quote(filters['q'])}")
     if filters.get("doc_type"):
         parts.append(f"doc_type={quote(filters['doc_type'])}")
+    if filters.get("min_amount") is not None:
+        parts.append(f"min_amount={filters['min_amount']}")
+    if filters.get("max_amount") is not None:
+        parts.append(f"max_amount={filters['max_amount']}")
     return "&".join(parts)
 
 
@@ -739,6 +743,47 @@ async def _list_documents_reply(
         if num_m and num_m.group(1) not in (str(filters.get("year") or ""),):
             filters["q"] = num_m.group(1)
 
+    # Диапазон суммы: «суммой от 1000 до 5000», «больше 1000», «меньше 5000»,
+    # «от 1000», «до 5000», «сумма > 1000». BYN по умолчанию.
+    def _to_amount(raw: str) -> float | None:
+        try:
+            return float(raw.replace(",", ".").replace(" ", ""))
+        except (ValueError, AttributeError):
+            return None
+
+    range_m = re.search(
+        r"(?:сумм\w*\s*)?(?:от|более|больше|>=?|свыше)\s*(\d+(?:[.,]\d+)?)"
+        r"\s*(?:до|и\s+до|меньше|<=?|до)\s*(\d+(?:[.,]\d+)?)",
+        low,
+    )
+    if range_m:
+        v1, v2 = _to_amount(range_m.group(1)), _to_amount(range_m.group(2))
+        if v1 is not None and v2 is not None:
+            filters["min_amount"], filters["max_amount"] = min(v1, v2), max(v1, v2)
+    else:
+        gt_m = re.search(
+            r"(?:сумм\w*\s*)?(?:от|более|больше|>=?|свыше)\s*(\d+(?:[.,]\d+)?)(?!\s*(?:до|до\s|и\s+до|меньше|<=?))",
+            low,
+        )
+        if gt_m:
+            v = _to_amount(gt_m.group(1))
+            if v is not None:
+                filters["min_amount"] = v
+        lt_m = re.search(
+            r"(?:сумм\w*\s*)?(?:до|меньше|<=?)\s*(\d+(?:[.,]\d+)?)(?!\s*(?:от|более|больше|>=?|свыше))",
+            low,
+        )
+        if lt_m:
+            v = _to_amount(lt_m.group(1))
+            if v is not None:
+                filters["max_amount"] = v
+
+    # Тип документа: «платёжные поручения», «информационные запросы», «запросы выписки»
+    if re.search(r"плат[её]жн\w*\s+поручен\w*|поручен\w*", low):
+        filters["doc_type"] = "Платёжное поручение"
+    elif re.search(r"информац\w*\s+запрос\w*|запрос\w*\s+выписк\w*|запрос\w*\s+информац\w*", low):
+        filters["doc_type"] = "INFO:"
+
     # Считаем сколько доков попадёт под фильтры — для подсказки «найдено N»
     count_stmt = select(BankDocument).where(BankDocument.org_id == org_id)
     if filters.get("status"):
@@ -760,6 +805,17 @@ async def _list_documents_reply(
         count_stmt = count_stmt.where(BankDocument.doc_date >= filters["date_from"])
     if filters.get("date_to"):
         count_stmt = count_stmt.where(BankDocument.doc_date <= filters["date_to"])
+    if filters.get("min_amount") is not None:
+        count_stmt = count_stmt.where(BankDocument.amount >= filters["min_amount"])
+    if filters.get("max_amount") is not None:
+        count_stmt = count_stmt.where(BankDocument.amount <= filters["max_amount"])
+    if filters.get("doc_type"):
+        if filters["doc_type"].endswith(":"):
+            count_stmt = count_stmt.where(
+                BankDocument.doc_type.like(filters["doc_type"] + "%")
+            )
+        else:
+            count_stmt = count_stmt.where(BankDocument.doc_type == filters["doc_type"])
     rows = (await session.execute(count_stmt)).scalars().all()
     if filters.get("counterparty"):
         cpf = filters["counterparty"].lower()
@@ -791,6 +847,17 @@ async def _list_documents_reply(
         pretty_filters.append(f"контрагент «{filters['counterparty']}»")
     if filters.get("q"):
         pretty_filters.append(f"поиск «{filters['q']}»")
+    if filters.get("doc_type"):
+        pretty_filters.append(f"тип «{filters['doc_type']}»")
+    if filters.get("min_amount") is not None or filters.get("max_amount") is not None:
+        lo = filters.get("min_amount")
+        hi = filters.get("max_amount")
+        if lo is not None and hi is not None:
+            pretty_filters.append(f"сумма {lo:,.0f}–{hi:,.0f}")
+        elif lo is not None:
+            pretty_filters.append(f"сумма ≥ {lo:,.0f}")
+        else:
+            pretty_filters.append(f"сумма ≤ {hi:,.0f}")
 
     if pretty_filters:
         filter_label = " · ".join(pretty_filters)

@@ -132,6 +132,8 @@ flowchart TB
 | 20 | **Basic Auth** | `middleware.ts` | `SiteBasicAuthMiddleware` | ✅ |
 | 21 | **JWT auth** | заготовка | `/api/auth/*` | 🔶 scaffold |
 | 22 | **Деплой Vercel** | один домен | `api/index.py` | ✅ |
+| 23 | **Обучающий модуль** | `/learning` → `LearningView` | `AI_COMMANDS` (12 категорий, ~130 команд) | ✅ |
+| 24 | **Каталог команд ИИ** | вкладка «Команды ИИ» | `learningContent.ts::AI_COMMANDS` | ✅ |
 
 ---
 
@@ -432,6 +434,7 @@ flowchart LR
     FM[FEATURE_MAP.md<br/>вы здесь]
     FM --> ARCH[ARCHITECTURE.md]
     FM --> ASST[ASSISTANT.md]
+    FM --> ASST_C[ASSISTANT_COMMANDS.md<br/>~130 команд × 12 категорий]
     FM --> TTS_D[TTS.md]
     FM --> UI3D[UI_AND_3D.md]
     FM --> CHAR[CHARACTER_3D.md]
@@ -439,6 +442,7 @@ flowchart LR
     FM --> MOD[MODULES.md]
     FM --> DEV[LOCAL_DEV.md]
     FM --> DEP[VERCEL_DEPLOY.md]
+    ASST --> ASST_C
 ```
 
 ---
@@ -455,6 +459,57 @@ flowchart LR
 | Голос TTS | выпадающий список | Mikhail / George … |
 | 3D карта | hover спутник | один tooltip |
 | Планеты | клик «Расчёты» | `/payments` |
+| Каталог ИИ | `/learning` → вкладка «Команды ИИ» | 12 категорий, ~130 запросов с фильтром и поиском |
+
+---
+
+## 15. Обучающий модуль и каталог команд ИИ
+
+Страница `/learning` (`frontend/app/learning/page.tsx` → `components/learning/LearningView.tsx`) — это **встроенная документация по ИИ-консультанту** в UI.
+
+```mermaid
+flowchart LR
+    LP[/learning] --> TAB1[Уроки<br/>LEARNING_MODULES]
+    LP --> TAB2[Команды ИИ<br/>AI_COMMANDS]
+
+    TAB1 --> M1[Первые шаги]
+    TAB1 --> M2[ИИ-консультант]
+    TAB1 --> M3[Графики и аналитика]
+    TAB1 --> M4[Заполнение форм]
+    TAB1 --> M5[Поиск и документы]
+    TAB1 --> M6[Интеграция с 1С]
+    TAB1 --> M7[Сервисы и продукты]
+    TAB1 --> M8[Кнопки и действия]
+    TAB1 --> M9[База знаний и налоги]
+    TAB1 --> M10[Напоминания]
+    TAB1 --> M11[Платежи / Выписка / Зарплата / Безопасность]
+
+    TAB2 --> C1[Платежи]
+    TAB2 --> C2[Документы]
+    TAB2 --> C3[Графики]
+    TAB2 --> C4[Аналитика]
+    TAB2 --> C5[Навигация]
+    TAB2 --> C6[Сервисы]
+    TAB2 --> C7[Формы]
+    TAB2 --> C8[1С]
+    TAB2 --> C9[Напоминания]
+    TAB2 --> C10[Кнопки]
+    TAB2 --> C11[Продукты]
+    TAB2 --> C12[Страхование]
+```
+
+**12 категорий × ~10 команд = ~130 рабочих запросов на естественном языке**, каждая с:
+- краткой формулировкой (`cmd`)
+- конкретным примером, который можно скопировать в чат (`example`)
+- описанием что делает (`description`)
+- фильтром по категории и поиском по подстроке
+- кнопкой «Спросить ИИ» — отправляет пример в чат одной кнопкой
+
+**Кнопка «Спросить»** использует `setSuggestedChips([question])` + `openChat()` из `useSbbolUi` — открывает чат с готовым сообщением.
+
+**Прогресс** прохождения уроков сохраняется в `localStorage` (`sbbol_learning_progress`).
+
+Полный реестр команд с backend-маппингом — [ASSISTANT_COMMANDS.md](./ASSISTANT_COMMANDS.md).
 
 ---
 

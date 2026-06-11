@@ -36,6 +36,7 @@ import {
   type DocumentFacets,
 } from "@/lib/api/banking";
 import type { BankDocument } from "@/lib/banking/types";
+import { getDefaultLastMonth } from "@/lib/banking/demoTime";
 import { bankingToast } from "@/lib/banking/toast";
 import { ASSISTANT_ACTION_EVENT } from "@/lib/assistant/uiBridge";
 
@@ -177,6 +178,8 @@ function filtersToQuery(f: FilterState): string {
     docType: f.docTypeFilter,
     counterparty: f.counterparty,
     q: f.q,
+    minAmount: f.minAmount ? Number(f.minAmount.replace(",", ".")) : null,
+    maxAmount: f.maxAmount ? Number(f.maxAmount.replace(",", ".")) : null,
   });
 }
 
@@ -256,17 +259,48 @@ export default function ProductDocumentsView({
     const urlKey = searchParams.toString();
     if (urlKey === lastAppliedUrlRef.current) return;
     lastAppliedUrlRef.current = urlKey;
-    const next: FilterState = {
-      ...EMPTY_FILTERS,
-      year: sp.year,
-      month: sp.month,
-      dateFrom: sp.dateFrom,
-      dateTo: sp.dateTo,
-      status: sp.status,
-      docTypeFilter: sp.docType,
-      counterparty: sp.counterparty,
-      q: sp.q ?? "",
-    };
+
+    const hasAnyUrlFilter =
+      sp.year != null ||
+      sp.month != null ||
+      sp.dateFrom != null ||
+      sp.dateTo != null ||
+      sp.status != null ||
+      sp.statuses.length > 0 ||
+      sp.docType != null ||
+      sp.counterparty != null ||
+      (sp.q ?? "") !== "" ||
+      sp.minAmount != null ||
+      sp.maxAmount != null;
+
+    let next: FilterState;
+    if (!hasAnyUrlFilter) {
+      // Первый заход без параметров → дефолт «последний месяц» (предыдущий
+      // календарный), чтобы не вываливать все 165 документов сразу. Совпадает
+      // с бэкенд-логикой `_parse_relative_period("за последний месяц")`.
+      const def = getDefaultLastMonth();
+      next = {
+        ...EMPTY_FILTERS,
+        year: def.year,
+        month: def.month,
+        minAmount: "",
+        maxAmount: "",
+      };
+    } else {
+      next = {
+        ...EMPTY_FILTERS,
+        year: sp.year,
+        month: sp.month,
+        dateFrom: sp.dateFrom,
+        dateTo: sp.dateTo,
+        status: sp.status,
+        docTypeFilter: sp.docType,
+        counterparty: sp.counterparty,
+        q: sp.q ?? "",
+        minAmount: sp.minAmount != null ? String(sp.minAmount) : "",
+        maxAmount: sp.maxAmount != null ? String(sp.maxAmount) : "",
+      };
+    }
     // Если есть явный статус — переключаем вкладку на соответствующую
     if (sp.status) {
       const tabByStatus = TABS.find((t) => t.status === sp.status);
@@ -335,6 +369,24 @@ export default function ProductDocumentsView({
           setFilters((f) => ({ ...f, dateFrom: parts[0], dateTo: parts[1] }));
           setActiveTab("all");
         }
+      } else if (detail.action === "filter-counterparty" && value) {
+        setFilters((f) => ({ ...f, counterparty: value }));
+        setActiveTab("all");
+      } else if (detail.action === "filter-doc-type" && value) {
+        setFilters((f) => ({ ...f, docTypeFilter: value }));
+        setActiveTab("all");
+      } else if (detail.action === "filter-amount" && value) {
+        // value: "min|max" — пустая строка = граница не задана
+        const [lo, hi] = value.split("|");
+        setFilters((f) => ({
+          ...f,
+          minAmount: lo ?? "",
+          maxAmount: hi ?? "",
+        }));
+        setActiveTab("all");
+      } else if (detail.action === "filter-search" && value) {
+        setFilters((f) => ({ ...f, q: value }));
+        setActiveTab("all");
       }
     };
     window.addEventListener(ASSISTANT_ACTION_EVENT, handler);

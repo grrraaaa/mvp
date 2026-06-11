@@ -125,6 +125,8 @@ export function parseDocumentsSearchParams(
   q: string | null;
   docType: string | null;
   counterparty: string | null;
+  minAmount: number | null;
+  maxAmount: number | null;
 } {
   const sp = typeof search === "string" ? new URLSearchParams(search) : search;
   const year = sp.get("year");
@@ -134,6 +136,8 @@ export function parseDocumentsSearchParams(
     .split(",")
     .map((s) => s.trim())
     .filter(Boolean);
+  const minA = sp.get("min_amount");
+  const maxA = sp.get("max_amount");
   return {
     year: year && /^\d{4}$/.test(year) ? Number(year) : null,
     month: month && /^\d{1,2}$/.test(month) ? Number(month) : null,
@@ -144,6 +148,8 @@ export function parseDocumentsSearchParams(
     q: sp.get("q") || null,
     docType: sp.get("doc_type") || sp.get("type") || null,
     counterparty: sp.get("counterparty") || null,
+    minAmount: minA && /^\d+(\.\d+)?$/.test(minA) ? Number(minA) : null,
+    maxAmount: maxA && /^\d+(\.\d+)?$/.test(maxA) ? Number(maxA) : null,
   };
 }
 
@@ -158,6 +164,8 @@ export function buildDocumentsQueryString(f: {
   q?: string | null;
   docType?: string | null;
   counterparty?: string | null;
+  minAmount?: number | null;
+  maxAmount?: number | null;
 }): string {
   const sp = new URLSearchParams();
   if (f.year != null) sp.set("year", String(f.year));
@@ -169,6 +177,8 @@ export function buildDocumentsQueryString(f: {
   if (f.q) sp.set("q", f.q);
   if (f.docType) sp.set("doc_type", f.docType);
   if (f.counterparty) sp.set("counterparty", f.counterparty);
+  if (f.minAmount != null) sp.set("min_amount", String(f.minAmount));
+  if (f.maxAmount != null) sp.set("max_amount", String(f.maxAmount));
   return sp.toString();
 }
 
