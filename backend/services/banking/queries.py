@@ -311,7 +311,7 @@ def is_search_query(message: str) -> bool:
             r"найди|найти|нади|найй|поищи|\bищи\b|покажи|показать|поиск|"
             r"где\s+(?:платёж|платеж|документ|счёт|счет|оплат)|"
             r"карточк\w*\s+(?:клиент|контрагент)|"
-            r"откро\w*\s+(?:карточк|контрагент|клиент)",
+            r"откро\w*\s+(?:карточк|контрагент|клиент|документ)",
             low,
         )
     )
@@ -459,6 +459,44 @@ _RU_MONTH_NAME = {
     9: "сентябрь", 10: "октябрь", 11: "ноябрь", 12: "декабрь",
 }
 
+_RU_MONTH_STEMS = (
+    r"январ[ья]?|феврал[ья]?|март[а]?|апрел[ья]?|ма[йя]|мая|"
+    r"июн[ья]?|июл[ья]?|август[а]?|сентябр[ья]?|октябр[ья]?|ноябр[ья]?|декабр[ья]?"
+)
+
+
+def _month_num_from_stem(stem: str) -> int | None:
+    """Сопоставить стем названия месяца с номером 1–12."""
+    s = (stem or "").strip().lower()
+    if not s:
+        return None
+    for m_num, name in _RU_MONTH_NAME.items():
+        if s.startswith(name[:4]) or name.startswith(s[:4]):
+            return m_num
+    return None
+
+
+def is_banking_document_command(message: str) -> bool:
+    """Команды журнала документов — обрабатывает banking, не page_actions."""
+    low = (message or "").lower()
+    if not re.search(r"документ\w*|журнал\w*", low):
+        return False
+    if re.search(r"документ\w*\s*(?:№|номер\w*)", low):
+        return True
+    if re.search(
+        r"документы|все\s+документ|журнал\w*|реестр\w*",
+        low,
+    ) and re.search(
+        r"контрагент|сумм\w*|от\s+\d|более|больше|руб|byn|usd|eur|"
+        r"январ|феврал|март|апрел|ма[йя]|июн|июл|август|сентябр|октябр|ноябр|декабр|"
+        r"с\s+(?:\d{1,2}[./]|январ|феврал|март|апрел|ма[йя]|июн|июл|август|сентябр|октябр|ноябр|декабр)|"
+        r"по\s+(?:\d{1,2}[./]|январ|феврал|март|апрел|ма[йя]|июн|июл|август|сентябр|октябр|ноябр|декабр)|"
+        r"за\s+\d{4}|на\s+подпис|проведен|черновик|плат[её]жн\w*\s+поручен",
+        low,
+    ):
+        return True
+    return False
+
 
 def _parse_doc_period_from_text(message: str) -> dict:
     """Извлечь из сообщения фильтр документов: year / month / date_from / date_to.
@@ -477,6 +515,23 @@ def _parse_doc_period_from_text(message: str) -> dict:
         out["date_from"] = _normalize_date_token(range_m.group(1))
         out["date_to"] = _normalize_date_token(range_m.group(2))
         return out
+
+    # 1b) Диапазон по названиям месяцев: «с февраля по май», «от января до марта»
+    month_range_m = re.search(
+        rf"(?:с|от)\s+({_RU_MONTH_STEMS})\s*(?:по|до|-)\s*({_RU_MONTH_STEMS})",
+        low,
+    )
+    if month_range_m:
+        m1 = _month_num_from_stem(month_range_m.group(1))
+        m2 = _month_num_from_stem(month_range_m.group(2))
+        year_m = re.search(r"(20\d{2})", low)
+        year = int(year_m.group(1)) if year_m else 2026
+        if m1 and m2:
+            out["year"] = year
+            out["date_from"] = f"01.{m1:02d}.{year}"
+            last_day = _days_in_month(year, m2)
+            out["date_to"] = f"{last_day:02d}.{m2:02d}.{year}"
+            return out
 
     # 2) Месяц + год: "за март 2026", "за март", "за мартом 2026 года"
     month_m = re.search(
@@ -715,11 +770,83 @@ def _build_documents_query_string(filters: dict) -> str:
     return "&".join(parts)
 
 
+async def _open_document_by_number_reply(
+    session: AsyncSession, message: str, org_id: str
+) -> dict | None:
+    """«Открой документ номер 97» / «покажи документ №97» — карточка и переход к просмотру."""
+    from services.banking.search import _parse_doc_number
+
+    low = message.lower()
+    if not re.search(r"документ\w*", low):
+        return None
+    if not re.search(
+        r"(?:откро\w*|покаж\w*|открыть|показать|найди|найти|открой|покажи|дай|выведи)\b",
+        low,
+    ):
+        return None
+    doc_num = _parse_doc_number(message)
+    if not doc_num:
+        return None
+    # Множественное «документы» без явного номера — это список, не один документ.
+    if re.search(r"документы", low) and not re.search(r"(?:номер\w*|№)\s*№?\s*\d", low):
+        return None
+
+    result = await session.execute(
+        select(BankDocument).where(BankDocument.org_id == org_id)
+    )
+    rows = result.scalars().all()
+    exact = [d for d in rows if (d.doc_number or "").strip() == doc_num]
+    if not exact:
+        exact = [d for d in rows if doc_num in (d.doc_number or "")]
+    if not exact:
+        return {
+            "message": (
+                f"Документ № **{doc_num}** не найден в журнале.\n\n"
+                "Попробуйте уточнить номер или откройте список всех документов."
+            ),
+            "action_buttons": [
+                {"label": "Все документы", "url": f"/other/documents?q={quote(doc_num)}", "variant": "primary"},
+            ],
+            "suggested_chips": [f"Найди документ {doc_num}", "Покажи все документы"],
+        }
+
+    doc = exact[0]
+    url = document_view_url(doc.id)
+    purpose = (doc.purpose or "").strip()
+    purpose_line = f"\n{purpose}" if purpose else ""
+    return {
+        "message": (
+            f"Документ № **{doc.doc_number}** — **{doc.counterparty}**: "
+            f"**{doc.amount:,.2f} {doc.currency}**, статус «{doc.status}»."
+            f"{purpose_line}"
+        ),
+        "sources": [
+            {
+                "index": 1,
+                "label": f"Источник 1: № {doc.doc_number} — {doc.counterparty}",
+                "kind": "document",
+                "id": doc.id,
+                "url": url,
+            }
+        ],
+        "ui_actions": [{"type": "navigate", "target": url}],
+        "action_buttons": [
+            {"label": "Открыть документ", "url": url, "variant": "primary"},
+            {"label": "Связанные платежи", "message": f"Платежи {doc.counterparty}", "variant": "secondary"},
+            {"label": "Все документы", "url": "/other/documents", "variant": "secondary"},
+        ],
+    }
+
+
 async def _list_documents_reply(
     session: AsyncSession, message: str, org_id: str
 ) -> dict | None:
     """AI-интент: «покажи все документы / за год / за март / с 01.01 по 31.03 / на подпись»."""
     low = message.lower()
+    if is_banking_document_command(message) and re.search(
+        r"документ\b(?!ы)", low
+    ) and re.search(r"(?:номер\w*|№)\s*№?\s*\d", low):
+        return None
     # Триггеры:
     #   1) «документы» + глагол действия (покажи/найди/открой/…)
     #   2) «документы за/на/по/с/между <период|статус|контрагент>» — без глагола
@@ -740,8 +867,11 @@ async def _list_documents_reply(
         re.search(
             r"за\s+(?:\d{4}|этот\s+год|прошл\w*\s+год|январ|феврал|март|апрел|ма[йя]|"
             r"июн|июл|август|сентябр|октябр|ноябр|декабр|квартал)|"
-            r"с\s+\d{1,2}\.\d{1,2}|на\s+подпис|ожида\w+\s+подпис|"
-            r"подписан\w+|проведен\w+|исполнен\w+|черновик|отказан\w+",
+            r"с\s+\d{1,2}\.\d{1,2}|"
+            rf"(?:с|от)\s+({_RU_MONTH_STEMS})\s*(?:по|до)|"
+            r"на\s+подпис|ожида\w+\s+подпис|"
+            r"подписан\w+|проведен\w+|исполнен\w+|черновик|отказан\w+|"
+            r"сумм\w*|контрагент|от\s+\d|более|больше|руб|byn",
             low,
         )
     )
@@ -775,12 +905,19 @@ async def _list_documents_reply(
     elif re.search(r"удал\w+", low):
         filters["status"] = "Удален"
 
-    # Контрагент: "документы ООО Ромашка" / "документы Ромашка за март"
+    # Контрагент: "документы ООО Ромашка" / "с контрагентом ООО Ромашка"
     cp_match = re.search(
         r"документ\w*\s+(?:у|от|по|для|контрагент\w*|поставщик\w*)?\s*"
         r"([А-ЯЁа-яё0-9«»\"\']{3,}(?:\s+[А-ЯЁа-яё0-9]{3,})?)(?:\s+за\s+|\s+на\s+|$|\.)",
         message,
     )
+    if not cp_match:
+        cp_match = re.search(
+            r"документ\w*\s+(?:с\s+)?контрагент\w*\s+"
+            r"([А-ЯЁа-яё0-9«»\"\']{3,}(?:\s+[А-ЯЁа-яё0-9«»\"\']{2,})?)",
+            message,
+            re.I,
+        )
     if cp_match:
         candidate = cp_match.group(1).strip(" .,")
         if candidate.lower() not in {
@@ -794,7 +931,12 @@ async def _list_documents_reply(
                 filters["counterparty"] = candidate
 
     # Прямой поиск по слову/номеру: «найди документ 211», «покажи счёт 555»
-    if "найди" in low or "найти" in low:
+    from services.banking.search import _parse_doc_number
+
+    doc_num = _parse_doc_number(message)
+    if doc_num and re.search(r"документ\w*", low):
+        filters["q"] = doc_num
+    elif "найди" in low or "найти" in low:
         num_m = re.search(r"\b(\d{2,6})\b", message)
         if num_m and num_m.group(1) not in (str(filters.get("year") or ""),):
             filters["q"] = num_m.group(1)
@@ -1059,6 +1201,10 @@ async def handle_banking_query(
     statement_reply = await _statement_reply(session, message, org_id)
     if statement_reply:
         return statement_reply
+
+    open_doc_reply = await _open_document_by_number_reply(session, message, org_id)
+    if open_doc_reply:
+        return open_doc_reply
 
     documents_reply = await _list_documents_reply(session, message, org_id)
     if documents_reply:

@@ -204,6 +204,35 @@ def test_insurance_reply_handler_is_sync():
     assert not inspect.iscoroutinefunction(AssistantService._maybe_insurance_reply)
 
 
+# ─── Document journal commands ────────────────────────────────────────────────
+
+def test_doc_period_month_name_range():
+    period = q.parse_doc_period("Открой все документы с февраля по май")
+    assert period.get("date_from") == "01.02.2026"
+    assert period.get("date_to") == "31.05.2026"
+
+
+def test_is_banking_document_command():
+    assert q.is_banking_document_command("Открой все документы с февраля по май")
+    assert q.is_banking_document_command("Открой все документы с суммой от 50 руб")
+    assert q.is_banking_document_command("Открой все документы с контрагентом ООО ромашка")
+    assert q.is_banking_document_command("Открой документ номер 97")
+    assert not q.is_banking_document_command("создай платёж на 100")
+
+
+def test_page_actions_skip_banking_document_commands():
+    from services.ui.page_actions import _match_action
+
+    route = "/other/documents"
+    assert _match_action("Открой все документы с февраля по май", route) is None
+    assert _match_action("Открой все документы с суммой от 50 руб", route) is None
+    assert _match_action("Открой документ номер 97", route) is None
+
+
+def test_parse_doc_number_from_open_command():
+    assert s._parse_doc_number("Открой документ номер 97") == "97"
+
+
 # ─── OCR photo payment help ───────────────────────────────────────────────────
 
 def test_ocr_photo_payment_intent_detected():

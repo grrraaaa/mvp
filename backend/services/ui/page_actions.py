@@ -894,6 +894,15 @@ def _match_action(message: str, page_route: Optional[str]) -> Optional[dict]:
     if not any(re.search(p, msg) for p in CLICK_PATTERNS):
         return None
 
+    # Журнал документов с фильтрами — banking (queries.py), не reset-filters / навигация.
+    try:
+        from services.banking.queries import is_banking_document_command
+
+        if is_banking_document_command(message):
+            return None
+    except Exception:
+        pass
+
     # Гвард: конкретное имя контрагента → banking query, а не page-action click.
     if _has_counterparty_name(msg):
         # Возвращаем None только если page-action был бы check-counterparty;
@@ -924,6 +933,11 @@ def _match_action(message: str, page_route: Optional[str]) -> Optional[dict]:
     )
     range_signal = bool(
         re.search(r"\d{1,2}[./]\d{1,2}|\bс\s+\d|\bпо\s+\d|за\s+период|между|диапазон|с\s+даты\s+по\s+дату", msg)
+        or re.search(
+            r"(?:с|от)\s+(?:январ|феврал|март|апрел|ма[йя]|июн|июл|август|сентябр|октябр|ноябр|декабр)"
+            r"\s*(?:по|до)",
+            msg,
+        )
     )
 
     # Соберём ВСЕ матчи и затем выберем лучший с учётом приоритета фильтров.
@@ -1080,6 +1094,14 @@ def _extract_filter_value(target: str, message: str) -> Optional[str]:
         )
         if m:
             return f"{_normalize_date(m.group(1))}|{_normalize_date(m.group(2))}"
+        try:
+            from services.banking.queries import _parse_doc_period_from_text
+
+            period = _parse_doc_period_from_text(message)
+            if period.get("date_from") and period.get("date_to"):
+                return f"{period['date_from']}|{period['date_to']}"
+        except Exception:
+            pass
         return None
     return None
 
