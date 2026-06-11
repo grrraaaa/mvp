@@ -631,24 +631,26 @@ export function AssistantPanel({ variant = "default", compactMobile = false, onR
         <div ref={bottomRef} />
       </div>
 
-      <div className={`flex-shrink-0 border-t ${embedded ? "border-gray-100" : "border-sber-border"}`}>
-        <ChatInput
-          value={input}
-          onChange={setInput}
-          onSend={handleSend}
-          onSuggestionSelect={handleSuggestionSelect}
-          onPhotoSelect={handlePhotoOcr}
-          showPhotoButton
-          suggestions={mergedChips}
-          hideSuggestions={hideSuggestions}
-          highlightVoice={inputCompact}
-          highlightCamera={inputCompact && Boolean(pageContext.form_type)}
-          disabled={isLoading}
-          compact={inputCompact}
-          simplified={inputCompact}
-          onVoiceComplete={sendMessage}
-        />
-      </div>
+      {chatStarted && (
+        <div className={`flex-shrink-0 border-t ${embedded ? "border-gray-100" : "border-sber-border"}`}>
+          <ChatInput
+            value={input}
+            onChange={setInput}
+            onSend={handleSend}
+            onSuggestionSelect={handleSuggestionSelect}
+            onPhotoSelect={handlePhotoOcr}
+            showPhotoButton
+            suggestions={mergedChips}
+            hideSuggestions={hideSuggestions}
+            highlightVoice={inputCompact}
+            highlightCamera={inputCompact && Boolean(pageContext.form_type)}
+            disabled={isLoading}
+            compact={inputCompact}
+            simplified={inputCompact}
+            onVoiceComplete={sendMessage}
+          />
+        </div>
+      )}
     </div>
   );
 }

@@ -72,6 +72,29 @@ def _parse_amount(text: str) -> float | None:
     return val
 
 
+_CURRENCY_PATTERNS: tuple[tuple[str, str], ...] = (
+    (r"\bруб\w*\b", "RUB"),  # руб / рублей / рубля
+    (r"\bр\.\b", "RUB"),  # сокращение «р.»
+    (r"\bбел\.?\s*руб\w*\b", "BYN"),
+    (r"\bbyn\b", "BYN"),
+    (r"\bбел\w*\b", "BYN"),
+    (r"\busd\b", "USD"),
+    (r"\bдоллар\w*\b", "USD"),
+    (r"\bевро\b", "EUR"),
+    (r"\beur\b", "EUR"),
+    (r"\brub\b", "RUB"),
+)
+
+
+def _parse_currency(text: str) -> str | None:
+    """Извлечь валюту из текста: «150 рублей» → "RUB", «100 BYN» → "BYN"."""
+    low = text.lower()
+    for pat, code in _CURRENCY_PATTERNS:
+        if re.search(pat, low):
+            return code
+    return None
+
+
 def _parse_month_year(text: str) -> tuple[str | None, str | None]:
     months = {
         "январ": "01",
@@ -101,6 +124,11 @@ def _parse_doc_number(query: str) -> str | None:
     - «№211», «№ 211», «№211/1» (берёт только цифры до слэша/буквы)
     - «номер 211», «номером 211», «номер №211»
     - «документ 211», «отчёт 211»
+
+    Возвращает None, если цифра — это часть суммы:
+    - «перевод на 150 рублей» (предлог «на» + цифра + валюта)
+    - «платёж 100 BYN» (цифра + код валюты)
+    - «сумма 2500» (явное «сумма»)
     """
     low = query.lower()
     # Сначала явный «номер» / «№» — это надёжный сигнал, что цифра = номер документа
@@ -114,11 +142,27 @@ def _parse_doc_number(query: str) -> str | None:
     if re.search(r"документ\w*|отч[её]т\w*|выписк\w*|плат[её]ж\w*|платёж\w*", low):
         m = re.search(r"(\d{1,6})", low)
         if m:
-            n = int(m.group(1))
+            digit = m.group(1)
+            start, end = m.span()
+            # «перевод на 150 рублей» / «платёж 100 BYN» — цифра = сумма
+            after = low[end:end + 12]
+            if re.match(
+                r"[\s.]*(?:руб\w*|бел\.?\s*руб|бел\w*|byn|usd|eur|rub|доллар\w*|евро)\b",
+                after,
+            ):
+                return None
+            # «на 150 …» / «по 500 …» / «от 100 …» — предлог + цифра = сумма
+            before = low[:start].rstrip()
+            if before.endswith(("на", "по", "от", "за")):
+                return None
+            # «сумма 2500» / «суммой 1000» — слово «сумм» рядом
+            if re.search(r"сумм\w*", before):
+                return None
+            n = int(digit)
             # 4-значные 2000–2099 — это годы, не номера; 19xx/20xx — тоже годы
             if 1900 <= n <= 2099:
                 return None
-            return m.group(1)
+            return digit
     return None
 
 
@@ -145,7 +189,14 @@ def is_counterparty_query(query: str) -> bool:
 
 
 def _search_terms(text: str) -> list[str]:
-    cleaned = re.sub(r"\d+|[.,:;!?()«»\"']|руб|byn|бел|тыс|000", " ", text.lower(), flags=re.I)
+    cleaned = re.sub(
+        r"\d+|[.,:;!?()«»\"']|"
+        r"руб\w*|бел\.?\s*руб\w*|бел\w*|тыс|000|"
+        r"доллар\w*|евро\b|usd|eur|rub",
+        " ",
+        text.lower(),
+        flags=re.I,
+    )
     terms: list[str] = []
     for token in cleaned.split():
         token = token.strip("-—")
@@ -245,21 +296,40 @@ async def smart_search(
 
     low = q.lower()
     amount = _parse_amount(q)
+    currency = _parse_currency(q)
     month, year = _parse_month_year(q)
     doc_number = _parse_doc_number(q)
 
-    doc_filters = []
+    # Точные совпадения (AND между собой): сумма, валюта, номер документа.
+    # Это ответ на запросы вроде «найди перевод на 150 рублей» — не хотим
+    # захватить все 150 BYN или все RUB-платежи, только amount=150 AND currency=RUB.
+    exact_filters = []
     if amount is not None:
-        doc_filters.append(BankDocument.amount == amount)
+        exact_filters.append(BankDocument.amount == amount)
+    if currency is not None:
+        exact_filters.append(BankDocument.currency == currency)
     if doc_number is not None:
         # Точное/частичное совпадение по номеру (без префикса «№»)
-        doc_filters.append(BankDocument.doc_number.ilike(f"%{doc_number}%"))
+        exact_filters.append(BankDocument.doc_number.ilike(f"%{doc_number}%"))
+
+    # Нечёткие совпадения (OR между собой): контрагент, назначение, тип.
+    fuzzy_filters = []
     terms = _search_terms(low)
     for token in terms:
         for variant in _match_variants(token):
-            doc_filters.append(BankDocument.counterparty.ilike(f"%{variant}%"))
-            doc_filters.append(BankDocument.purpose.ilike(f"%{variant}%"))
-        doc_filters.append(BankDocument.doc_type.ilike(f"%{token}%"))
+            fuzzy_filters.append(BankDocument.counterparty.ilike(f"%{variant}%"))
+            fuzzy_filters.append(BankDocument.purpose.ilike(f"%{variant}%"))
+        fuzzy_filters.append(BankDocument.doc_type.ilike(f"%{token}%"))
+
+    doc_filters: list = []
+    if exact_filters and fuzzy_filters:
+        # Точные (AND) ИЛИ нечёткие (OR) — две альтернативные стратегии поиска.
+        from sqlalchemy import and_ as sa_and
+
+        doc_filters.append(sa_and(*exact_filters) if len(exact_filters) > 1 else exact_filters[0])
+        doc_filters.extend(fuzzy_filters)
+    else:
+        doc_filters = exact_filters + fuzzy_filters
 
     stmt = select(BankDocument).where(BankDocument.org_id == org_id)
     if doc_filters:

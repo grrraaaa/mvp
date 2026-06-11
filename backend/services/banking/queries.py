@@ -1641,11 +1641,29 @@ async def handle_banking_query(
         # fall through to generic search if no exact counterparty matched
 
     if is_payments_by_name_query(message):
+        from services.banking.search import _parse_currency
+
         m = _PAYMENTS_BY_NAME_RE.match(message.strip())
         rest = m.group(1).strip() if m else message
+        wanted_currency = _parse_currency(message)
         hits = await smart_search(session, f"платежи {rest}", org_id=org_id)
         hits = [h for h in hits if h.kind == "payment"] or hits
+        # Если пользователь явно указал валюту — не путаем его, фильтруем строго
+        # и подсвечиваем, если нашли в другой валюте.
+        currency_note = ""
+        if wanted_currency:
+            in_wanted = [h for h in hits if h.currency == wanted_currency]
+            if in_wanted:
+                hits = in_wanted
+            elif hits:
+                cur = hits[0].currency or "?"
+                currency_note = (
+                    f"\n\n⚠️ В базе нет платежей в {wanted_currency}; "
+                    f"показываю ближайший в {cur}."
+                )
         text, sources = format_search_response(f"платежи {rest}", hits)
+        if currency_note:
+            text = text + currency_note
         return _build_search_payload(message, hits, sources, text)
 
     if is_report_query(message) or (

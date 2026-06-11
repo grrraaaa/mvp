@@ -2,6 +2,7 @@
 
 import { Search, ScanLine, Database, ShieldCheck, GraduationCap, MoreHorizontal, Lightbulb, Wand2, ChevronRight, MessageSquare } from "lucide-react";
 import { IconAiSpark } from "./IconAiSpark";
+import { WelcomeCharacter3D } from "./character3d/WelcomeCharacter3D";
 import { useAuthStore } from "@/store/authStore";
 import { useCharacterStore } from "@/store/characterStore";
 
@@ -101,12 +102,14 @@ export function WelcomeScreen({ onSendPrompt, onStartChat, compact }: Props) {
     onSendPrompt(message);
   };
 
+  const avatarSize = compact ? 96 : 128;
+
   return (
     <div className={`flex flex-col w-full bg-white ${compact ? "px-3 py-2" : "px-4 py-3"}`}>
       {/* Карточка ассистента */}
       <div
         className={`relative w-full overflow-hidden rounded-2xl ${
-          compact ? "h-32" : "h-40 sm:h-44"
+          compact ? "h-36" : "h-48 sm:h-52"
         }`}
         style={{
           background:
@@ -122,17 +125,10 @@ export function WelcomeScreen({ onSendPrompt, onStartChat, compact }: Props) {
           }}
           aria-hidden
         />
-        {/* Большая монограмма в стиле «портрет на фоне» */}
+        {/* 3D-аватар ассистента (Александр / Александра) */}
         <div className="absolute inset-0 flex items-end justify-center pb-1">
           <div className="flex flex-col items-center">
-            <div
-              className={`${
-                compact ? "w-20 h-20 text-3xl" : "w-24 h-24 sm:w-28 sm:h-28 text-4xl"
-              } rounded-full bg-gradient-to-br from-[#f4e4d4] to-[#e8c8a8] flex items-center justify-center text-[#5a3a20] font-bold shadow-md border-2 border-white/40`}
-              aria-hidden
-            >
-              {characterName.charAt(0)}
-            </div>
+            <WelcomeCharacter3D size={avatarSize} />
           </div>
         </div>
         {/* Sparkles-чип в углу */}

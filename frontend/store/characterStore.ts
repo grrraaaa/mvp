@@ -6,6 +6,7 @@ import {
 } from "@/lib/assistant/characterTypes";
 import { CHARACTER_PRESETS } from "@/lib/assistant/characterPresets";
 import { displayNameForModel, styleIdForModel } from "@/lib/assistant/glbCharacter";
+import { pickVoiceForCharacter } from "@/lib/tts/matchVoiceForCharacter";
 
 interface CharacterState {
   config: AssistantCharacterConfig;
@@ -24,20 +25,16 @@ function envDefault(): AssistantCharacterConfig {
   return preset?.config ?? DEFAULT_CHARACTER;
 }
 
-/** Авто-выбор голоса Qwen по полу модели. Если групп ещё нет — пропускаем. */
-function autoPickQwenVoice(styleId: "human-m" | "human-f") {
+/** Авто-выбор голоса по полу модели. Если групп ещё нет — пропускаем; в
+ *  этом случае `useTtsBootstrap` повторит подбор сразу после загрузки. */
+function autoPickVoice(styleId: "human-m" | "human-f") {
   if (typeof window === "undefined") return;
-  const gender = styleId === "human-m" ? "male" : "female";
   // динамический импорт, чтобы не тянуть ttsStore в SSR
   void import("@/store/ttsStore").then(({ useTtsStore }) => {
     const tts = useTtsStore.getState();
-    const groups = tts.voiceGroups;
-    if (groups.length === 0) return;
-    // Приоритет: qwen-группа, потом edge
-    const preferred = groups.find((g) => g.id === "qwen") ?? groups[0];
-    const voice = preferred.voices.find((v) => v.gender === gender) ?? preferred.voices[0];
-    if (voice && tts.voiceId !== voice.id) {
-      tts.setVoiceId(voice.id);
+    const voice = pickVoiceForCharacter(tts.voiceGroups, styleId);
+    if (voice && tts.voiceId !== voice) {
+      tts.setVoiceId(voice);
     }
   });
 }
@@ -64,8 +61,8 @@ export const useCharacterStore = create<CharacterState>()(
         const preset = CHARACTER_PRESETS.find((p) => p.id === presetId);
         if (!preset) return;
         set({ config: { ...preset.config }, activePresetId: presetId });
-        // Автоподбор голоса по полу модели: human-m → qwen-male, human-f → qwen-female.
-        autoPickQwenVoice(preset.config.styleId);
+        // Автоподбор голоса по полу модели: human-m → male, human-f → female.
+        autoPickVoice(preset.config.styleId);
       },
 
       resetCharacter: () => {
