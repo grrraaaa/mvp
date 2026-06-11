@@ -16,11 +16,7 @@ import { pickVoiceForCharacter } from "@/lib/tts/matchVoiceForCharacter";
 interface CharacterState {
   config: AssistantCharacterConfig;
   activePresetId: string | null;
-  /**
-   * Ручной выбор голоса из UI (кебаб-меню персонализации). Если задан —
-   * autoPickVoice и useTtsBootstrap.syncVoiceToCurrentCharacter его не
-   * перетирают. Сбрасывается через `resetCharacter` или явно в null.
-   */
+  /** @deprecated Голос подбирается автоматически по полу персонажа. */
   voiceOverride: string | null;
   /**
    * Ручной выбор GLB-модели (внешнего вида) из UI. Если задан — рендерится
@@ -60,14 +56,9 @@ export const PERSONALIZATION_GLB_CATALOG = CHARACTER_GLB_CATALOG.map((m) => ({
   gender: m.gender,
 }));
 
-/** Авто-выбор голоса по полу модели. Пропускается, если у пользователя
- *  уже выставлен ручной override. Если групп ещё нет — пропускаем; в этом
- *  случае `useTtsBootstrap` повторит подбор сразу после загрузки. */
+/** Авто-выбор голоса по полу модели. */
 function autoPickVoice(styleId: "human-m" | "human-f") {
   if (typeof window === "undefined") return;
-  // Ручной выбор из UI — не перетираем.
-  if (useCharacterStore.getState().voiceOverride) return;
-  // динамический импорт, чтобы не тянуть ttsStore в SSR
   void import("@/store/ttsStore").then(({ useTtsStore }) => {
     const tts = useTtsStore.getState();
     const voice = pickVoiceForCharacter(tts.voiceGroups, styleId);
@@ -101,8 +92,6 @@ export const useCharacterStore = create<CharacterState>()(
         const preset = CHARACTER_PRESETS.find((p) => p.id === presetId);
         if (!preset) return;
         set({ config: { ...preset.config }, activePresetId: presetId });
-        // Автоподбор голоса по полу модели: human-m → male, human-f → female.
-        // Скипается, если в voiceOverride лежит ручной выбор пользователя.
         autoPickVoice(preset.config.styleId);
       },
 
@@ -139,9 +128,9 @@ export const useCharacterStore = create<CharacterState>()(
           modelOverride: path,
           config: { ...state.config, name, styleId },
           activePresetId: null,
+          voiceOverride: null,
         }));
-        // Если голос не override'нут — пересоберём его по новому полу.
-        if (!get().voiceOverride) autoPickVoice(styleId);
+        autoPickVoice(styleId);
       },
     }),
     {

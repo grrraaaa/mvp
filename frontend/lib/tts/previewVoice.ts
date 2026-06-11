@@ -1,16 +1,14 @@
-/** Превью языка озвучки Puter.js. */
-import { playTtsElement, stopTtsPlayback } from "@/lib/tts/playback";
-import { puterTextToSpeech } from "@/lib/tts/puterTts";
-import { puterPreviewPhrase } from "@/lib/tts/puterVoices";
+/** Превью голоса (Inworld, сервер). */
+import { stopTtsPlayback } from "@/lib/tts/playback";
+import { previewPhraseForVoice, speakWithVoice } from "@/lib/tts/voiceProvider";
 
 export interface PreviewHandle {
   done: Promise<void>;
   stop: () => void;
 }
 
-export function previewVoiceSample(languageId: string, text?: string): PreviewHandle {
+export function previewVoiceSample(voiceId: string, text?: string): PreviewHandle {
   const resolveRef: { fn: (() => void) | null } = { fn: null };
-  let activeAudio: HTMLAudioElement | null = null;
 
   const done = new Promise<void>((resolve) => {
     resolveRef.fn = resolve;
@@ -18,19 +16,16 @@ export function previewVoiceSample(languageId: string, text?: string): PreviewHa
 
   const stopFn = () => {
     stopTtsPlayback();
-    activeAudio = null;
     resolveRef.fn?.();
   };
 
   void (async () => {
     try {
-      const phrase = text ?? puterPreviewPhrase(languageId);
-      const audio = await puterTextToSpeech(phrase, languageId);
-      activeAudio = audio;
-      audio.onended = () => resolveRef.fn?.();
-      audio.onerror = () => resolveRef.fn?.();
-      await playTtsElement(audio, phrase);
+      const phrase = text ?? previewPhraseForVoice();
+      await speakWithVoice(phrase, voiceId);
     } catch {
+      /* preview failed */
+    } finally {
       resolveRef.fn?.();
     }
   })();

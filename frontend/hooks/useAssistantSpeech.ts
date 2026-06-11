@@ -1,9 +1,8 @@
 "use client";
 
 import { useCallback, useEffect } from "react";
-import { onTtsLipSync, playTtsElement, stopTtsPlayback } from "@/lib/tts/playback";
-import { puterTextToSpeech } from "@/lib/tts/puterTts";
-import { PUTER_DEFAULT_LANGUAGE } from "@/lib/tts/puterVoices";
+import { onTtsLipSync, stopTtsPlayback } from "@/lib/tts/playback";
+import { speakWithVoice } from "@/lib/tts/voiceProvider";
 import { useCharacterBehaviorStore } from "@/store/characterBehaviorStore";
 import { buildLipTimeline } from "@/lib/assistant/lipSync";
 import { useTtsStore } from "@/store/ttsStore";
@@ -27,6 +26,7 @@ function toneToEmotion(tone?: string): string {
 export function useAssistantSpeech() {
   const enabled = useTtsStore((s) => s.enabled);
   const voiceId = useTtsStore((s) => s.voiceId);
+  const defaultVoice = useTtsStore((s) => s.defaultVoice);
   const setEnabled = useTtsStore((s) => s.setEnabled);
   const { startTalk, finishTalk, setEmotion } = useCharacterBehaviorStore();
 
@@ -69,16 +69,16 @@ export function useAssistantSpeech() {
 
       stopTtsPlayback();
 
+      const activeVoice = voiceId || defaultVoice;
+      if (!activeVoice) return;
+
       try {
-        const language = voiceId || PUTER_DEFAULT_LANGUAGE;
-        const audio = await puterTextToSpeech(trimmed, language);
-        if (!isTtsEnabled()) return;
-        await playTtsElement(audio, trimmed);
+        await speakWithVoice(trimmed, activeVoice);
       } catch (err) {
-        console.warn("[TTS] Puter playback failed:", err);
+        console.warn("[TTS] playback failed:", err);
       }
     },
-    [voiceId, setEmotion, startTalk],
+    [voiceId, defaultVoice, setEmotion, startTalk],
   );
 
   const toggleWithStop = useCallback(() => {

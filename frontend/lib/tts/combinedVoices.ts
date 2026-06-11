@@ -1,15 +1,14 @@
-import type { TtsVoiceGroup } from "@/store/ttsStore";
 import {
-  PUTER_DEFAULT_LANGUAGE,
-  PUTER_VOICE_GROUPS,
-} from "@/lib/tts/puterVoices";
+  ASSISTANT_DEFAULT_VOICE,
+  ASSISTANT_VOICE_GROUPS,
+} from "@/lib/tts/assistantVoices";
 
-export const COMBINED_DEFAULT_VOICE = PUTER_DEFAULT_LANGUAGE;
-export const COMBINED_VOICE_GROUPS: TtsVoiceGroup[] = PUTER_VOICE_GROUPS;
+export const COMBINED_DEFAULT_VOICE = ASSISTANT_DEFAULT_VOICE;
+export const COMBINED_VOICE_GROUPS = ASSISTANT_VOICE_GROUPS;
 
 export function combinedFallback(defaultVoice?: string | null) {
   return {
-    groups: PUTER_VOICE_GROUPS,
+    groups: ASSISTANT_VOICE_GROUPS,
     defaultVoice: defaultVoice ?? COMBINED_DEFAULT_VOICE,
   };
 }

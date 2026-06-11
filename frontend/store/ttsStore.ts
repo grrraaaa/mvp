@@ -31,6 +31,7 @@ export interface TtsVoiceOption {
   tier?: string | null;
   description?: string | null;
   preview_audio?: string | null;
+  provider?: "inworld" | "puter" | string | null;
 }
 
 export interface TtsVoiceGroup {

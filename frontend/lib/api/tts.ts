@@ -7,6 +7,7 @@ export interface TtsStatus {
   provider: string | null;
   providers?: string[];
   puter_available?: boolean;
+  inworld_available?: boolean;
   voice?: string | null;
   voice_selection?: boolean;
 }

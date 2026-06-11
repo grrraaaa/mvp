@@ -69,5 +69,12 @@ async def health():
         "version": "0.1.0",
         "db": db_status,
         "ai_mode": settings.ai_provider,
-        "tts": "puter-js",
+        "tts": (
+            "inworld-tts-2"
+            if __import__(
+                "services.tts.inworld_voices",
+                fromlist=["_inworld_configured"],
+            )._inworld_configured()
+            else "none"
+        ),
     }
