@@ -8,7 +8,7 @@
   <style>
     .uc-ellipse { fill: #fff; stroke-width: 1.5; cursor: pointer; transition: fill .15s, stroke-width .15s; }
     .uc-ellipse:hover, .uc-group.active .uc-ellipse { fill: #f0faf8; stroke-width: 2.2; }
-    .uc-group.dim { opacity: 0.22; }
+    .uc-group.dim { opacity: 0.2; }
     .uc-text { font-size: 11px; font-weight: 600; fill: var(--ink); pointer-events: none; }
     .uc-id { font-size: 8px; fill: var(--ink-3); pointer-events: none; font-family: Consolas, monospace; }
     .pkg-box { fill: var(--paper-2); stroke: var(--line); stroke-width: 1; }
@@ -20,17 +20,15 @@
     .actor-stick { stroke: var(--ink-2); stroke-width: 2; fill: none; stroke-linecap: round; }
     .actor-head { fill: var(--ink-2); }
     .sys-actor { fill: var(--paper-2); stroke: var(--ink-3); stroke-width: 1.2; stroke-dasharray: 4 3; }
-    .assoc-line.dim { opacity: 0.08; }
+    .assoc-line.dim { opacity: 0.06; }
+    .rel-label { font-size: 8px; fill: var(--ink-3); font-style: italic; pointer-events: none; }
     .cat-ai .uc-ellipse { stroke: var(--brand); }
     .cat-bank .uc-ellipse { stroke: var(--accent); }
     .cat-nav .uc-ellipse { stroke: var(--nav); }
     .cat-3d .uc-ellipse { stroke: var(--info); }
     .cat-meta .uc-ellipse { stroke: var(--meta); }
-    .cat-ai .pkg-box { stroke: var(--brand); stroke-opacity: 0.35; }
-    .cat-bank .pkg-box { stroke: var(--accent); stroke-opacity: 0.35; }
-    .cat-nav .pkg-box { stroke: var(--nav); stroke-opacity: 0.35; }
-    .cat-3d .pkg-box { stroke: var(--info); stroke-opacity: 0.35; }
-    .cat-meta .pkg-box { stroke: var(--meta); stroke-opacity: 0.35; }
+    .cat-overview .uc-ellipse { stroke: var(--brand); }
+    .tab-panel .diagram-wrap { min-height: 420px; }
   </style>
 </head>
 <body>
@@ -40,7 +38,7 @@
         <div class="brand-icon">S</div>
         <div>
           <div class="brand-title">Use Case Diagram</div>
-          <div class="brand-sub">SBBOL Demo MVP · 36 UC</div>
+          <div class="brand-sub">SBBOL Demo MVP · UML</div>
         </div>
       </a>
       <nav class="nav-links">
@@ -52,27 +50,69 @@
 
     <section class="hero">
       <h1>Варианты <em>использования</em> системы</h1>
-      <p>UML use case: актёры, граница системы, пакеты подсистем. Связи идут по вертикальным шинам — стрелки не пересекаются.</p>
+      <p>
+        Классическая UML use case: актёры слева и справа, овалы внутри границы системы,
+        ассоциации без стрелок. Детализация — по вкладкам, без «цепочек» между UC.
+      </p>
     </section>
 
     <div class="frame">
       <div class="frame-head">
-        <div class="frame-title">Use case diagram — полный проект</div>
-        <div class="frame-hint">Клик по овалу UC — описание</div>
+        <div class="frame-title">Use case diagram</div>
+        <div class="frame-hint">Клик по овалу — описание</div>
       </div>
+
+      <div class="tabs" id="uc-tabs">
+        <button class="tab active" data-tab="panel-overview">Обзор</button>
+        <button class="tab" data-tab="panel-ai">AI · 10 UC</button>
+        <button class="tab" data-tab="panel-bank">Банк · 10 UC</button>
+        <button class="tab" data-tab="panel-nav">Навигация · 6 UC</button>
+        <button class="tab" data-tab="panel-3d">3D · 4 UC</button>
+        <button class="tab" data-tab="panel-meta">Система · 6 UC</button>
+      </div>
+
       <div class="legend">
-        <span class="legend-item"><span class="legend-swatch" style="background:var(--brand)"></span> AI</span>
+        <span class="legend-item"><span class="legend-line" style="background:#7a8a90"></span> ассоциация</span>
+        <span class="legend-item"><span class="legend-line" style="background:var(--info);opacity:.6"></span> «include»</span>
+        <span class="legend-item"><span class="legend-line" style="background:var(--accent);opacity:.6"></span> «extend»</span>
+        <span class="legend-item" style="margin-left:auto"><span class="legend-swatch" style="background:var(--brand)"></span> AI</span>
         <span class="legend-item"><span class="legend-swatch" style="background:var(--accent)"></span> Банк</span>
-        <span class="legend-item"><span class="legend-swatch" style="background:var(--nav)"></span> Навигация</span>
+        <span class="legend-item"><span class="legend-swatch" style="background:var(--nav)"></span> UI</span>
         <span class="legend-item"><span class="legend-swatch" style="background:var(--info)"></span> 3D</span>
         <span class="legend-item"><span class="legend-swatch" style="background:var(--meta)"></span> Система</span>
-        <span class="legend-item" style="margin-left:auto"><span class="legend-line" style="background:#9ab"></span> ассоциация</span>
-        <span class="legend-item"><span class="legend-line" style="background:var(--accent); opacity:.5"></span> extend</span>
-        <span class="legend-item"><span class="legend-line" style="background:var(--info); opacity:.5"></span> include</span>
       </div>
-      <div class="diagram-wrap">
-        <svg class="diagram-svg" id="uc-svg" viewBox="0 0 1500 1180" xmlns="http://www.w3.org/2000/svg"></svg>
+
+      <div class="tab-panel active" id="panel-overview">
+        <div class="diagram-wrap">
+          <svg class="diagram-svg" id="svg-overview" viewBox="0 0 1100 720" xmlns="http://www.w3.org/2000/svg"></svg>
+        </div>
       </div>
+      <div class="tab-panel" id="panel-ai">
+        <div class="diagram-wrap">
+          <svg class="diagram-svg" id="svg-ai" viewBox="0 0 1100 820" xmlns="http://www.w3.org/2000/svg"></svg>
+        </div>
+      </div>
+      <div class="tab-panel" id="panel-bank">
+        <div class="diagram-wrap">
+          <svg class="diagram-svg" id="svg-bank" viewBox="0 0 1100 820" xmlns="http://www.w3.org/2000/svg"></svg>
+        </div>
+      </div>
+      <div class="tab-panel" id="panel-nav">
+        <div class="diagram-wrap">
+          <svg class="diagram-svg" id="svg-nav" viewBox="0 0 900 620" xmlns="http://www.w3.org/2000/svg"></svg>
+        </div>
+      </div>
+      <div class="tab-panel" id="panel-3d">
+        <div class="diagram-wrap">
+          <svg class="diagram-svg" id="svg-3d" viewBox="0 0 900 520" xmlns="http://www.w3.org/2000/svg"></svg>
+        </div>
+      </div>
+      <div class="tab-panel" id="panel-meta">
+        <div class="diagram-wrap">
+          <svg class="diagram-svg" id="svg-meta" viewBox="0 0 1000 620" xmlns="http://www.w3.org/2000/svg"></svg>
+        </div>
+      </div>
+
       <div class="info-panel" id="uc-info"></div>
     </div>
 
@@ -121,196 +161,382 @@
     uc34:{id:"UC-34",cat:"meta",name:"1С sync",desc:"Импорт документов из 1С.",file:"api/onec.py"},
     uc35:{id:"UC-35",cat:"meta",name:"Health-check",desc:"GET /api/health ai_mode db tts.",file:"main.py"},
     uc36:{id:"UC-36",cat:"meta",name:"Сидинг демо",desc:"Postgres seed_* скрипты.",file:"db/seed_*.py"},
+    ov01:{id:"—",cat:"overview",name:"Диалог с ассистентом",desc:"Текст, голос, streaming, chips — основной канал взаимодействия.",file:"UC-01, UC-02"},
+    ov02:{id:"—",cat:"overview",name:"Заполнение форм AI",desc:"OCR счёта и пошаговое заполнение платёжных форм.",file:"UC-03, UC-04"},
+    ov03:{id:"—",cat:"overview",name:"Персонализация",desc:"Голос, 3D-модель, пресет характера ассистента.",file:"UC-06–UC-09"},
+    ov04:{id:"—",cat:"overview",name:"Платежи и подпись",desc:"Создание, подписание, отправка в шлюз, повтор последнего.",file:"UC-10–UC-13"},
+    ov05:{id:"—",cat:"overview",name:"Выписки и документы",desc:"Выписка, PDF, журнал, зарплатные ведомости.",file:"UC-14–UC-16, UC-20"},
+    ov06:{id:"—",cat:"overview",name:"Аналитика и поиск",desc:"Графики, smart search, риск контрагента.",file:"UC-17–UC-19"},
+    ov07:{id:"—",cat:"overview",name:"Навигация UI",desc:"Sidebar, dashboard, flyout, mobile, карта планет.",file:"UC-21–UC-26"},
+    ov08:{id:"—",cat:"overview",name:"3D-персонаж",desc:"GLB, idle, lip-sync, превью в настройках.",file:"UC-27–UC-30"},
+    ov09:{id:"—",cat:"overview",name:"Доступ и обучение",desc:"Basic Auth, JWT, каталог команд /learning.",file:"UC-31–UC-33"},
+    ov10:{id:"—",cat:"overview",name:"Интеграции 1С",desc:"Синхронизация документов, health-check, сидинг.",file:"UC-34–UC-36"},
   };
 
-  const PACKAGES = [
-    { id:"ai", cat:"cat-ai", title:"AI Ассистент", sub:"10 UC", x:210, y:70, w:520, h:400, color:"#107f8c",
-      ucs:["uc01","uc02","uc03","uc04","uc05","uc06","uc07","uc08","uc09","uc10"] },
-    { id:"bank", cat:"cat-bank", title:"Банковские операции", sub:"10 UC", x:760, y:70, w:520, h:400, color:"#c97b3f",
-      ucs:["uc11","uc12","uc13","uc14","uc15","uc16","uc17","uc18","uc19","uc20"] },
-    { id:"nav", cat:"cat-nav", title:"Навигация & UI", sub:"6 UC", x:210, y:490, w:400, h:280, color:"#5c6b73",
-      ucs:["uc21","uc22","uc23","uc24","uc25","uc26"] },
-    { id:"3d", cat:"cat-3d", title:"3D & медиа", sub:"4 UC", x:630, y:490, w:320, h:200, color:"#4a6b8a",
-      ucs:["uc27","uc28","uc29","uc30"] },
-    { id:"meta", cat:"cat-meta", title:"Система & 1С", sub:"6 UC", x:970, y:490, w:310, h:280, color:"#6b5b95",
-      ucs:["uc31","uc32","uc33","uc34","uc35","uc36"] },
-  ];
+  const ALL_META = UC_META;
 
-  const USER_UC = Object.keys(UC_META);
-  const EXT_LINKS = {
-    llm: ["uc01","uc05","uc09","uc17"],
-    tts: ["uc06","uc07","uc29"],
-    ocr: ["uc03","uc04"],
-    pg: ["uc11","uc14","uc18","uc20","uc10"],
-    gw: ["uc12","uc13"],
-    onec: ["uc34"],
-  };
-
-  function renderActor(svg, x, y, name, sub, type="human") {
+  /* ── SVG helpers ── */
+  function actorHuman(svg, x, y, name, sub) {
     const g = document.createElementNS("http://www.w3.org/2000/svg", "g");
     g.setAttribute("transform", `translate(${x},${y})`);
-    if (type === "human") {
-      g.innerHTML = `
-        <circle class="actor-head" cx="0" cy="0" r="12"/>
-        <line class="actor-stick" x1="0" y1="12" x2="0" y2="48"/>
-        <line class="actor-stick" x1="-18" y1="26" x2="18" y2="26"/>
-        <line class="actor-stick" x1="0" y1="48" x2="-14" y2="72"/>
-        <line class="actor-stick" x1="0" y1="48" x2="14" y2="72"/>
-        <text class="actor-name" x="0" y="94" text-anchor="middle">${name}</text>
-        <text class="actor-sub" x="0" y="110" text-anchor="middle">${sub}</text>`;
-    } else {
-      g.innerHTML = `
-        <rect class="sys-actor" x="-46" y="-16" width="92" height="36" rx="6"/>
-        <text class="actor-name" x="0" y="2" text-anchor="middle" font-size="11">«system»</text>
-        <text class="actor-name" x="0" y="16" text-anchor="middle" font-size="11">${name}</text>
-        <text class="actor-sub" x="0" y="38" text-anchor="middle">${sub}</text>`;
-    }
+    g.innerHTML = `
+      <circle class="actor-head" cx="0" cy="0" r="12"/>
+      <line class="actor-stick" x1="0" y1="12" x2="0" y2="48"/>
+      <line class="actor-stick" x1="-18" y1="26" x2="18" y2="26"/>
+      <line class="actor-stick" x1="0" y1="48" x2="-14" y2="72"/>
+      <line class="actor-stick" x1="0" y1="48" x2="14" y2="72"/>
+      <text class="actor-name" x="0" y="94" text-anchor="middle">${name}</text>
+      <text class="actor-sub" x="0" y="110" text-anchor="middle">${sub}</text>`;
     svg.appendChild(g);
-    return { x, y: y + (type === "human" ? 50 : 0) };
+    return { x, y: y + 50, right: x + 18 };
   }
 
-  function layoutUcsInPkg(pkg) {
-    const cols = pkg.ucs.length > 6 ? 2 : 2;
-    const cellW = (pkg.w - 40) / cols;
-    const rows = Math.ceil(pkg.ucs.length / cols);
-    const cellH = (pkg.h - 50) / rows;
-    const out = [];
-    pkg.ucs.forEach((key, i) => {
-      const col = i % cols;
-      const row = Math.floor(i / cols);
-      const cx = pkg.x + 20 + cellW * col + cellW / 2;
-      const cy = pkg.y + 42 + cellH * row + cellH / 2;
-      const meta = UC_META[key];
-      const label = meta.name.length > 22 ? meta.name.slice(0, 20) + "…" : meta.name;
-      const rx = Math.min(108, label.length * 5.2 + 24);
-      out.push({ key, cx, cy, rx, label, meta });
+  function actorSystem(svg, x, y, name, sub) {
+    const g = document.createElementNS("http://www.w3.org/2000/svg", "g");
+    g.setAttribute("transform", `translate(${x},${y})`);
+    g.innerHTML = `
+      <rect class="sys-actor" x="-52" y="-18" width="104" height="40" rx="6"/>
+      <text class="actor-name" x="0" y="4" text-anchor="middle" font-size="11">${name}</text>
+      <text class="actor-sub" x="0" y="36" text-anchor="middle">${sub}</text>`;
+    svg.appendChild(g);
+    return { x: x - 52, y: y + 4, left: x - 52 };
+  }
+
+  function systemBoundary(svg, x, y, w, h, title) {
+    const r = document.createElementNS("http://www.w3.org/2000/svg", "rect");
+    r.setAttribute("class", "sys-box");
+    r.setAttribute("x", x); r.setAttribute("y", y);
+    r.setAttribute("width", w); r.setAttribute("height", h);
+    r.setAttribute("rx", "16");
+    svg.appendChild(r);
+    const t = document.createElementNS("http://www.w3.org/2000/svg", "text");
+    t.setAttribute("x", x + 16); t.setAttribute("y", y + 24);
+    t.setAttribute("class", "pkg-title");
+    t.textContent = title;
+    svg.appendChild(t);
+    return { x, y, w, h, innerLeft: x + 20, innerRight: x + w - 20 };
+  }
+
+  function useCase(svg, cx, cy, key, label, cat) {
+    const meta = ALL_META[key];
+    const rx = Math.min(118, Math.max(72, label.length * 5.4 + 20));
+    const g = document.createElementNS("http://www.w3.org/2000/svg", "g");
+    g.setAttribute("class", `uc-group cat-${cat}`);
+    g.dataset.key = key;
+    g.dataset.cat = cat;
+    const el = document.createElementNS("http://www.w3.org/2000/svg", "ellipse");
+    el.setAttribute("class", "uc-ellipse");
+    el.setAttribute("cx", cx); el.setAttribute("cy", cy);
+    el.setAttribute("rx", rx); el.setAttribute("ry", "22");
+    g.appendChild(el);
+    if (meta?.id && meta.id !== "—") {
+      const idT = document.createElementNS("http://www.w3.org/2000/svg", "text");
+      idT.setAttribute("class", "uc-id");
+      idT.setAttribute("x", cx); idT.setAttribute("y", cy - 5);
+      idT.setAttribute("text-anchor", "middle");
+      idT.textContent = meta.id;
+      g.appendChild(idT);
+    }
+    const tx = document.createElementNS("http://www.w3.org/2000/svg", "text");
+    tx.setAttribute("class", "uc-text");
+    tx.setAttribute("x", cx); tx.setAttribute("y", cy + (meta?.id === "—" ? 4 : 9));
+    tx.setAttribute("text-anchor", "middle");
+    tx.textContent = label;
+    g.appendChild(tx);
+    svg.appendChild(g);
+    return { g, cx, cy, left: cx - rx, right: cx + rx, top: cy - 22, bottom: cy + 22, rx };
+  }
+
+  function assoc(svg, x1, y1, x2, y2, spineX) {
+    const sx = spineX ?? Math.round((x1 + x2) / 2);
+    return drawAssoc(svg, `M ${x1} ${y1} H ${sx} V ${y2} H ${x2}`, { arrow: false });
+  }
+
+  function includeRel(svg, from, to, bendY) {
+    const by = bendY ?? Math.round((from.cy + to.cy) / 2);
+    const path = drawAssoc(svg,
+      `M ${from.cx} ${from.top} V ${by} H ${to.cx} V ${to.bottom}`,
+      { dashed: true, color: "#4a6b8a", marker: "arr-inc", arrow: true });
+    const lbl = document.createElementNS("http://www.w3.org/2000/svg", "text");
+    lbl.setAttribute("class", "rel-label");
+    lbl.setAttribute("x", (from.cx + to.cx) / 2);
+    lbl.setAttribute("y", by - 4);
+    lbl.setAttribute("text-anchor", "middle");
+    lbl.textContent = "«include»";
+    svg.appendChild(lbl);
+    return path;
+  }
+
+  function extendRel(svg, from, to, bendY) {
+    const by = bendY ?? Math.round((from.cy + to.cy) / 2);
+    const path = drawAssoc(svg,
+      `M ${from.cx} ${from.top} V ${by} H ${to.cx} V ${to.bottom}`,
+      { dashed: true, color: "#c97b3f", marker: "arr-ext", arrow: true });
+    const lbl = document.createElementNS("http://www.w3.org/2000/svg", "text");
+    lbl.setAttribute("class", "rel-label");
+    lbl.setAttribute("x", (from.cx + to.cx) / 2);
+    lbl.setAttribute("y", by - 4);
+    lbl.setAttribute("text-anchor", "middle");
+    lbl.textContent = "«extend»";
+    svg.appendChild(lbl);
+    return path;
+  }
+
+  function layoutColumn(keys, cx, y0, gap) {
+    return keys.map((key, i) => {
+      const cy = y0 + i * gap;
+      const meta = ALL_META[key];
+      return { key, cx, cy, label: meta.name, cat: meta.cat };
     });
-    return out;
   }
 
-  function render() {
-    const svg = document.getElementById("uc-svg");
+  function renderPanel(svgId, renderFn) {
+    const svg = document.getElementById(svgId);
     svg.innerHTML = "";
-    addMarkerDefs(svg, "arr", "#7a8a90");
-    addMarkerDefs(svg, "arr-ext", "#c97b3f");
     addMarkerDefs(svg, "arr-inc", "#4a6b8a");
-
-    const sys = document.createElementNS("http://www.w3.org/2000/svg", "rect");
-    sys.setAttribute("class", "sys-box");
-    sys.setAttribute("x", "180"); sys.setAttribute("y", "40");
-    sys.setAttribute("width", "1120"); sys.setAttribute("height", "760");
-    sys.setAttribute("rx", "18");
-    svg.appendChild(sys);
-    const sysT = document.createElementNS("http://www.w3.org/2000/svg", "text");
-    sysT.setAttribute("x", "200"); sysT.setAttribute("y", "64");
-    sysT.setAttribute("class", "pkg-title");
-    sysT.textContent = "«system» SBBOL Demo MVP";
-    svg.appendChild(sysT);
-
-    const actors = [];
-    actors.push(renderActor(svg, 70, 520, "Пользователь", "юрлицо / бухгалтер"));
-    actors.push(renderActor(svg, 70, 180, "Микрофон", "Web Speech", "human"));
-    actors.push(renderActor(svg, 70, 300, "Камера", "фото счёта", "human"));
-    actors.push(renderActor(svg, 70, 900, "1С", "учёт", "human"));
-
-    const extX = 1380;
-    const ext = {
-      llm: renderActor(svg, extX, 120, "OpenRouter", "LLM", "sys"),
-      tts: renderActor(svg, extX, 280, "Inworld TTS", "озвучка", "sys"),
-      ocr: renderActor(svg, extX, 420, "OCR API", "ImageToText", "sys"),
-      pg: renderActor(svg, extX, 560, "PostgreSQL", "данные", "sys"),
-      gw: renderActor(svg, extX, 700, "Шлюз", "gateway_sim", "sys"),
-      onec: renderActor(svg, extX, 860, "1С API", "sync", "sys"),
-    };
-
-    const ucGroups = [];
-    const positions = {};
-    const lines = [];
-
-    PACKAGES.forEach((pkg) => {
-      const gPkg = document.createElementNS("http://www.w3.org/2000/svg", "g");
-      gPkg.setAttribute("class", pkg.cat);
-      const box = document.createElementNS("http://www.w3.org/2000/svg", "rect");
-      box.setAttribute("class", "pkg-box");
-      box.setAttribute("x", pkg.x); box.setAttribute("y", pkg.y);
-      box.setAttribute("width", pkg.w); box.setAttribute("height", pkg.h);
-      box.setAttribute("rx", "10");
-      gPkg.appendChild(box);
-      const t1 = document.createElementNS("http://www.w3.org/2000/svg", "text");
-      t1.setAttribute("x", pkg.x + 14); t1.setAttribute("y", pkg.y + 22);
-      t1.setAttribute("class", "pkg-title");
-      t1.setAttribute("fill", pkg.color);
-      t1.textContent = pkg.title;
-      gPkg.appendChild(t1);
-      const t2 = document.createElementNS("http://www.w3.org/2000/svg", "text");
-      t2.setAttribute("x", pkg.x + 14); t2.setAttribute("y", pkg.y + 36);
-      t2.setAttribute("class", "pkg-sub");
-      t2.textContent = pkg.sub;
-      gPkg.appendChild(t2);
-
-      layoutUcsInPkg(pkg).forEach((u) => {
-        positions[u.key] = { cx: u.cx, cy: u.cy, left: u.cx - u.rx };
-        const g = document.createElementNS("http://www.w3.org/2000/svg", "g");
-        g.setAttribute("class", `uc-group cat-${u.meta.cat}`);
-        g.dataset.key = u.key;
-        g.dataset.cat = u.meta.cat;
-        const el = document.createElementNS("http://www.w3.org/2000/svg", "ellipse");
-        el.setAttribute("class", "uc-ellipse");
-        el.setAttribute("cx", u.cx); el.setAttribute("cy", u.cy);
-        el.setAttribute("rx", u.rx); el.setAttribute("ry", "20");
-        g.appendChild(el);
-        const idT = document.createElementNS("http://www.w3.org/2000/svg", "text");
-        idT.setAttribute("class", "uc-id");
-        idT.setAttribute("x", u.cx); idT.setAttribute("y", u.cy - 4);
-        idT.setAttribute("text-anchor", "middle");
-        idT.textContent = u.meta.id;
-        g.appendChild(idT);
-        const tx = document.createElementNS("http://www.w3.org/2000/svg", "text");
-        tx.setAttribute("class", "uc-text");
-        tx.setAttribute("x", u.cx); tx.setAttribute("y", u.cy + 10);
-        tx.setAttribute("text-anchor", "middle");
-        tx.textContent = u.label;
-        g.appendChild(tx);
-        gPkg.appendChild(g);
-        ucGroups.push(g);
-      });
-      svg.appendChild(gPkg);
-    });
-
-    const leftSpine = 168;
-    const userAx = 82;
-    USER_UC.forEach((key, idx) => {
-      const p = positions[key];
-      if (!p) return;
-      const lane = leftSpine - (idx % 3) * 4;
-      lines.push(drawAssoc(svg, spineRoute(userAx, 570, lane, p.left, p.cy)));
-    });
-
-    lines.push(drawAssoc(svg, spineRoute(82, 230, 150, positions.uc02?.left || 210, positions.uc02?.cy || 200)));
-    lines.push(drawAssoc(svg, spineRoute(82, 350, 155, positions.uc03?.left || 210, positions.uc03?.cy || 280)));
-    lines.push(drawAssoc(svg, spineRoute(82, 950, 160, positions.uc34?.left || 980, positions.uc34?.cy || 600)));
-
-    const rightSpine = 1310;
-    Object.entries(EXT_LINKS).forEach(([extKey, keys]) => {
-      const ex = ext[extKey];
-      keys.forEach((key, idx) => {
-        const p = positions[key];
-        if (!p || !ex) return;
-        const lane = rightSpine + (idx % 2) * 6;
-        const dashed = extKey === "llm" || extKey === "ocr";
-        const color = dashed ? "#4a6b8a" : "#7a8a90";
-        const marker = dashed ? "arr-inc" : "arr";
-        lines.push(drawAssoc(svg, `M ${p.cx + 100} ${p.cy} H ${lane} V ${ex.y} H ${ex.x - 46}`, { dashed, color, marker }));
-      });
-    });
-
-    lines.push(drawAssoc(svg, orthH(positions.uc02?.cx || 300, positions.uc02?.cy || 200, positions.uc01?.left || 250, positions.uc01?.cy || 160, 280), { dashed: true, color: "#c97b3f", marker: "arr-ext" }));
-    lines.push(drawAssoc(svg, orthH(positions.uc03?.cx || 300, positions.uc03?.cy || 280, positions.uc04?.left || 250, positions.uc04?.cy || 320, 290), { dashed: true, color: "#c97b3f", marker: "arr-ext" }));
-
-    bindHighlight(ucGroups, lines, document.getElementById("uc-info"), UC_META);
+    addMarkerDefs(svg, "arr-ext", "#c97b3f");
+    return renderFn(svg);
   }
 
-  document.addEventListener("DOMContentLoaded", render);
+  /* ── OVERVIEW ── */
+  function renderOverview(svg) {
+    const groups = [], lines = [];
+    const sys = systemBoundary(svg, 200, 50, 620, 620, "«system» SBBOL Demo MVP");
+
+    const user = actorHuman(svg, 72, 300, "Пользователь", "юрлицо / бухгалтер");
+    const mic = actorHuman(svg, 72, 130, "Микрофон", "Web Speech");
+    const cam = actorHuman(svg, 72, 480, "Камера", "фото счёта");
+
+    const llm = actorSystem(svg, 920, 120, "OpenRouter", "LLM");
+    const pg = actorSystem(svg, 920, 280, "PostgreSQL", "данные");
+    const gw = actorSystem(svg, 920, 420, "Шлюз", "gateway_sim");
+    const onec = actorSystem(svg, 920, 560, "1С", "учёт");
+
+    const spineL = 178;
+    const spineR = 842;
+
+    const items = layoutColumn(
+      ["ov01","ov02","ov03","ov04","ov05","ov06","ov07","ov08","ov09","ov10"],
+      510, 100, 58
+    );
+    const nodes = {};
+    items.forEach((u) => {
+      nodes[u.key] = useCase(svg, u.cx, u.cy, u.key, u.label, u.cat);
+      groups.push(nodes[u.key].g);
+    });
+
+    ["ov01","ov02","ov03","ov04","ov05","ov06","ov07","ov08","ov09"].forEach((k) => {
+      lines.push(assoc(svg, user.right, user.y, nodes[k].left, nodes[k].cy, spineL));
+    });
+    lines.push(assoc(svg, mic.right, mic.y, nodes.ov01.left, nodes.ov01.cy, spineL - 12));
+    lines.push(assoc(svg, cam.right, cam.y, nodes.ov02.left, nodes.ov02.cy, spineL - 8));
+
+    lines.push(assoc(svg, nodes.ov01.right, nodes.ov01.cy, llm.left, llm.y, spineR));
+    lines.push(assoc(svg, nodes.ov06.right, nodes.ov06.cy, llm.left, llm.y + 40, spineR + 10));
+    lines.push(assoc(svg, nodes.ov04.right, nodes.ov04.cy, pg.left, pg.y, spineR));
+    lines.push(assoc(svg, nodes.ov05.right, nodes.ov05.cy, pg.left, pg.y + 30, spineR + 8));
+    lines.push(assoc(svg, nodes.ov04.right, nodes.ov04.cy, gw.left, gw.y, spineR + 20));
+    lines.push(assoc(svg, nodes.ov10.right, nodes.ov10.cy, onec.left, onec.y, spineR));
+    lines.push(assoc(svg, user.right, user.y + 60, onec.left, onec.y, spineL - 20));
+
+    return { groups, lines };
+  }
+
+  /* ── AI ── */
+  function renderAI(svg) {
+    const groups = [], lines = [];
+    systemBoundary(svg, 200, 40, 620, 740, "«subsystem» AI Ассистент");
+
+    const user = actorHuman(svg, 72, 340, "Пользователь", "");
+    const mic = actorHuman(svg, 72, 160, "Микрофон", "");
+    const cam = actorHuman(svg, 72, 520, "Камера", "");
+    const llm = actorSystem(svg, 920, 200, "OpenRouter", "LLM");
+    const tts = actorSystem(svg, 920, 360, "Inworld TTS", "озвучка");
+    const ocr = actorSystem(svg, 920, 520, "OCR API", "ImageToText");
+    const pg = actorSystem(svg, 920, 680, "PostgreSQL", "данные");
+
+    const spineL = 178, spineR = 842;
+    const col1 = layoutColumn(["uc01","uc03","uc05","uc07","uc09"], 380, 90, 72);
+    const col2 = layoutColumn(["uc02","uc04","uc06","uc08","uc10"], 640, 90, 72);
+    const nodes = {};
+    [...col1, ...col2].forEach((u) => {
+      nodes[u.key] = useCase(svg, u.cx, u.cy, u.key, u.label, u.cat);
+      groups.push(nodes[u.key].g);
+    });
+
+    ["uc01","uc04","uc05","uc06","uc07","uc08","uc09","uc10"].forEach((k) => {
+      lines.push(assoc(svg, user.right, user.y, nodes[k].left, nodes[k].cy, spineL));
+    });
+    lines.push(assoc(svg, mic.right, mic.y, nodes.uc02.left, nodes.uc02.cy, spineL - 10));
+    lines.push(assoc(svg, cam.right, cam.y, nodes.uc03.left, nodes.uc03.cy, spineL - 6));
+
+    lines.push(assoc(svg, nodes.uc01.right, nodes.uc01.cy, llm.left, llm.y, spineR));
+    lines.push(assoc(svg, nodes.uc05.right, nodes.uc05.cy, llm.left, llm.y + 20, spineR + 6));
+    lines.push(assoc(svg, nodes.uc06.right, nodes.uc06.cy, tts.left, tts.y, spineR));
+    lines.push(assoc(svg, nodes.uc03.right, nodes.uc03.cy, ocr.left, ocr.y, spineR));
+    lines.push(assoc(svg, nodes.uc10.right, nodes.uc10.cy, pg.left, pg.y, spineR));
+
+    lines.push(extendRel(svg, nodes.uc02, nodes.uc01, 68));
+    lines.push(extendRel(svg, nodes.uc03, nodes.uc04, 200));
+    lines.push(includeRel(svg, nodes.uc04, nodes.uc01, 155));
+
+    return { groups, lines };
+  }
+
+  /* ── BANK ── */
+  function renderBank(svg) {
+    const groups = [], lines = [];
+    systemBoundary(svg, 200, 40, 620, 740, "«subsystem» Банковские операции");
+
+    const user = actorHuman(svg, 72, 360, "Пользователь", "");
+    const pg = actorSystem(svg, 920, 280, "PostgreSQL", "данные");
+    const gw = actorSystem(svg, 920, 480, "Шлюз", "gateway_sim");
+
+    const spineL = 178, spineR = 842;
+    const col1 = layoutColumn(["uc11","uc13","uc15","uc17","uc19"], 380, 90, 72);
+    const col2 = layoutColumn(["uc12","uc14","uc16","uc18","uc20"], 640, 90, 72);
+    const nodes = {};
+    [...col1, ...col2].forEach((u) => {
+      nodes[u.key] = useCase(svg, u.cx, u.cy, u.key, u.label, u.cat);
+      groups.push(nodes[u.key].g);
+    });
+
+    Object.keys(nodes).forEach((k) => {
+      lines.push(assoc(svg, user.right, user.y, nodes[k].left, nodes[k].cy, spineL));
+    });
+    ["uc11","uc14","uc18","uc20"].forEach((k) => {
+      lines.push(assoc(svg, nodes[k].right, nodes[k].cy, pg.left, pg.y, spineR));
+    });
+    lines.push(assoc(svg, nodes.uc12.right, nodes.uc12.cy, gw.left, gw.y, spineR));
+    lines.push(includeRel(svg, nodes.uc12, nodes.uc13, 250));
+    lines.push(includeRel(svg, nodes.uc14, nodes.uc15, 400));
+
+    return { groups, lines };
+  }
+
+  /* ── NAV ── */
+  function renderNav(svg) {
+    const groups = [], lines = [];
+    systemBoundary(svg, 200, 50, 520, 500, "«subsystem» Навигация & UI");
+
+    const user = actorHuman(svg, 72, 280, "Пользователь", "");
+    const spineL = 178;
+    const items = layoutColumn(["uc21","uc22","uc23","uc24","uc25","uc26"], 460, 100, 68);
+    const nodes = {};
+    items.forEach((u) => {
+      nodes[u.key] = useCase(svg, u.cx, u.cy, u.key, u.label, u.cat);
+      groups.push(nodes[u.key].g);
+    });
+    Object.keys(nodes).forEach((k) => {
+      lines.push(assoc(svg, user.right, user.y, nodes[k].left, nodes[k].cy, spineL));
+    });
+    lines.push(includeRel(svg, nodes.uc25, nodes.uc23, 320));
+    lines.push(includeRel(svg, nodes.uc21, nodes.uc22, 200));
+    return { groups, lines };
+  }
+
+  /* ── 3D ── */
+  function render3D(svg) {
+    const groups = [], lines = [];
+    systemBoundary(svg, 200, 50, 520, 400, "«subsystem» 3D & медиа");
+
+    const user = actorHuman(svg, 72, 220, "Пользователь", "");
+    const tts = actorSystem(svg, 820, 200, "Inworld TTS", "озвучка");
+    const spineL = 178, spineR = 742;
+    const items = layoutColumn(["uc27","uc28","uc29","uc30"], 460, 110, 72);
+    const nodes = {};
+    items.forEach((u) => {
+      nodes[u.key] = useCase(svg, u.cx, u.cy, u.key, u.label, u.cat);
+      groups.push(nodes[u.key].g);
+    });
+    lines.push(assoc(svg, user.right, user.y, nodes.uc30.left, nodes.uc30.cy, spineL));
+    lines.push(assoc(svg, nodes.uc29.right, nodes.uc29.cy, tts.left, tts.y, spineR));
+    lines.push(includeRel(svg, nodes.uc27, nodes.uc28, 175));
+    lines.push(includeRel(svg, nodes.uc28, nodes.uc29, 290));
+    return { groups, lines };
+  }
+
+  /* ── META ── */
+  function renderMeta(svg) {
+    const groups = [], lines = [];
+    systemBoundary(svg, 200, 50, 560, 500, "«subsystem» Система & 1С");
+
+    const user = actorHuman(svg, 72, 200, "Пользователь", "");
+    const admin = actorHuman(svg, 72, 400, "Админ / DevOps", "");
+    const onec = actorSystem(svg, 860, 300, "1С API", "sync");
+    const spineL = 178, spineR = 782;
+    const col1 = layoutColumn(["uc31","uc33","uc35"], 400, 110, 72);
+    const col2 = layoutColumn(["uc32","uc34","uc36"], 620, 110, 72);
+    const nodes = {};
+    [...col1, ...col2].forEach((u) => {
+      nodes[u.key] = useCase(svg, u.cx, u.cy, u.key, u.label, u.cat);
+      groups.push(nodes[u.key].g);
+    });
+    lines.push(assoc(svg, user.right, user.y, nodes.uc32.left, nodes.uc32.cy, spineL));
+    lines.push(assoc(svg, user.right, user.y + 20, nodes.uc33.left, nodes.uc33.cy, spineL - 8));
+    lines.push(assoc(svg, admin.right, admin.y, nodes.uc35.left, nodes.uc35.cy, spineL - 12));
+    lines.push(assoc(svg, admin.right, admin.y, nodes.uc36.left, nodes.uc36.cy, spineL - 16));
+    lines.push(assoc(svg, nodes.uc34.right, nodes.uc34.cy, onec.left, onec.y, spineR));
+    lines.push(includeRel(svg, nodes.uc31, nodes.uc32, 200));
+    return { groups, lines };
+  }
+
+  /* ── Init ── */
+  const panels = {};
+  const infoEl = document.getElementById("uc-info");
+  let activeGroups = [], activeLines = [];
+
+  function mountPanel(id, fn) {
+    panels[id] = fn();
+    bindHighlight(panels[id].groups, panels[id].lines, null, ALL_META);
+    panels[id].groups.forEach((g) => {
+      g.addEventListener("click", (e) => {
+        e.stopPropagation();
+        const key = g.dataset.key;
+        const item = ALL_META[key];
+        if (!item) return;
+        activeGroups.forEach((o) => { o.classList.remove("dim", "active"); });
+        activeLines.forEach((l) => l.classList.remove("dim"));
+        g.classList.add("active");
+        activeGroups.forEach((o) => { if (o !== g) o.classList.add("dim"); });
+        activeLines.forEach((l) => l.classList.add("dim"));
+        infoEl.innerHTML = `<h3>${item.id !== "—" ? item.id + " · " : ""}${item.name}</h3><p>${item.desc}</p><p class="mono" style="margin-top:8px;font-size:12px;color:var(--ink-3)">${item.file || ""}</p>`;
+        infoEl.classList.add("open");
+      });
+    });
+  }
+
+  function activateTab(panelId) {
+    const p = panels[panelId];
+    if (p) { activeGroups = p.groups; activeLines = p.lines; }
+    infoEl.classList.remove("open");
+  }
+
+  document.addEventListener("DOMContentLoaded", () => {
+    mountPanel("panel-overview", () => renderPanel("svg-overview", renderOverview));
+    mountPanel("panel-ai", () => renderPanel("svg-ai", renderAI));
+    mountPanel("panel-bank", () => renderPanel("svg-bank", renderBank));
+    mountPanel("panel-nav", () => renderPanel("svg-nav", renderNav));
+    mountPanel("panel-3d", () => renderPanel("svg-3d", render3D));
+    mountPanel("panel-meta", () => renderPanel("svg-meta", renderMeta));
+    activateTab("panel-overview");
+
+    document.querySelectorAll("#uc-tabs .tab").forEach((tab) => {
+      tab.addEventListener("click", () => {
+        document.querySelectorAll("#uc-tabs .tab").forEach((t) => t.classList.toggle("active", t === tab));
+        document.querySelectorAll(".tab-panel").forEach((p) => p.classList.toggle("active", p.id === tab.dataset.tab));
+        activateTab(tab.dataset.tab);
+      });
+    });
+
+    document.addEventListener("click", (e) => {
+      if (!e.target.closest(".diagram-svg") && !e.target.closest(".info-panel")) {
+        activeGroups.forEach((g) => g.classList.remove("dim", "active"));
+        activeLines.forEach((l) => l.classList.remove("dim"));
+        infoEl.classList.remove("open");
+      }
+    });
+  });
   </script>
 </body>
 </html>

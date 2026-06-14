@@ -7,7 +7,7 @@
 | Файл | Содержание |
 |------|------------|
 | [index.html](./index.html) | Обзор и навигация |
-| [use-cases.html](./use-cases.html) | 36 UC, 6 пакетов, 9 актёров |
+| [use-cases.html](./use-cases.html) | 36 UC — обзор + 5 вкладок по доменам (классический UML) |
 | [state-machines.html](./state-machines.html) | 5 автоматов (документ, шлюз, AI pipeline, form fill, чат) |
 | [_shared.css](./_shared.css) | Общие стили |
 | [_diagram.js](./_diagram.js) | Manhattan routing, подсветка по клику |

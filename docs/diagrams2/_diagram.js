@@ -32,15 +32,15 @@ function addMarkerDefs(svg, id, color) {
   defs.appendChild(m);
 }
 
-function drawAssoc(svg, d, { dashed = false, color = "#7a8a90", marker = "arr" } = {}) {
+function drawAssoc(svg, d, { dashed = false, color = "#7a8a90", marker = "arr", arrow = true } = {}) {
   const path = document.createElementNS("http://www.w3.org/2000/svg", "path");
   path.setAttribute("d", d);
   path.setAttribute("fill", "none");
   path.setAttribute("stroke", color);
   path.setAttribute("stroke-width", "1.2");
-  path.setAttribute("opacity", "0.7");
+  path.setAttribute("opacity", "0.65");
   if (dashed) path.setAttribute("stroke-dasharray", "5 4");
-  path.setAttribute("marker-end", `url(#${marker})`);
+  if (arrow) path.setAttribute("marker-end", `url(#${marker})`);
   path.classList.add("assoc-line");
   svg.appendChild(path);
   return path;
