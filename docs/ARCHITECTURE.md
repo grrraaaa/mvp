@@ -11,7 +11,7 @@
 | **UI** | `SbbolShell`, страницы, плавающий AI-чат |
 | **3D** | Карта планет + GLB-консультант Александр / Александра |
 | **AI** | OpenRouter / rule-based, SBBOL-only |
-| **TTS** | Qwen (Alibaba) → Edge TTS fallback → браузер |
+| **TTS** | **Inworld AI** (server, primary) → Qwen / Google / Deepgram / Edge / gTTS (код есть, в роутер не подключены) → Puter.js (browser fallback) |
 | **OCR** | ImageToText для фото платёжек |
 
 ```mermaid
@@ -22,12 +22,14 @@ C4Context
     System(demo, "SBBOL Demo", "Next.js + FastAPI MVP")
     System_Ext(sbbol, "sbbol.bps-sberbank.by", "Референс UI")
     System_Ext(or, "OpenRouter", "LLM")
+    System_Ext(inworld, "Inworld AI", "TTS (primary)")
     System_Ext(qwen, "Qwen TTS", "Alibaba Model Studio")
     System_Ext(ocr, "ImageToText", "OCR")
 
     Rel(user, demo, "HTTPS")
     Rel(demo, or, "chat completion")
-    Rel(demo, qwen, "TTS API")
+    Rel(demo, inworld, "TTS stream (NDJSON)")
+    Rel(demo, qwen, "TTS API (опц.)")
     Rel(demo, ocr, "OCR API")
     Rel(demo, sbbol, "visual reference")
 ```
@@ -39,9 +41,16 @@ C4Context
 ```mermaid
 flowchart TB
     subgraph VERCEL["Единый домен Vercel"]
-        FE["Next.js 15<br/>frontend/"]
+    FE["Next.js 15<br/>frontend/"]
         PY["Python serverless<br/>api/index.py → main.py"]
     end
+
+    FE -->|rewrite /api/*| PY
+    PY --> DB[(Postgres)]
+    PY --> OR[OpenRouter]
+    PY --> IW[Inworld AI]
+    PY --> QW[Qwen TTS]
+end
 
     FE -->|rewrite /api/*| PY
     PY --> DB[(Postgres)]
@@ -119,19 +128,24 @@ sequenceDiagram
     participant U as Пользователь
     participant FE as Frontend
     participant BE as FastAPI
-    participant QW as Qwen TTS
+    participant IW as Inworld AI
+    participant OR as OpenRouter
 
     U->>FE: текст / голос / фото
     FE->>BE: POST /api/chat/guest
     Note over BE: nav → forms → LLM → rules
+    BE->>OR: chat completion
+    OR-->>BE: reply
     BE-->>FE: message + navigation_path + form_actions
     FE->>FE: router.push + lipSync
-    FE->>BE: POST /api/tts/speak
-    BE->>QW: ru-RU MP3
-    QW-->>BE: audio
+    FE->>BE: POST /api/tts/speak {voice_id}
+    BE->>IW: NDJSON stream (inworld-tts-2)
+    IW-->>BE: audio chunks (MP3)
     BE-->>FE: audio
     FE-->>U: озвучка + анимация
 ```
+
+> Полный state machine выбора голоса (фронт) — в [TTS.md §2](./TTS.md#2-state-machine-выбора-голоса-фронт).
 
 Детали AI: [ASSISTANT.md](./ASSISTANT.md) · TTS: [TTS.md](./TTS.md).
 

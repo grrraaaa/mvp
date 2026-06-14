@@ -1,0 +1,952 @@
+<!doctype html>
+<html lang="ru">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<title>TTS — State Machine · SBBOL Demo</title>
+<link rel="preconnect" href="https://fonts.googleapis.com" />
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+<link href="https://fonts.googleapis.com/css2?family=DM+Serif+Display&family=Outfit:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet" />
+<style>
+  /* ─── Report palette ──────────────────────────────────────────────────── */
+  :root {
+    --bg: #f7f5f0;
+    --paper: #ffffff;
+    --ink: #14171e;
+    --ink-2: #3a4256;
+    --ink-3: #7c7a72;
+    --line: #e9e3d6;
+    --line-soft: #f0ebde;
+    --primary: #2f6f5e;
+    --primary-soft: rgba(47, 111, 94, 0.08);
+    --primary-glow: rgba(47, 111, 94, 0.18);
+    --accent: #c97b3f;
+    --accent-soft: rgba(201, 123, 63, 0.10);
+    --danger: #b06367;
+    --danger-soft: rgba(176, 99, 103, 0.10);
+    --info: #4a6b8a;
+    --info-soft: rgba(74, 107, 138, 0.10);
+    --success: #2f6f5e;
+    --success-soft: rgba(47, 111, 94, 0.10);
+    --muted: #9a958a;
+  }
+
+  * { box-sizing: border-box; }
+  html, body { margin: 0; padding: 0; }
+  body {
+    font-family: 'Outfit', system-ui, sans-serif;
+    background: var(--bg);
+    color: var(--ink);
+    font-size: 15px;
+    line-height: 1.6;
+    -webkit-font-smoothing: antialiased;
+    -moz-osx-font-smoothing: grayscale;
+    background-image:
+      radial-gradient(ellipse 80% 50% at 0% 0%, rgba(47, 111, 94, 0.04), transparent 50%),
+      radial-gradient(ellipse 80% 50% at 100% 100%, rgba(201, 123, 63, 0.04), transparent 50%);
+    background-attachment: fixed;
+  }
+  .serif { font-family: 'DM Serif Display', Georgia, serif; font-weight: 400; }
+  .mono  { font-family: 'JetBrains Mono', monospace; }
+
+  /* ─── Layout ──────────────────────────────────────────────────────────── */
+  .wrap { max-width: 1180px; margin: 0 auto; padding: 64px 32px 96px; }
+  @media (max-width: 720px) { .wrap { padding: 40px 18px 64px; } }
+
+  .nav {
+    display: flex; align-items: center; justify-content: space-between;
+    margin-bottom: 56px; padding-bottom: 20px; border-bottom: 1px solid var(--line);
+  }
+  .nav-brand { display: flex; align-items: center; gap: 10px; font-size: 13px; color: var(--ink-3); }
+  .nav-brand strong { color: var(--ink); font-weight: 600; }
+  .nav-links { display: flex; gap: 22px; font-size: 13px; }
+  .nav-links a { color: var(--ink-3); text-decoration: none; transition: color .2s; }
+  .nav-links a:hover { color: var(--primary); }
+
+  /* ─── Hero ────────────────────────────────────────────────────────────── */
+  .hero { display: grid; grid-template-columns: 1fr 280px; gap: 56px; align-items: end; margin-bottom: 72px; }
+  @media (max-width: 920px) { .hero { grid-template-columns: 1fr; gap: 32px; } }
+  .eyebrow {
+    display: inline-flex; align-items: center; gap: 8px;
+    font-size: 11px; letter-spacing: 0.18em; text-transform: uppercase;
+    color: var(--primary); font-weight: 600; margin-bottom: 18px;
+  }
+  .eyebrow::before { content: ""; width: 24px; height: 1px; background: var(--primary); }
+  h1 {
+    font-family: 'DM Serif Display', serif;
+    font-size: clamp(36px, 5vw, 56px);
+    line-height: 1.05; letter-spacing: -0.015em;
+    margin: 0 0 20px; color: var(--ink); font-weight: 400;
+  }
+  h1 em { font-style: italic; color: var(--primary); }
+  .lede { font-size: 17px; color: var(--ink-2); max-width: 640px; line-height: 1.55; }
+  .lede strong { color: var(--ink); }
+
+  .verdict {
+    background: var(--paper);
+    border: 1px solid var(--line);
+    border-radius: 16px;
+    padding: 22px;
+    box-shadow: 0 2px 8px rgba(0,0,0,0.03);
+    position: relative;
+  }
+  .verdict::before {
+    content: ""; position: absolute; left: 0; top: 22px; bottom: 22px; width: 3px;
+    background: var(--accent); border-radius: 0 2px 2px 0;
+  }
+  .verdict-label { font-size: 10px; letter-spacing: 0.16em; text-transform: uppercase; color: var(--accent); font-weight: 600; margin-bottom: 6px; }
+  .verdict-text { font-size: 13px; color: var(--ink-2); line-height: 1.5; }
+  .verdict-text code { background: var(--accent-soft); padding: 1px 5px; border-radius: 4px; font-size: 12px; color: var(--accent); }
+
+  /* ─── Section base ────────────────────────────────────────────────────── */
+  section { margin-bottom: 88px; }
+  .sec-head { display: flex; align-items: baseline; justify-content: space-between; margin-bottom: 32px; flex-wrap: wrap; gap: 12px; }
+  .sec-num {
+    font-family: 'DM Serif Display', serif; font-size: 13px; color: var(--primary);
+    letter-spacing: 0.04em; margin-right: 10px;
+  }
+  h2 {
+    font-family: 'DM Serif Display', serif;
+    font-size: clamp(24px, 3vw, 32px);
+    margin: 0; font-weight: 400; color: var(--ink);
+    letter-spacing: -0.01em;
+  }
+  .sec-tag { font-size: 11px; color: var(--ink-3); letter-spacing: 0.12em; text-transform: uppercase; }
+
+  /* ─── State diagram ───────────────────────────────────────────────────── */
+  .diagram-frame {
+    background: var(--paper);
+    border: 1px solid var(--line);
+    border-radius: 20px;
+    padding: 28px;
+    box-shadow: 0 4px 20px rgba(0,0,0,0.04);
+    overflow: hidden;
+  }
+  .diagram-legend {
+    display: flex; flex-wrap: wrap; gap: 18px; margin-bottom: 22px;
+    font-size: 12px; color: var(--ink-3);
+  }
+  .legend-item { display: flex; align-items: center; gap: 8px; }
+  .legend-dot { width: 10px; height: 10px; border-radius: 50%; flex-shrink: 0; }
+  .legend-line { width: 22px; height: 2px; flex-shrink: 0; }
+
+  .diagram-svg { width: 100%; height: auto; display: block; }
+
+  /* SVG node styles */
+  .node { cursor: pointer; transition: filter .2s, transform .25s; }
+  .node:hover { filter: drop-shadow(0 6px 14px rgba(0,0,0,0.08)); }
+  .node-rect {
+    fill: var(--paper); stroke: var(--line); stroke-width: 1.2;
+    transition: stroke .2s, fill .2s;
+  }
+  .node.active .node-rect { stroke-width: 2.4; }
+  .node-icon { fill: none; stroke-width: 1.8; stroke-linecap: round; stroke-linejoin: round; }
+  .node-title { font-family: 'Outfit', sans-serif; font-size: 12.5px; font-weight: 600; fill: var(--ink); }
+  .node-desc { font-family: 'Outfit', sans-serif; font-size: 9.5px; fill: var(--ink-3); }
+  .node-id   { font-family: 'JetBrains Mono', monospace; font-size: 8.5px; fill: var(--ink-3); opacity: 0.6; }
+
+  /* node category colors */
+  .cat-error    .node-rect { stroke: var(--danger); }
+  .cat-error    .node-icon { stroke: var(--danger); }
+  .cat-error    .node-dot  { fill: var(--danger); }
+  .cat-warn     .node-rect { stroke: var(--accent); }
+  .cat-warn     .node-icon { stroke: var(--accent); }
+  .cat-warn     .node-dot  { fill: var(--accent); }
+  .cat-info     .node-rect { stroke: var(--info); }
+  .cat-info     .node-icon { stroke: var(--info); }
+  .cat-info     .node-dot  { fill: var(--info); }
+  .cat-ok       .node-rect { stroke: var(--primary); }
+  .cat-ok       .node-icon { stroke: var(--primary); }
+  .cat-ok       .node-dot  { fill: var(--primary); }
+
+  /* edges */
+  .edge { fill: none; stroke: var(--ink-3); stroke-width: 1.4; opacity: 0.55; transition: opacity .2s, stroke-width .2s; }
+  .edge-auto   { stroke-dasharray: 4 3; }
+  .edge-manual { stroke-dasharray: none; }
+  .edge-error  { stroke: var(--danger); stroke-dasharray: 2 3; }
+  .edge-label  { font-family: 'Outfit', sans-serif; font-size: 8.5px; fill: var(--ink-3); }
+  .edge-label-bg { fill: var(--paper); }
+
+  .node.highlight ~ .edge { opacity: 0.18; }
+  .edge.highlight { opacity: 1; stroke-width: 2.2; }
+
+  /* tooltip */
+  .info-panel {
+    margin-top: 18px; padding: 18px 20px;
+    background: linear-gradient(135deg, var(--primary-soft), transparent);
+    border: 1px solid var(--line); border-left: 3px solid var(--primary);
+    border-radius: 0 12px 12px 0;
+    min-height: 0; transition: min-height .3s, padding .3s;
+    overflow: hidden;
+  }
+  .info-panel.empty { padding: 0; min-height: 0; border: 0; background: transparent; }
+  .info-head { display: flex; align-items: center; gap: 10px; margin-bottom: 8px; }
+  .info-id { font-family: 'JetBrains Mono', monospace; font-size: 10px; color: var(--ink-3); }
+  .info-title { font-weight: 600; font-size: 14px; color: var(--ink); }
+  .info-desc { font-size: 13px; color: var(--ink-2); line-height: 1.55; margin-bottom: 12px; }
+  .info-rows { display: grid; grid-template-columns: 130px 1fr; row-gap: 6px; column-gap: 12px; font-size: 12px; }
+  .info-rows dt { color: var(--ink-3); }
+  .info-rows dd { margin: 0; color: var(--ink); font-family: 'JetBrains Mono', monospace; font-size: 11px; }
+  .info-rows dd code { background: var(--line-soft); padding: 1px 5px; border-radius: 3px; }
+  .info-hint { font-size: 11px; color: var(--ink-3); font-style: italic; margin-top: 14px; }
+
+  /* ─── Provider matrix ─────────────────────────────────────────────────── */
+  .provider-grid {
+    display: grid; grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
+    gap: 14px;
+  }
+  .prov {
+    background: var(--paper);
+    border: 1px solid var(--line);
+    border-radius: 14px;
+    padding: 18px;
+    display: flex; flex-direction: column; gap: 10px;
+    transition: all .25s;
+    position: relative; overflow: hidden;
+  }
+  .prov:hover { transform: translateY(-2px); box-shadow: 0 8px 24px rgba(0,0,0,0.06); }
+  .prov-head { display: flex; align-items: center; justify-content: space-between; }
+  .prov-name { font-weight: 600; font-size: 14px; color: var(--ink); }
+  .prov-badge {
+    font-size: 9.5px; letter-spacing: 0.08em; text-transform: uppercase;
+    padding: 3px 7px; border-radius: 999px; font-weight: 600;
+  }
+  .badge-primary { background: var(--success); color: white; }
+  .badge-ready   { background: var(--info-soft); color: var(--info); }
+  .badge-code    { background: var(--accent-soft); color: var(--accent); }
+  .badge-browser { background: var(--primary-soft); color: var(--primary); }
+  .badge-free    { background: var(--line); color: var(--ink-2); }
+
+  .prov-desc { font-size: 12px; color: var(--ink-2); line-height: 1.5; }
+  .prov-meta { display: flex; justify-content: space-between; padding-top: 10px; border-top: 1px dashed var(--line); font-size: 11px; color: var(--ink-3); }
+  .prov-meta strong { color: var(--ink); font-weight: 500; font-family: 'JetBrains Mono', monospace; }
+
+  /* ─── Transitions table ───────────────────────────────────────────────── */
+  .txn-table { width: 100%; border-collapse: collapse; font-size: 13px; }
+  .txn-table th { text-align: left; padding: 12px 14px; background: var(--line-soft); color: var(--ink-3); font-weight: 500; font-size: 11px; letter-spacing: 0.06em; text-transform: uppercase; }
+  .txn-table td { padding: 14px; border-top: 1px solid var(--line); vertical-align: top; }
+  .txn-table tr:hover td { background: var(--primary-soft); }
+  .txn-table code { font-family: 'JetBrains Mono', monospace; font-size: 11.5px; background: var(--line-soft); padding: 1px 5px; border-radius: 3px; color: var(--ink); }
+  .txn-arrow { color: var(--ink-3); font-family: 'JetBrains Mono', monospace; font-size: 11px; }
+
+  /* ─── Why-this-happens block ──────────────────────────────────────────── */
+  .rootcause {
+    background: var(--paper); border: 1px solid var(--line);
+    border-radius: 16px; padding: 28px;
+    display: grid; grid-template-columns: 80px 1fr; gap: 24px; align-items: start;
+  }
+  @media (max-width: 720px) { .rootcause { grid-template-columns: 1fr; } }
+  .rc-num {
+    font-family: 'DM Serif Display', serif; font-size: 56px; color: var(--primary);
+    line-height: 1; opacity: 0.6;
+  }
+  .rc-title { font-weight: 600; font-size: 16px; margin-bottom: 6px; color: var(--ink); }
+  .rc-body { font-size: 13.5px; color: var(--ink-2); line-height: 1.65; }
+  .rc-body code { font-family: 'JetBrains Mono', monospace; font-size: 12px; background: var(--line-soft); padding: 1px 5px; border-radius: 3px; }
+  .rc-file { font-family: 'JetBrains Mono', monospace; font-size: 11px; color: var(--accent); margin-top: 10px; }
+
+  /* ─── Footer ──────────────────────────────────────────────────────────── */
+  .foot {
+    margin-top: 80px; padding-top: 28px; border-top: 1px solid var(--line);
+    display: flex; justify-content: space-between; flex-wrap: wrap; gap: 14px;
+    font-size: 12px; color: var(--ink-3);
+  }
+  .foot strong { color: var(--ink); font-weight: 500; }
+
+  /* ─── Mobile responsive ───────────────────────────────────────────────── */
+  @media (max-width: 720px) {
+    .nav-links { display: none; }
+    .diagram-frame { padding: 14px; border-radius: 14px; }
+    .txn-table { font-size: 12px; }
+    .txn-table th, .txn-table td { padding: 10px 8px; }
+  }
+</style>
+</head>
+<body>
+<div class="wrap">
+
+  <!-- ── Navigation ─────────────────────────────────────────────────── -->
+  <nav class="nav">
+    <div class="nav-brand">
+      <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+        <path d="M3 12a9 9 0 1 0 9-9"/><path d="M3 4v5h5"/>
+      </svg>
+      <span><strong>SBBOL Demo</strong> · docs</span>
+    </div>
+    <div class="nav-links">
+      <a href="#state">State machine</a>
+      <a href="#why">Почему «один голос»</a>
+      <a href="#providers">Провайдеры</a>
+      <a href="#transitions">Переходы</a>
+      <a href="#fix">Что чинить</a>
+    </div>
+  </nav>
+
+  <!-- ── Hero ───────────────────────────────────────────────────────── -->
+  <header class="hero">
+    <div>
+      <div class="eyebrow">TTS · State Machine · 2026-06-14</div>
+      <h1>Голос ассистента:<br/><em>от четырёх к двадцати</em></h1>
+      <p class="lede">
+        Полная карта того, как юзер сейчас слышит «Голос 1/2» Inworld, и почему
+        21 файл с голосами для шести других провайдеров лежит без дела. С state-диаграммой,
+        таблицей переходов и планом фикса роутера.
+      </p>
+    </div>
+    <aside class="verdict">
+      <div class="verdict-label">TL;DR</div>
+      <div class="verdict-text">
+        Роутер в <code>voice_router.py</code> знает только Inworld.
+        Google / Qwen / Deepgram / Edge / gTTS — код есть, в роутер не подключены.
+        Юзер видит 4 голоса, остальные 17 — мёртвый груз.
+      </div>
+    </aside>
+  </header>
+
+  <!-- ── State machine diagram ─────────────────────────────────────── -->
+  <section id="state">
+    <div class="sec-head">
+      <div>
+        <span class="sec-num">§01</span>
+        <h2>State machine выбора голоса</h2>
+      </div>
+      <span class="sec-tag">фронт · useTtsStore + useCharacterStore</span>
+    </div>
+
+    <div class="diagram-frame">
+      <div class="diagram-legend">
+        <div class="legend-item"><span class="legend-dot" style="background:var(--primary)"></span> ok</div>
+        <div class="legend-item"><span class="legend-dot" style="background:var(--info)"></span> info</div>
+        <div class="legend-item"><span class="legend-dot" style="background:var(--accent)"></span> manual</div>
+        <div class="legend-item"><span class="legend-dot" style="background:var(--danger)"></span> error</div>
+        <div class="legend-item" style="margin-left:auto"><span class="legend-line" style="background:var(--ink-3); opacity:.55"></span> auto</div>
+        <div class="legend-item"><span class="legend-line" style="background:var(--ink-3)"></span> user</div>
+        <div class="legend-item"><span class="legend-line" style="background:var(--danger); border-top:1px dashed var(--danger); height:0"></span> fail</div>
+      </div>
+
+      <svg class="diagram-svg" viewBox="0 0 1080 560" xmlns="http://www.w3.org/2000/svg">
+        <defs>
+          <marker id="arrow" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="6" markerHeight="6" orient="auto">
+            <path d="M0,0 L10,5 L0,10 z" fill="var(--ink-3)" />
+          </marker>
+          <marker id="arrow-danger" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="6" markerHeight="6" orient="auto">
+            <path d="M0,0 L10,5 L0,10 z" fill="var(--danger)" />
+          </marker>
+        </defs>
+
+        <!-- ───── Row 1: cold start ───── -->
+        <!-- Unconfigured -->
+        <g class="node cat-error" data-state="unconfigured" transform="translate(20,40)">
+          <rect class="node-rect" x="0" y="0" width="170" height="86" rx="12" />
+          <circle class="node-icon node-dot" cx="22" cy="22" r="5" />
+          <text class="node-title" x="38" y="26">Unconfigured</text>
+          <text class="node-id" x="14" y="44">[*] / S0</text>
+          <text class="node-desc" x="14" y="62">Inworld key не задан</text>
+          <text class="node-desc" x="14" y="76">каталог пуст</text>
+        </g>
+
+        <!-- Loading -->
+        <g class="node cat-info" data-state="loading" transform="translate(245,40)">
+          <rect class="node-rect" x="0" y="0" width="170" height="86" rx="12" />
+          <circle class="node-icon node-dot" cx="22" cy="22" r="5" />
+          <text class="node-title" x="38" y="26">Loading</text>
+          <text class="node-id" x="14" y="44">S1</text>
+          <text class="node-desc" x="14" y="62">GET /status + /voices</text>
+          <text class="node-desc" x="14" y="76">useTtsBootstrap()</text>
+        </g>
+
+        <!-- Bootstrapped -->
+        <g class="node cat-ok" data-state="bootstrapped" transform="translate(470,40)">
+          <rect class="node-rect" x="0" y="0" width="180" height="86" rx="12" />
+          <circle class="node-icon node-dot" cx="22" cy="22" r="5" />
+          <text class="node-title" x="38" y="26">Bootstrapped</text>
+          <text class="node-id" x="14" y="44">S2</text>
+          <text class="node-desc" x="14" y="62">каталог загружен</text>
+          <text class="node-desc" x="14" y="76">voiceId ∈ voices[]</text>
+        </g>
+
+        <!-- AutoPick -->
+        <g class="node cat-ok" data-state="autopick" transform="translate(700,40)">
+          <rect class="node-rect" x="0" y="0" width="170" height="86" rx="12" />
+          <circle class="node-icon node-dot" cx="22" cy="22" r="5" />
+          <text class="node-title" x="38" y="26">Auto-pick</text>
+          <text class="node-id" x="14" y="44">S3</text>
+          <text class="node-desc" x="14" y="62">голос по полу модели</text>
+          <text class="node-desc" x="14" y="76">voiceOverride пуст</text>
+        </g>
+
+        <!-- ManualPick -->
+        <g class="node cat-warn" data-state="manualpick" transform="translate(910,40)">
+          <rect class="node-rect" x="0" y="0" width="150" height="86" rx="12" />
+          <circle class="node-icon node-dot" cx="22" cy="22" r="5" />
+          <text class="node-title" x="38" y="26">Manual pick</text>
+          <text class="node-id" x="14" y="44">S4</text>
+          <text class="node-desc" x="14" y="62">юзер выбрал</text>
+          <text class="node-desc" x="14" y="76">в PersonalizationMenu</text>
+        </g>
+
+        <!-- ───── Row 2: dynamics ───── -->
+        <!-- Resyncing -->
+        <g class="node cat-info" data-state="resyncing" transform="translate(245,210)">
+          <rect class="node-rect" x="0" y="0" width="170" height="86" rx="12" />
+          <circle class="node-icon node-dot" cx="22" cy="22" r="5" />
+          <text class="node-title" x="38" y="26">Resyncing</text>
+          <text class="node-id" x="14" y="44">S5</text>
+          <text class="node-desc" x="14" y="62">сменился стиль</text>
+          <text class="node-desc" x="14" y="76">(human-m ↔ human-f)</text>
+        </g>
+
+        <!-- Speaking -->
+        <g class="node cat-info" data-state="speaking" transform="translate(565,210)">
+          <rect class="node-rect" x="0" y="0" width="180" height="86" rx="12" />
+          <circle class="node-icon node-dot" cx="22" cy="22" r="5" />
+          <text class="node-title" x="38" y="26">Speaking</text>
+          <text class="node-id" x="14" y="44">S6</text>
+          <text class="node-desc" x="14" y="62">POST /api/tts/speak</text>
+          <text class="node-desc" x="14" y="76">lipSync + audio</text>
+        </g>
+
+        <!-- Error -->
+        <g class="node cat-error" data-state="error" transform="translate(880,210)">
+          <rect class="node-rect" x="0" y="0" width="180" height="86" rx="12" />
+          <circle class="node-icon node-dot" cx="22" cy="22" r="5" />
+          <text class="node-title" x="38" y="26">Error</text>
+          <text class="node-id" x="14" y="44">S7</text>
+          <text class="node-desc" x="14" y="62">5xx / network</text>
+          <text class="node-desc" x="14" y="76">провайдер не ответил</text>
+        </g>
+
+        <!-- ───── Edges row 1 ───── -->
+        <!-- S0 → S1: mount -->
+        <g class="edge-group" data-from="unconfigured" data-to="loading">
+          <path class="edge" d="M 190 83 L 245 83" marker-end="url(#arrow)" />
+          <rect class="edge-label-bg" x="195" y="68" width="42" height="14" rx="3" />
+          <text class="edge-label" x="216" y="78" text-anchor="middle">mount</text>
+        </g>
+
+        <!-- S1 → S2: 200 OK -->
+        <g class="edge-group" data-from="loading" data-to="bootstrapped">
+          <path class="edge" d="M 415 83 L 470 83" marker-end="url(#arrow)" />
+          <rect class="edge-label-bg" x="418" y="68" width="48" height="14" rx="3" />
+          <text class="edge-label" x="442" y="78" text-anchor="middle">200 OK</text>
+        </g>
+
+        <!-- S1 → S0: fetch fail -->
+        <g class="edge-group" data-from="loading" data-to="unconfigured">
+          <path class="edge edge-error" d="M 330 126 Q 330 175 105 175 Q 105 130 105 126" marker-end="url(#arrow-danger)" />
+          <rect class="edge-label-bg" x="170" y="166" width="80" height="14" rx="3" />
+          <text class="edge-label" x="210" y="176" text-anchor="middle" style="fill:var(--danger)">fetch failed</text>
+        </g>
+
+        <!-- S2 → S3: override empty -->
+        <g class="edge-group" data-from="bootstrapped" data-to="autopick">
+          <path class="edge" d="M 650 83 L 700 83" marker-end="url(#arrow)" />
+          <rect class="edge-label-bg" x="650" y="68" width="48" height="14" rx="3" />
+          <text class="edge-label" x="675" y="78" text-anchor="middle">empty</text>
+        </g>
+
+        <!-- S2 → S4: localStorage hit -->
+        <g class="edge-group" data-from="bootstrapped" data-to="manualpick">
+          <path class="edge edge-manual" d="M 650 70 Q 820 70 905 70" marker-end="url(#arrow)" />
+          <rect class="edge-label-bg" x="725" y="42" width="98" height="14" rx="3" />
+          <text class="edge-label" x="774" y="52" text-anchor="middle">localStorage hit</text>
+        </g>
+
+        <!-- ───── Edges vertical ───── -->
+        <!-- S3 → S5: gender change -->
+        <g class="edge-group" data-from="autopick" data-to="resyncing">
+          <path class="edge edge-auto" d="M 740 126 Q 740 165 365 165 Q 365 195 365 210" marker-end="url(#arrow)" />
+          <rect class="edge-label-bg" x="500" y="156" width="118" height="14" rx="3" />
+          <text class="edge-label" x="559" y="166" text-anchor="middle">gender change</text>
+        </g>
+
+        <!-- S3 → S4: click in picker -->
+        <g class="edge-group" data-from="autopick" data-to="manualpick">
+          <path class="edge edge-manual" d="M 825 110 Q 880 110 925 110" marker-end="url(#arrow)" />
+          <rect class="edge-label-bg" x="828" y="98" width="90" height="14" rx="3" />
+          <text class="edge-label" x="873" y="108" text-anchor="middle">click voice</text>
+        </g>
+
+        <!-- S4 → S3: reset override -->
+        <g class="edge-group" data-from="manualpick" data-to="autopick">
+          <path class="edge" d="M 905 105 Q 870 105 845 105" marker-end="url(#arrow)" />
+          <rect class="edge-label-bg" x="848" y="113" width="48" height="14" rx="3" />
+          <text class="edge-label" x="872" y="123" text-anchor="middle">reset</text>
+        </g>
+
+        <!-- S5 → S3: picked new voice -->
+        <g class="edge-group" data-from="resyncing" data-to="autopick">
+          <path class="edge" d="M 415 230 Q 600 270 720 126" marker-end="url(#arrow)" />
+          <rect class="edge-label-bg" x="540" y="244" width="100" height="14" rx="3" />
+          <text class="edge-label" x="590" y="254" text-anchor="middle">voice picked</text>
+        </g>
+
+        <!-- S5 → S4: override moved -->
+        <g class="edge-group" data-from="resyncing" data-to="manualpick">
+          <path class="edge edge-manual" d="M 415 230 Q 600 290 905 126" marker-end="url(#arrow)" />
+          <rect class="edge-label-bg" x="600" y="282" width="140" height="14" rx="3" />
+          <text class="edge-label" x="670" y="292" text-anchor="middle">override переехал</text>
+        </g>
+
+        <!-- ───── Edges row 2 ───── -->
+        <!-- S3 → S6: speak -->
+        <g class="edge-group" data-from="autopick" data-to="speaking">
+          <path class="edge" d="M 765 126 Q 765 165 645 165 Q 645 200 645 210" marker-end="url(#arrow)" />
+          <rect class="edge-label-bg" x="675" y="184" width="60" height="14" rx="3" />
+          <text class="edge-label" x="705" y="194" text-anchor="middle">speak</text>
+        </g>
+
+        <!-- S4 → S6: speak -->
+        <g class="edge-group" data-from="manualpick" data-to="speaking">
+          <path class="edge" d="M 940 126 Q 900 200 745 245" marker-end="url(#arrow)" />
+          <rect class="edge-label-bg" x="820" y="184" width="60" height="14" rx="3" />
+          <text class="edge-label" x="850" y="194" text-anchor="middle">speak</text>
+        </g>
+
+        <!-- S6 → S2: 200 OK mp3 -->
+        <g class="edge-group" data-from="speaking" data-to="bootstrapped">
+          <path class="edge" d="M 655 210 Q 655 165 575 165 Q 575 130 575 126" marker-end="url(#arrow)" />
+          <rect class="edge-label-bg" x="575" y="142" width="80" height="14" rx="3" />
+          <text class="edge-label" x="615" y="152" text-anchor="middle">200 mp3</text>
+        </g>
+
+        <!-- S6 → S7: 5xx -->
+        <g class="edge-group" data-from="speaking" data-to="error">
+          <path class="edge edge-error" d="M 745 253 L 880 253" marker-end="url(#arrow-danger)" />
+          <rect class="edge-label-bg" x="775" y="242" width="74" height="14" rx="3" />
+          <text class="edge-label" x="812" y="252" text-anchor="middle" style="fill:var(--danger)">5xx / abort</text>
+        </g>
+
+        <!-- S7 → S2: retry -->
+        <g class="edge-group" data-from="error" data-to="bootstrapped">
+          <path class="edge" d="M 900 210 Q 800 100 650 86" marker-end="url(#arrow)" />
+          <rect class="edge-label-bg" x="730" y="100" width="84" height="14" rx="3" />
+          <text class="edge-label" x="772" y="110" text-anchor="middle">retry / pick</text>
+        </g>
+
+        <!-- S7 → S0: key revoked -->
+        <g class="edge-group" data-from="error" data-to="unconfigured">
+          <path class="edge edge-error" d="M 920 296 Q 600 360 100 360 Q 80 360 80 126" marker-end="url(#arrow-danger)" />
+          <rect class="edge-label-bg" x="420" y="350" width="84" height="14" rx="3" />
+          <text class="edge-label" x="462" y="360" text-anchor="middle" style="fill:var(--danger)">key revoked</text>
+        </g>
+
+        <!-- ───── Annotation panel ───── -->
+        <g transform="translate(20,360)">
+          <rect x="0" y="0" width="1040" height="180" rx="14" fill="none" stroke="var(--line)" stroke-dasharray="3 4" />
+          <text x="20" y="28" font-family="DM Serif Display, serif" font-size="15" fill="var(--ink)">Главное, что нужно знать</text>
+
+          <g transform="translate(20,46)">
+            <text x="0" y="14" font-family="JetBrains Mono, monospace" font-size="10" fill="var(--primary)">voiceOverride</text>
+            <text x="0" y="34" font-family="Outfit, sans-serif" font-size="12" fill="var(--ink-2)">маркер «юзер трогал руками» в characterStore</text>
+            <text x="0" y="52" font-family="Outfit, sans-serif" font-size="12" fill="var(--ink-2)">блокирует автоподбор при смене пола модели</text>
+          </g>
+
+          <g transform="translate(260,46)">
+            <text x="0" y="14" font-family="JetBrains Mono, monospace" font-size="10" fill="var(--primary)">voiceId ≠ override</text>
+            <text x="0" y="34" font-family="Outfit, sans-serif" font-size="12" fill="var(--ink-2)">voiceId — текущий (всегда непустой</text>
+            <text x="0" y="52" font-family="Outfit, sans-serif" font-size="12" fill="var(--ink-2)">после bootstrap), override — флаг</text>
+          </g>
+
+          <g transform="translate(500,46)">
+            <text x="0" y="14" font-family="JetBrains Mono, monospace" font-size="10" fill="var(--primary)">localStorage key</text>
+            <text x="0" y="34" font-family="Outfit, sans-serif" font-size="12" fill="var(--ink-2)">sber-assistant-tts-voice</text>
+            <text x="0" y="52" font-family="Outfit, sans-serif" font-size="12" fill="var(--ink-2)">переживает рестарт браузера</text>
+          </g>
+
+          <g transform="translate(740,46)">
+            <text x="0" y="14" font-family="JetBrains Mono, monospace" font-size="10" fill="var(--primary)">slot 1/2</text>
+            <text x="0" y="34" font-family="Outfit, sans-serif" font-size="12" fill="var(--ink-2)">при смене пола модели</text>
+            <text x="0" y="52" font-family="Outfit, sans-serif" font-size="12" fill="var(--ink-2)">сохраняется «Голос 1» ↔ «Голос 2»</text>
+          </g>
+
+          <line x1="20" y1="118" x2="1020" y2="118" stroke="var(--line)" stroke-dasharray="2 3" />
+          <text x="20" y="140" font-family="Outfit, sans-serif" font-size="11" fill="var(--ink-3)" font-style="italic">
+            Кликни на любой узел — увидишь триггер и файл, который за этот переход отвечает.
+          </text>
+        </g>
+      </svg>
+
+      <div id="info-panel" class="info-panel empty"></div>
+    </div>
+  </section>
+
+  <!-- ── Why this happens ──────────────────────────────────────────── -->
+  <section id="why">
+    <div class="sec-head">
+      <div>
+        <span class="sec-num">§02</span>
+        <h2>Почему «на все случаи один голос»</h2>
+      </div>
+      <span class="sec-tag">root cause</span>
+    </div>
+
+    <div class="rootcause">
+      <div class="rc-num">1</div>
+      <div>
+        <div class="rc-title">Роутер знает только Inworld</div>
+        <div class="rc-body">
+          <code>backend/services/tts/voice_router.py</code> на 90 строк. Внутри один
+          <code>if _inworld_configured()</code> — если <code>INWORLD_API_KEY</code> задан,
+          провайдер «inworld», иначе пустой массив. Никакого <code>"google"</code>,
+          <code>"qwen"</code>, <code>"edge"</code> он не возвращает.
+        </div>
+        <div class="rc-file">voice_router.py:18-21, :41-71</div>
+      </div>
+    </div>
+
+    <div class="rootcause" style="margin-top:14px">
+      <div class="rc-num">2</div>
+      <div>
+        <div class="rc-title"><code>synthesize_speech</code> падает на всём, кроме Inworld</div>
+        <div class="rc-body">
+          В <code>backend/services/tts/__init__.py:33-39</code> единственная ветка —
+          <code>if provider == "inworld"</code>. Если голос не Inworld (а Google/Qwen/Edge все
+          не Inworld), выбрасывается <code>TtsNotConfiguredError</code> → 503 на /api/tts/speak.
+          Поэтому <code>UI-баннер "API key required"</code> для Google/Qwen висит правильно —
+          бэк их не отдаёт.
+        </div>
+        <div class="rc-file">__init__.py:33-39</div>
+      </div>
+    </div>
+
+    <div class="rootcause" style="margin-top:14px">
+      <div class="rc-num">3</div>
+      <div>
+        <div class="rc-title">Шесть файлов лежат мёртвым грузом</div>
+        <div class="rc-body">
+          <code>google_tts.py</code> (160 строк, real fallback chain), <code>qwen_voices.py</code>
+          (CosyVoice роутинг), <code>deepgram.py</code> (с auto-fallback), <code>edge_tts.py</code>
+          (бесплатный), <code>gtts_tts.py</code> (мужской через Edge) — у каждого свой
+          <code>synthesize_speech()</code>, который никто не вызывает. Это 600+ строк готового
+          кода, который надо только подключить к роутеру.
+        </div>
+        <div class="rc-file">backend/services/tts/{google,qwen,deepgram,edge,gtts}_*.py</div>
+      </div>
+    </div>
+  </section>
+
+  <!-- ── Provider matrix ───────────────────────────────────────────── -->
+  <section id="providers">
+    <div class="sec-head">
+      <div>
+        <span class="sec-num">§03</span>
+        <h2>Провайдеры — что в репе, что в роутере</h2>
+      </div>
+      <span class="sec-tag">7 файлов · 1 активный</span>
+    </div>
+
+    <div class="provider-grid">
+      <div class="prov">
+        <div class="prov-head">
+          <span class="prov-name">Inworld AI</span>
+          <span class="prov-badge badge-primary">primary</span>
+        </div>
+        <div class="prov-desc">Server streaming TTS, NDJSON → MP3. 4 голоса: 2 муж × 2 слота, 2 жен × 2 слота. Самый стабильный на холодном старте Vercel.</div>
+        <div class="prov-meta"><span>Голосов</span><strong>4</strong></div>
+        <div class="prov-meta"><span>Ключ</span><strong>INWORLD_API_KEY</strong></div>
+        <div class="prov-meta"><span>Цена</span><strong>freemium</strong></div>
+      </div>
+
+      <div class="prov">
+        <div class="prov-head">
+          <span class="prov-name">Google Cloud TTS</span>
+          <span class="prov-badge badge-code">code only</span>
+        </div>
+        <div class="prov-desc">10 русских голосов: Neural2 (4, премиум), Wavenet (4, HD), Standard (2, базовый). Auto-chain Neural2 → Wavenet → Standard при ошибке.</div>
+        <div class="prov-meta"><span>Голосов</span><strong>10</strong></div>
+        <div class="prov-meta"><span>Ключ</span><strong>GOOGLE_TTS_API_KEY</strong></div>
+        <div class="prov-meta"><span>Цена</span><strong>pay-as-you-go</strong></div>
+      </div>
+
+      <div class="prov">
+        <div class="prov-head">
+          <span class="prov-name">Qwen / CosyVoice</span>
+          <span class="prov-badge badge-code">code only</span>
+        </div>
+        <div class="prov-desc">7 голосов: Qwen-TTS (2) + CosyVoice (5, китайская студия, отличный русский). Один env-ключ открывает оба движка через <code>QWEN_TTS_MODEL</code>.</div>
+        <div class="prov-meta"><span>Голосов</span><strong>7</strong></div>
+        <div class="prov-meta"><span>Ключ</span><strong>QWEN_TTS_API_KEY</strong></div>
+        <div class="prov-meta"><span>Цена</span><strong>pay-as-you-go</strong></div>
+      </div>
+
+      <div class="prov">
+        <div class="prov-head">
+          <span class="prov-name">Deepgram Aura-2</span>
+          <span class="prov-badge badge-code">code only</span>
+        </div>
+        <div class="prov-desc">4 EN-голоса (arcas, orpheus, thalia, helena). Хорошая дикция для латиницы. Для русского работает, но не идеально.</div>
+        <div class="prov-meta"><span>Голосов</span><strong>4</strong></div>
+        <div class="prov-meta"><span>Ключ</span><strong>DEEPGRAM_API_KEY</strong></div>
+        <div class="prov-meta"><span>Цена</span><strong>pay-as-you-go</strong></div>
+      </div>
+
+      <div class="prov">
+        <div class="prov-head">
+          <span class="prov-name">Microsoft Edge</span>
+          <span class="prov-badge badge-free">free · code only</span>
+        </div>
+        <div class="prov-desc">2 ru-RU Neural голоса (Dmitry, Svetlana). Без API-ключа, через <code>edge-tts</code>. Используется как fallback в gTTS для мужского голоса.</div>
+        <div class="prov-meta"><span>Голосов</span><strong>2</strong></div>
+        <div class="prov-meta"><span>Ключ</span><strong>не нужен</strong></div>
+        <div class="prov-meta"><span>Цена</span><strong>free</strong></div>
+      </div>
+
+      <div class="prov">
+        <div class="prov-head">
+          <span class="prov-name">gTTS</span>
+          <span class="prov-badge badge-free">free · code only</span>
+        </div>
+        <div class="prov-desc">Google Translate TTS, без ключа. Один женский голос. Мужской — через Edge внутри файла. Самый «грязный» звук, но работает офлайн.</div>
+        <div class="prov-meta"><span>Голосов</span><strong>1 + Edge</strong></div>
+        <div class="prov-meta"><span>Ключ</span><strong>не нужен</strong></div>
+        <div class="prov-meta"><span>Цена</span><strong>free</strong></div>
+      </div>
+
+      <div class="prov">
+        <div class="prov-head">
+          <span class="prov-name">Puter.js</span>
+          <span class="prov-badge badge-browser">browser fallback</span>
+        </div>
+        <div class="prov-desc">Client-side TTS в браузере, без бэка. 5 языков (en, fr, de, es, it). Включается, если бэк молчит; нужен для туров на проде без ключей.</div>
+        <div class="prov-meta"><span>Голосов</span><strong>5 langs</strong></div>
+        <div class="prov-meta"><span>Ключ</span><strong>не нужен</strong></div>
+        <div class="prov-meta"><span>Цена</span><strong>free</strong></div>
+      </div>
+    </div>
+  </section>
+
+  <!-- ── Transitions table ─────────────────────────────────────────── -->
+  <section id="transitions">
+    <div class="sec-head">
+      <div>
+        <span class="sec-num">§04</span>
+        <h2>Таблица переходов state machine</h2>
+      </div>
+      <span class="sec-tag">триггер → файл</span>
+    </div>
+
+    <div class="diagram-frame" style="padding: 6px;">
+      <table class="txn-table">
+        <thead>
+          <tr>
+            <th style="width:18%">Переход</th>
+            <th style="width:30%">Триггер</th>
+            <th>Файл / функция</th>
+          </tr>
+        </thead>
+        <tbody>
+          <tr><td><span class="txn-arrow">S0 → S1</span></td><td>Маунт <code>&lt;TtsBootstrap/&gt;</code></td><td><code>frontend/components/assistant/TtsBootstrap.tsx</code></td></tr>
+          <tr><td><span class="txn-arrow">S1 → S2</span></td><td><code>fetchTtsVoices()</code> → 200</td><td><code>frontend/hooks/useTtsBootstrap.ts:74-78</code></td></tr>
+          <tr><td><span class="txn-arrow">S1 → S0</span></td><td><code>fetch</code> упал (silent)</td><td><code>useTtsBootstrap.ts:80-85</code> → <code>combinedFallback()</code></td></tr>
+          <tr><td><span class="txn-arrow">S2 → S3</span></td><td><code>voiceOverride</code> пуст</td><td><code>useTtsBootstrap.ts:78</code> → <code>syncVoiceToCurrentCharacter()</code></td></tr>
+          <tr><td><span class="txn-arrow">S2 → S4</span></td><td>localStorage hit в каталоге</td><td><code>store/ttsStore.ts:104-117</code> (<code>setVoiceGroups</code>)</td></tr>
+          <tr><td><span class="txn-arrow">S3 → S4</span></td><td>Клик в <code>&lt;VoicePicker&gt;</code></td><td><code>components/assistant/VoicePicker.tsx:50-53</code> (<code>handleSelect</code>)</td></tr>
+          <tr><td><span class="txn-arrow">S4 → S3</span></td><td><code>setVoiceOverride(null)</code></td><td><code>store/characterStore.ts</code> + кнопка «Сброс»</td></tr>
+          <tr><td><span class="txn-arrow">S3 → S5</span></td><td>Сменился <code>styleId</code></td><td>subscriber в <code>characterStore</code></td></tr>
+          <tr><td><span class="txn-arrow">S5 → S3</span></td><td><code>pickVoiceForCharacter()</code> вернул ID</td><td><code>lib/tts/matchVoiceForCharacter.ts</code> + <code>useTtsBootstrap.ts:41-44</code></td></tr>
+          <tr><td><span class="txn-arrow">S5 → S4</span></td><td>override переехал на новый пол</td><td><code>pickVoiceForGenderPreservingSlot()</code></td></tr>
+          <tr><td><span class="txn-arrow">* → S6</span></td><td><code>POST /api/tts/speak</code></td><td><code>lib/tts/playback.ts</code></td></tr>
+          <tr><td><span class="txn-arrow">S6 → S2</span></td><td>200 OK (mp3)</td><td>audio chunk → &lt;audio&gt; element</td></tr>
+          <tr><td><span class="txn-arrow">S6 → S7</span></td><td>5xx / network</td><td>error handler в <code>playback.ts</code></td></tr>
+          <tr><td><span class="txn-arrow">S7 → S2</span></td><td>retry / смена голоса</td><td><code>useTtsBootstrap</code> refetch</td></tr>
+          <tr><td><span class="txn-arrow">S7 → S0</span></td><td>key отозван (401)</td><td><code>tts_status_payload()</code> → <code>enabled: false</code></td></tr>
+        </tbody>
+      </table>
+    </div>
+  </section>
+
+  <!-- ── What to fix ───────────────────────────────────────────────── -->
+  <section id="fix">
+    <div class="sec-head">
+      <div>
+        <span class="sec-num">§05</span>
+        <h2>Что чинить, чтобы открыть 20+ голосов</h2>
+      </div>
+      <span class="sec-tag">roadmap</span>
+    </div>
+
+    <div class="rootcause">
+      <div class="rc-num">A</div>
+      <div>
+        <div class="rc-title">Переписать <code>resolve_synthesis_route()</code></div>
+        <div class="rc-body">
+          Сейчас 1 ветка, нужен dict <code>{prefix → provider}</code> с проверкой
+          <code>_provider_configured()</code> на каждый и fallback-цепочкой.
+          Голоса ru-RU-* идут в Google, qwen-* в Qwen, aura-2-* в Deepgram,
+          ru-RU-{Dmitry,Svetlana}Neural в Edge, иначе Inworld.
+        </div>
+        <div class="rc-file">voice_router.py:30-38 → ~50 строк</div>
+      </div>
+    </div>
+
+    <div class="rootcause" style="margin-top:14px">
+      <div class="rc-num">B</div>
+      <div>
+        <div class="rc-title">Сделать <code>synthesize_speech()</code> мультипровайдерным</div>
+        <div class="rc-body">
+          Цепочка <code>["inworld", "qwen", "google", "deepgram", "edge", "gtts"]</code>.
+          На каждый <code>TtsNotConfiguredError</code> — следующий провайдер. На 401/403/429
+          (квота) — следующий. На остальные — наверх.
+        </div>
+        <div class="rc-file">__init__.py:33-39 → ~25 строк</div>
+      </div>
+    </div>
+
+    <div class="rootcause" style="margin-top:14px">
+      <div class="rc-num">C</div>
+      <div>
+        <div class="rc-title"><code>list_all_assistant_voices()</code> — собрать все 6 каталогов</div>
+        <div class="rc-body">
+          Сейчас отдаёт только Inworld. Нужно проверить конфиг каждого провайдера и
+          смерджить его <code>list_assistant_voices()</code> в общий массив groups.
+          Юзер сразу увидит 21 голос в <code>&lt;VoicePicker&gt;</code>.
+        </div>
+        <div class="rc-file">voice_router.py:41-71 → ~40 строк</div>
+      </div>
+    </div>
+
+    <div class="rootcause" style="margin-top:14px">
+      <div class="rc-num">D</div>
+      <div>
+        <div class="rc-title">UI-фишки на бэке готовы, нужны на фронте</div>
+        <div class="rc-body">
+          <code>tier=neural2/wavenet/standard</code> уже в <code>google_voices.py</code> — фронт
+          может рисовать бейджи Premium / HD / Базовый. Слот 1/2 уже slot-preserving в
+          <code>pickVoiceForGenderPreservingSlot()</code>. Нужно только прокинуть
+          <code>voiceOverride</code> на бэк (<code>users.voice_id</code>), чтобы выбор
+          переживал смену браузера.
+        </div>
+        <div class="rc-file">store/ttsStore.ts + components/assistant/VoicePicker.tsx</div>
+      </div>
+    </div>
+  </section>
+
+  <!-- ── Footer ────────────────────────────────────────────────────── -->
+  <footer class="foot">
+    <div><strong>SBBOL Demo</strong> · TTS state machine</div>
+    <div>14 Jun 2026 · docs/TTS.md · docs/diagrams/tts-state-machine.html</div>
+  </footer>
+
+</div>
+
+<script>
+  // ─── Interactive state diagram ────────────────────────────────────
+  const states = {
+    unconfigured: {
+      id: 'S0', name: 'Unconfigured',
+      desc: 'Inworld API key не задан. /api/tts/voices возвращает пустой groups[]. UI показывает «Голоса загружаются…» и фоллбек на combinedVoices.',
+      file: 'core/config.py:INWORLD_API_KEY',
+      trigger: 'cold start, ключ не выставлен',
+    },
+    loading: {
+      id: 'S1', name: 'Loading',
+      desc: 'Параллельно: GET /api/tts/status (флаги enabled/providers) и GET /api/tts/voices (каталог групп). Пока грузится — UI использует combinedVoices fallback.',
+      file: 'hooks/useTtsBootstrap.ts:58-86',
+      trigger: 'mount <TtsBootstrap/> в SbbolShell',
+    },
+    bootstrapped: {
+      id: 'S2', name: 'Bootstrapped',
+      desc: 'Каталог загружен, voiceId выбран (из localStorage если валиден, иначе defaultVoice). Store помечен voicesLoaded=true, можно слать /speak.',
+      file: 'store/ttsStore.ts:setVoiceGroups',
+      trigger: 'fetch вернул 200',
+    },
+    autopick: {
+      id: 'S3', name: 'Auto-pick',
+      desc: 'Голос следует за полом 3D-модели (human-m → «Голос 1» муж, human-f → «Голос 1» жен). Слот 1/2 сохраняется через pickVoiceForGenderPreservingSlot.',
+      file: 'lib/tts/matchVoiceForCharacter.ts',
+      trigger: 'voiceOverride пуст + styleId ∈ {human-m, human-f}',
+    },
+    manualpick: {
+      id: 'S4', name: 'Manual pick',
+      desc: 'Юзер кликнул голос в <VoicePicker>. setVoiceId + setVoiceOverride. Автоподбор ЗАБЛОКИРОВАН — выбор переживает смену пола модели.',
+      file: 'components/assistant/VoicePicker.tsx:50-53',
+      trigger: 'click on <VoicePicker> row',
+    },
+    resyncing: {
+      id: 'S5', name: 'Resyncing',
+      desc: 'Сменился styleId (юзер переключил модель персонажа). Голос пока «нейтральный» — в одной-двух render-итерациях переедет на нужный пол.',
+      file: 'store/characterStore.ts (subscriber)',
+      trigger: 'styleId: human-m ↔ human-f',
+    },
+    speaking: {
+      id: 'S6', name: 'Speaking',
+      desc: 'POST /api/tts/speak {text, voice_id} → audio/mpeg chunk → <audio>.play(). Параллельно запускается lip-sync на 3D-модели.',
+      file: 'lib/tts/playback.ts',
+      trigger: 'ассистент отправил ответ',
+    },
+    error: {
+      id: 'S7', name: 'Error',
+      desc: '5xx от бэка (502/503), network abort или 401 (key revoked). UI показывает тост, лезет в enabled=false и предлагает сменить голос.',
+      file: 'lib/tts/playback.ts (catch)',
+      trigger: 'API вернул 5xx или fetch упал',
+    },
+  };
+
+  const info = document.getElementById('info-panel');
+  const nodes = document.querySelectorAll('.node');
+  const edges = document.querySelectorAll('.edge-group');
+
+  function clearHighlight() {
+    nodes.forEach(n => n.classList.remove('active'));
+    edges.forEach(e => {
+      const path = e.querySelector('.edge');
+      if (path) path.classList.remove('highlight');
+    });
+  }
+
+  function showInfo(key) {
+    const s = states[key];
+    if (!s) {
+      info.classList.add('empty');
+      info.innerHTML = '';
+      return;
+    }
+    info.classList.remove('empty');
+    info.innerHTML = `
+      <div class="info-head">
+        <span class="info-id">${s.id}</span>
+        <span class="info-title">${s.name}</span>
+      </div>
+      <div class="info-desc">${s.desc}</div>
+      <dl class="info-rows">
+        <dt>Триггер</dt><dd>${s.trigger}</dd>
+        <dt>Файл</dt><dd><code>${s.file}</code></dd>
+      </dl>
+      <div class="info-hint">Подсвечены рёбра, исходящие из этого узла. Кликни в пустое место, чтобы сбросить.</div>
+    `;
+  }
+
+  function highlightOutgoing(key) {
+    edges.forEach(e => {
+      const path = e.querySelector('.edge');
+      if (!path) return;
+      if (e.dataset.from === key) {
+        path.classList.add('highlight');
+      } else {
+        path.classList.remove('highlight');
+      }
+    });
+  }
+
+  nodes.forEach(n => {
+    n.addEventListener('click', () => {
+      const key = n.dataset.state;
+      clearHighlight();
+      n.classList.add('active');
+      highlightOutgoing(key);
+      showInfo(key);
+    });
+  });
+
+  // Click on empty area to reset
+  document.querySelector('.diagram-svg').addEventListener('click', (e) => {
+    if (e.target.tagName === 'svg' || e.target.tagName === 'rect' && e.target.classList.contains('edge-label-bg')) {
+      clearHighlight();
+      info.classList.add('empty');
+      info.innerHTML = '';
+    }
+  });
+</script>
+</body>
+</html>
