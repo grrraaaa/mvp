@@ -1,0 +1,87 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>SBBOL Demo — Диаграммы v2</title>
+  <link rel="stylesheet" href="_shared.css" />
+  <style>
+    .hero-badge {
+      display: inline-flex; align-items: center; gap: 8px; margin-bottom: 14px;
+      font-size: 11px; letter-spacing: 0.14em; text-transform: uppercase; font-weight: 700; color: var(--brand);
+    }
+    .hero-badge::before { content: ""; width: 24px; height: 2px; background: var(--brand); }
+    .card-icon.uc { background: var(--brand-soft); }
+    .card-icon.st { background: var(--accent-soft); }
+    .note {
+      margin-top: 28px; padding: 16px 18px; border-radius: 12px; border: 1px solid var(--line);
+      background: var(--paper-2); font-size: 13px; color: var(--ink-2);
+    }
+  </style>
+</head>
+<body>
+  <div class="wrap">
+    <header class="topbar">
+      <a class="brand" href="index.html">
+        <div class="brand-icon">S</div>
+        <div>
+          <div class="brand-title">SBBOL Demo MVP</div>
+          <div class="brand-sub">docs/diagrams2 · UML · июнь 2026</div>
+        </div>
+      </a>
+      <nav class="nav-links">
+        <a href="index.html" class="active">Обзор</a>
+        <a href="use-cases.html">Use Cases</a>
+        <a href="state-machines.html">State Machines</a>
+      </nav>
+    </header>
+
+    <section class="hero">
+      <div class="hero-badge">Архитектура проекта</div>
+      <h1>Диаграммы <em>вариантов использования</em> и <em>состояний</em></h1>
+      <p>
+        Полная карта демо СберБизнес: кто взаимодействует с системой, какие сценарии поддерживаются,
+        и через какие состояния проходят документы, чат, формы и платёжный шлюз.
+        Стрелки проложены ортогонально — без пересечений.
+      </p>
+      <div class="stats">
+        <div class="stat"><div class="stat-label">Use Cases</div><div class="stat-value">36</div></div>
+        <div class="stat"><div class="stat-label">Актёров</div><div class="stat-value">9</div></div>
+        <div class="stat"><div class="stat-label">Пакетов UC</div><div class="stat-value">6</div></div>
+        <div class="stat"><div class="stat-label">State machines</div><div class="stat-value">5</div></div>
+        <div class="stat"><div class="stat-label">Состояний</div><div class="stat-value">42</div></div>
+      </div>
+    </section>
+
+    <div class="cards">
+      <a class="card" href="use-cases.html">
+        <div class="card-icon uc">◎</div>
+        <h2>Use Case Diagram</h2>
+        <p>
+          36 вариантов использования в 6 пакетах: AI-ассистент, банковские операции, навигация,
+          1С, 3D/медиа, системные. Актёры слева и справа, связи через вертикальные «шины».
+        </p>
+      </a>
+      <a class="card" href="state-machines.html">
+        <div class="card-icon st">◇</div>
+        <h2>State Diagrams</h2>
+        <p>
+          Пять автоматов: жизненный цикл документа, платёжный шлюз, pipeline ассистента,
+          сессия заполнения формы, оборот чата на фронтенде.
+        </p>
+      </a>
+    </div>
+
+    <div class="note">
+      <strong>Как открыть:</strong> двойной клик по <code class="mono">index.html</code> в проводнике
+      или через локальный сервер (<code class="mono">npx serve docs/diagrams2</code>).
+      Клик по элементу диаграммы — подсветка и описание. Печать: Ctrl+P (фон белый).
+    </div>
+
+    <footer class="foot">
+      <span><strong>SBBOL Demo</strong> · Next.js 15 + FastAPI</span>
+      <span>mvp/docs/diagrams2</span>
+    </footer>
+  </div>
+</body>
+</html>

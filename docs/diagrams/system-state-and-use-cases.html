@@ -1,0 +1,1507 @@
+<!doctype html>
+<html lang="ru">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<title>SBBOL Demo — Use Cases + States</title>
+<link rel="preconnect" href="https://fonts.googleapis.com" />
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+<link href="https://fonts.googleapis.com/css2?family=DM+Serif+Display&family=Outfit:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500;600&display=swap" rel="stylesheet" />
+<style>
+:root {
+  --bg: #f7f5f0;
+  --paper: #ffffff;
+  --paper-2: #fbfaf6;
+  --ink: #14171e;
+  --ink-2: #3a4256;
+  --ink-3: #7c7a72;
+  --ink-4: #a8a59a;
+  --line: #e9e3d6;
+  --line-soft: #f0ebde;
+  --primary: #2f6f5e;
+  --primary-2: #245646;
+  --primary-soft: rgba(47, 111, 94, 0.10);
+  --accent: #c97b3f;
+  --accent-2: #a85f29;
+  --accent-soft: rgba(201, 123, 63, 0.10);
+  --info: #4a6b8a;
+  --info-soft: rgba(74, 107, 138, 0.10);
+  --warn: #b8923a;
+  --warn-soft: rgba(184, 146, 58, 0.10);
+  --danger: #b06367;
+  --danger-soft: rgba(176, 99, 103, 0.10);
+}
+* { box-sizing: border-box; }
+html, body { margin: 0; padding: 0; }
+body {
+  font-family: 'Outfit', system-ui, -apple-system, sans-serif;
+  background: var(--bg);
+  color: var(--ink);
+  font-size: 15px;
+  line-height: 1.6;
+  -webkit-font-smoothing: antialiased;
+  background-image:
+    radial-gradient(ellipse 60% 50% at 0% 0%, rgba(47, 111, 94, 0.035), transparent 50%),
+    radial-gradient(ellipse 60% 50% at 100% 100%, rgba(201, 123, 63, 0.035), transparent 50%);
+  background-attachment: fixed;
+}
+.serif { font-family: 'DM Serif Display', Georgia, serif; font-weight: 400; }
+.mono  { font-family: 'JetBrains Mono', ui-monospace, monospace; }
+.wrap { max-width: 1280px; margin: 0 auto; padding: 56px 32px 96px; }
+@media (max-width: 720px) { .wrap { padding: 32px 16px 64px; } }
+.topnav {
+  display: flex; align-items: center; justify-content: space-between;
+  margin-bottom: 56px; padding-bottom: 18px; border-bottom: 1px solid var(--line);
+}
+.brand { display: flex; align-items: center; gap: 12px; }
+.brand-mark {
+  width: 32px; height: 32px; border-radius: 8px;
+  background: var(--primary);
+  display: flex; align-items: center; justify-content: center;
+  color: white; font-family: 'DM Serif Display', serif; font-size: 18px;
+  box-shadow: 0 2px 6px rgba(47, 111, 94, 0.25);
+}
+.brand-text { font-size: 13px; color: var(--ink-3); }
+.brand-text strong { color: var(--ink); font-weight: 600; margin-right: 6px; }
+.topnav-links { display: flex; gap: 22px; font-size: 12.5px; }
+.topnav-links a { color: var(--ink-3); text-decoration: none; transition: color .2s; }
+.topnav-links a:hover { color: var(--primary); }
+@media (max-width: 720px) { .topnav-links { display: none; } }
+.hero {
+  display: grid; grid-template-columns: 1fr 320px;
+  gap: 48px; align-items: end;
+  margin-bottom: 88px;
+}
+@media (max-width: 920px) { .hero { grid-template-columns: 1fr; gap: 32px; } }
+.eyebrow {
+  display: inline-flex; align-items: center; gap: 10px;
+  font-size: 11px; letter-spacing: 0.18em; text-transform: uppercase;
+  color: var(--primary); font-weight: 600; margin-bottom: 18px;
+}
+.eyebrow::before { content: ""; width: 28px; height: 1px; background: var(--primary); }
+h1 {
+  font-family: 'DM Serif Display', serif;
+  font-size: clamp(36px, 5vw, 60px);
+  line-height: 1.05; letter-spacing: -0.018em;
+  margin: 0 0 22px; color: var(--ink); font-weight: 400;
+}
+h1 em { font-style: italic; color: var(--primary); }
+h1 .acc { font-style: italic; color: var(--accent); }
+.lede { font-size: 17px; color: var(--ink-2); max-width: 640px; line-height: 1.55; }
+.lede strong { color: var(--ink); font-weight: 600; }
+.facts {
+  background: var(--paper);
+  border: 1px solid var(--line);
+  border-radius: 16px;
+  padding: 22px;
+  box-shadow: 0 2px 8px rgba(0,0,0,0.03);
+  display: grid; grid-template-columns: 1fr 1fr; gap: 16px 22px;
+}
+.fact-label { font-size: 10px; letter-spacing: 0.14em; text-transform: uppercase; color: var(--ink-3); font-weight: 600; margin-bottom: 4px; }
+.fact-value { font-family: 'JetBrains Mono', monospace; font-size: 18px; color: var(--ink); font-weight: 500; }
+.fact-value small { font-size: 12px; color: var(--ink-3); font-weight: 400; margin-left: 4px; }
+section { margin-bottom: 96px; scroll-margin-top: 24px; }
+.sec-head { display: flex; align-items: baseline; justify-content: space-between; margin-bottom: 32px; flex-wrap: wrap; gap: 14px; }
+.sec-num { font-family: 'DM Serif Display', serif; font-size: 13px; color: var(--primary); letter-spacing: 0.04em; margin-right: 12px; }
+h2 { font-family: 'DM Serif Display', serif; font-size: clamp(26px, 3.2vw, 36px); margin: 0; font-weight: 400; color: var(--ink); letter-spacing: -0.012em; display: inline; }
+h2 small { color: var(--ink-3); font-style: italic; }
+.sec-tag { font-size: 11px; color: var(--ink-3); letter-spacing: 0.14em; text-transform: uppercase; padding: 5px 11px; border: 1px solid var(--line); border-radius: 999px; }
+.sec-sub { font-size: 15px; color: var(--ink-2); max-width: 760px; margin: -8px 0 28px 0; line-height: 1.6; }
+.sec-sub code { font-family: 'JetBrains Mono', monospace; font-size: 13px; background: var(--line-soft); padding: 1px 6px; border-radius: 4px; color: var(--ink); }
+.frame { background: var(--paper); border: 1px solid var(--line); border-radius: 20px; padding: 24px; box-shadow: 0 4px 20px rgba(0,0,0,0.04); position: relative; }
+.frame-hd { display: flex; align-items: center; justify-content: space-between; flex-wrap: wrap; gap: 12px; margin-bottom: 18px; padding-bottom: 16px; border-bottom: 1px solid var(--line-soft); }
+.frame-title { font-weight: 600; font-size: 13.5px; color: var(--ink); }
+.frame-hint { font-size: 11.5px; color: var(--ink-3); font-style: italic; }
+.frame-hint strong { color: var(--primary); font-style: normal; }
+.legend { display: flex; flex-wrap: wrap; gap: 18px; font-size: 12px; color: var(--ink-3); padding: 12px 16px; background: var(--paper-2); border: 1px solid var(--line-soft); border-radius: 10px; margin-bottom: 18px; }
+.legend-item { display: flex; align-items: center; gap: 8px; }
+.legend-dot { width: 10px; height: 10px; border-radius: 50%; flex-shrink: 0; }
+.legend-line { width: 24px; height: 2px; flex-shrink: 0; }
+.legend-rect { width: 14px; height: 14px; border-radius: 3px; flex-shrink: 0; }
+.diagram-svg { width: 100%; height: auto; display: block; }
+.uc-ellipse { fill: var(--paper); stroke-width: 1.4; transition: fill .2s, stroke-width .2s; cursor: pointer; }
+.uc-ellipse:hover { fill: #fffdf7; }
+.uc-text { font-family: 'Outfit', sans-serif; font-size: 12px; font-weight: 500; fill: var(--ink); pointer-events: none; }
+.uc-id { font-family: 'JetBrains Mono', monospace; font-size: 8.5px; fill: var(--ink-4); pointer-events: none; opacity: 0.7; }
+.pkg-rect { fill: var(--paper-2); stroke: var(--line); stroke-width: 1; }
+.pkg-tab { fill: var(--paper); stroke: var(--line); stroke-width: 1; }
+.pkg-tab-text { font-family: 'Outfit', sans-serif; font-size: 11px; font-weight: 600; fill: var(--ink); letter-spacing: 0.02em; }
+.pkg-tab-sub { font-family: 'Outfit', sans-serif; font-size: 9.5px; fill: var(--ink-3); letter-spacing: 0.04em; }
+.sys-rect { fill: none; stroke: var(--ink-3); stroke-width: 1.4; rx: 16; }
+.sys-title { font-family: 'Outfit', sans-serif; font-size: 13px; font-weight: 600; fill: var(--ink); }
+.sys-subtitle { font-family: 'Outfit', sans-serif; font-size: 10px; fill: var(--ink-3); letter-spacing: 0.06em; text-transform: uppercase; }
+.actor-circle { fill: var(--ink-2); }
+.actor-line { stroke: var(--ink-2); stroke-width: 2; stroke-linecap: round; fill: none; }
+.actor-name { font-family: 'Outfit', sans-serif; font-size: 12.5px; font-weight: 600; fill: var(--ink); }
+.actor-sub { font-family: 'Outfit', sans-serif; font-size: 10.5px; fill: var(--ink-3); }
+.sys-actor-rect { fill: var(--paper-2); stroke: var(--ink-3); stroke-width: 1.2; stroke-dasharray: 4 3; }
+.sys-actor-text { font-family: 'Outfit', sans-serif; font-size: 11.5px; font-weight: 600; fill: var(--ink); }
+.sys-actor-sub { font-family: 'JetBrains Mono', monospace; font-size: 9px; fill: var(--ink-3); }
+.assoc { stroke: var(--ink-3); stroke-width: 1.1; fill: none; opacity: 0.55; }
+.assoc-extend { stroke: var(--accent); stroke-width: 1.1; fill: none; stroke-dasharray: 5 3; opacity: 0.6; }
+.assoc-include { stroke: var(--info); stroke-width: 1.1; fill: none; stroke-dasharray: 5 3; opacity: 0.6; }
+.uc-group.active .uc-ellipse { stroke-width: 2.4; }
+.uc-group.dim { opacity: 0.25; }
+.assoc.dim { opacity: 0.1; }
+.actor-group.dim { opacity: 0.3; }
+.actor-group.highlight .actor-circle { fill: var(--primary); }
+.actor-group.highlight .actor-line { stroke: var(--primary); }
+.actor-group.highlight .actor-name { fill: var(--primary); }
+.snode { cursor: pointer; transition: filter .2s; }
+.snode:hover { filter: drop-shadow(0 4px 10px rgba(0,0,0,0.08)); }
+.snode-rect { fill: var(--paper); stroke-width: 1.4; transition: stroke-width .2s, fill .2s; }
+.snode-dot { stroke-width: 0; }
+.snode-title { font-family: 'Outfit', sans-serif; font-size: 13px; font-weight: 600; fill: var(--ink); pointer-events: none; }
+.snode-desc { font-family: 'Outfit', sans-serif; font-size: 10.5px; fill: var(--ink-3); pointer-events: none; }
+.snode-id { font-family: 'JetBrains Mono', monospace; font-size: 9px; fill: var(--ink-4); pointer-events: none; }
+.snode-cat-error .snode-rect { stroke: var(--danger); } .snode-cat-error .snode-dot { fill: var(--danger); }
+.snode-cat-warn  .snode-rect { stroke: var(--warn);   } .snode-cat-warn  .snode-dot { fill: var(--warn); }
+.snode-cat-info  .snode-rect { stroke: var(--info);   } .snode-cat-info  .snode-dot { fill: var(--info); }
+.snode-cat-ok    .snode-rect { stroke: var(--primary);} .snode-cat-ok    .snode-dot { fill: var(--primary); }
+.snode-cat-boot  .snode-rect { stroke: var(--ink-3);  } .snode-cat-boot  .snode-dot { fill: var(--ink-3); }
+.snode.active .snode-rect { stroke-width: 2.4; fill: #fffdf7; }
+.snode.dim { opacity: 0.18; }
+.sedge { fill: none; stroke: var(--ink-3); stroke-width: 1.4; opacity: 0.55; transition: opacity .2s, stroke-width .2s; }
+.sedge-auto { stroke-dasharray: 5 3; }
+.sedge-manual { stroke-dasharray: none; }
+.sedge-error { stroke: var(--danger); stroke-dasharray: 3 3; }
+.sedge.highlight { opacity: 1; stroke-width: 2; }
+.sedge.dim { opacity: 0.12; }
+.sedge-label { font-family: 'Outfit', sans-serif; font-size: 9.5px; fill: var(--ink-3); }
+.sedge-label-bg { fill: var(--paper); }
+.init-circle { fill: var(--ink); stroke: none; }
+.info { margin-top: 18px; background: linear-gradient(135deg, var(--primary-soft), transparent); border: 1px solid var(--line); border-left: 3px solid var(--primary); border-radius: 0 12px 12px 0; padding: 0 20px; max-height: 0; overflow: hidden; opacity: 0; transition: max-height .35s ease, padding .25s, opacity .25s; }
+.info.open { max-height: 800px; padding: 18px 20px; opacity: 1; }
+.info-head { display: flex; align-items: baseline; gap: 12px; margin-bottom: 8px; flex-wrap: wrap; }
+.info-id { font-family: 'JetBrains Mono', monospace; font-size: 10.5px; color: var(--ink-3); }
+.info-title { font-weight: 600; font-size: 15px; color: var(--ink); }
+.info-tag { font-size: 10px; letter-spacing: 0.12em; text-transform: uppercase; padding: 2px 8px; border-radius: 999px; background: var(--primary); color: white; font-weight: 600; }
+.info-tag.cat-ai { background: var(--primary); } .info-tag.cat-banking { background: var(--accent); }
+.info-tag.cat-3d { background: var(--info); } .info-tag.cat-nav { background: var(--ink-3); }
+.info-tag.cat-meta { background: var(--warn); }
+.info-desc { font-size: 13.5px; color: var(--ink-2); line-height: 1.6; margin-bottom: 14px; }
+.info-rows { display: grid; grid-template-columns: 110px 1fr; row-gap: 8px; column-gap: 16px; font-size: 12.5px; margin: 0; }
+.info-rows dt { color: var(--ink-3); font-weight: 500; }
+.info-rows dd { margin: 0; color: var(--ink); font-family: 'JetBrains Mono', monospace; font-size: 11.5px; }
+.info-rows dd code { background: var(--line-soft); padding: 1px 5px; border-radius: 3px; }
+.info-rows dd.text { font-family: 'Outfit', sans-serif; font-size: 12.5px; }
+.uc-table { width: 100%; border-collapse: collapse; font-size: 13px; }
+.uc-table th { text-align: left; padding: 12px 14px; background: var(--line-soft); color: var(--ink-3); font-weight: 600; font-size: 11px; letter-spacing: 0.08em; text-transform: uppercase; }
+.uc-table td { padding: 14px; border-top: 1px solid var(--line); vertical-align: top; }
+.uc-table tr { transition: background .15s; }
+.uc-table tr:hover td { background: var(--paper-2); }
+.uc-id-cell { font-family: 'JetBrains Mono', monospace; font-size: 11px; color: var(--ink-3); }
+.uc-name-cell { font-weight: 600; color: var(--ink); }
+.uc-cat-pill { display: inline-block; font-size: 9.5px; letter-spacing: 0.1em; text-transform: uppercase; padding: 2px 8px; border-radius: 999px; font-weight: 600; color: white; }
+.pill-ai { background: var(--primary); } .pill-banking { background: var(--accent); } .pill-3d { background: var(--info); } .pill-nav { background: var(--ink-3); } .pill-meta { background: var(--warn); }
+.matrix-table { width: 100%; border-collapse: collapse; font-size: 12.5px; }
+.matrix-table th { text-align: left; padding: 12px 14px; background: var(--line-soft); color: var(--ink-3); font-weight: 600; font-size: 10.5px; letter-spacing: 0.1em; text-transform: uppercase; }
+.matrix-table th.entity { background: var(--paper-2); color: var(--ink); font-family: 'Outfit', sans-serif; font-size: 12.5px; letter-spacing: 0; text-transform: none; font-weight: 600; }
+.matrix-table td { padding: 12px 14px; border-top: 1px solid var(--line); vertical-align: top; }
+.matrix-table td.entity { font-weight: 600; color: var(--ink); background: var(--paper-2); border-right: 1px solid var(--line); }
+.state-tag { display: inline-block; font-size: 10.5px; font-weight: 500; padding: 2px 7px; border-radius: 4px; margin: 2px 4px 2px 0; font-family: 'JetBrains Mono', monospace; line-height: 1.4; }
+.tag-ok { background: var(--primary-soft); color: var(--primary-2); }
+.tag-info { background: var(--info-soft); color: var(--info); }
+.tag-warn { background: var(--warn-soft); color: var(--warn); }
+.tag-accent { background: var(--accent-soft); color: var(--accent-2); }
+.tag-error { background: var(--danger-soft); color: var(--danger); }
+.tag-boot { background: var(--line); color: var(--ink-2); }
+@media print { body { background: white; } .topnav { display: none; } .frame { box-shadow: none; } section { page-break-inside: avoid; } }
+.foot { margin-top: 88px; padding-top: 28px; border-top: 1px solid var(--line); display: flex; justify-content: space-between; flex-wrap: wrap; gap: 14px; font-size: 12px; color: var(--ink-3); }
+.foot strong { color: var(--ink); font-weight: 500; }
+@media (max-width: 720px) { .frame { padding: 12px; border-radius: 14px; } .legend { gap: 10px; font-size: 11px; } .uc-table, .matrix-table { font-size: 12px; } .uc-table th, .uc-table td, .matrix-table th, .matrix-table td { padding: 10px 8px; } }
+</style>
+</head>
+<body>
+<div class="wrap">
+
+<nav class="topnav">
+  <div class="brand">
+    <div class="brand-mark">S</div>
+    <div class="brand-text"><strong>SBBOL Demo</strong> &middot; System diagrams</div>
+  </div>
+  <div class="topnav-links">
+    <a href="#usecases">Use Cases</a>
+    <a href="#states">States</a>
+    <a href="#matrix">Matrix</a>
+    <a href="#catalog">Каталог UC</a>
+  </div>
+</nav>
+
+<header class="hero">
+  <div>
+    <div class="eyebrow">Архитектура &middot; 14 Jun 2026 &middot; v1</div>
+    <h1>SBBOL Demo MVP:<br/><em>варианты использования</em> и <span class="acc">состояния</span> системы</h1>
+    <p class="lede">
+      Цельная карта того, что умеет демо, кто с ним работает, и через какие состояния
+      проходит за один сеанс. UML-нотация для <strong>use cases</strong> (5 пакетов,
+      30 UC, 7 актёров) и полная <strong>state-машина</strong> от бутстрапа приложения
+      до липсинка 3D-модели.
+    </p>
+  </div>
+  <aside class="facts">
+    <div><div class="fact-label">Актёров</div><div class="fact-value">2 <small>primary</small></div></div>
+    <div><div class="fact-label">Системных</div><div class="fact-value">5 <small>actor</small></div></div>
+    <div><div class="fact-label">Use Cases</div><div class="fact-value">33</div></div>
+    <div><div class="fact-label">Пакетов</div><div class="fact-value">5</div></div>
+    <div><div class="fact-label">Состояний</div><div class="fact-value">17 <small>app + chat</small></div></div>
+    <div><div class="fact-label">Переходов</div><div class="fact-value">22</div></div>
+  </aside>
+</header>
+
+<section id="usecases">
+  <div class="sec-head">
+    <div><span class="sec-num">§01</span><h2>Use case диаграмма</h2></div>
+    <span class="sec-tag">UML &middot; 5 пакетов &middot; 33 UC</span>
+  </div>
+  <p class="sec-sub">
+    Слева — <strong>пользователь-юрлицо</strong> (бухгалтер / директор), справа — внешние
+    системы-актёры. Все варианты использования сгруппированы по подсистемам.
+    Кликни на эллипс — увидишь описание, актёров, API-эндпоинт и файл с реализацией.
+  </p>
+
+  <div class="frame">
+    <div class="frame-hd">
+      <div class="frame-title">Use case diagram — SBBOL Demo MVP</div>
+      <div class="frame-hint">Подсказка: <strong>кликни</strong> на UC или актёра, чтобы подсветить связи</div>
+    </div>
+
+    <div class="legend">
+      <div class="legend-item"><span class="legend-rect" style="background: var(--primary)"></span> AI ассистент</div>
+      <div class="legend-item"><span class="legend-rect" style="background: var(--accent)"></span> Банковские действия</div>
+      <div class="legend-item"><span class="legend-rect" style="background: var(--info)"></span> 3D + персонаж</div>
+      <div class="legend-item"><span class="legend-rect" style="background: var(--ink-3)"></span> Навигация / UI</div>
+      <div class="legend-item"><span class="legend-rect" style="background: var(--warn)"></span> Мета</div>
+      <div class="legend-item" style="margin-left:auto"><span class="legend-line" style="background:var(--ink-3)"></span> ассоциация</div>
+      <div class="legend-item"><span class="legend-line" style="background:var(--accent); border-top:1px dashed var(--accent)"></span> «extend»</div>
+      <div class="legend-item"><span class="legend-line" style="background:var(--info); border-top:1px dashed var(--info)"></span> «include»</div>
+    </div>
+
+    <svg class="diagram-svg" viewBox="0 0 1400 1100" xmlns="http://www.w3.org/2000/svg" id="uc-diagram">
+      <defs>
+        <style>
+          .uc-cat-ai .uc-ellipse { stroke: var(--primary); }
+          .uc-cat-banking .uc-ellipse { stroke: var(--accent); }
+          .uc-cat-3d .uc-ellipse { stroke: var(--info); }
+          .uc-cat-nav .uc-ellipse { stroke: var(--ink-3); }
+          .uc-cat-meta .uc-ellipse { stroke: var(--warn); }
+        </style>
+      </defs>
+
+      <g class="actor-group" data-actor="user" transform="translate(60, 600)">
+        <circle class="actor-circle" cx="0" cy="0" r="14" />
+        <line class="actor-line" x1="0" y1="14" x2="0" y2="56" />
+        <line class="actor-line" x1="-22" y1="28" x2="22" y2="28" />
+        <line class="actor-line" x1="0" y1="56" x2="-18" y2="86" />
+        <line class="actor-line" x1="0" y1="56" x2="18" y2="86" />
+        <text class="actor-name" x="0" y="112" text-anchor="middle">Пользователь</text>
+        <text class="actor-sub" x="0" y="128" text-anchor="middle">(юрлицо)</text>
+      </g>
+
+      <g class="actor-group" data-actor="camera" transform="translate(60, 160)">
+        <circle class="actor-circle" cx="0" cy="0" r="10" />
+        <line class="actor-line" x1="0" y1="10" x2="0" y2="46" />
+        <line class="actor-line" x1="-18" y1="22" x2="18" y2="22" />
+        <line class="actor-line" x1="0" y1="46" x2="-14" y2="72" />
+        <line class="actor-line" x1="0" y1="46" x2="14" y2="72" />
+        <text class="actor-name" x="0" y="98" text-anchor="middle">Камера</text>
+        <text class="actor-sub" x="0" y="114" text-anchor="middle">фото платёжки</text>
+      </g>
+
+      <g class="actor-group" data-actor="mic" transform="translate(60, 320)">
+        <circle class="actor-circle" cx="0" cy="0" r="10" />
+        <line class="actor-line" x1="0" y1="10" x2="0" y2="46" />
+        <line class="actor-line" x1="-18" y1="22" x2="18" y2="22" />
+        <line class="actor-line" x1="0" y1="46" x2="-14" y2="72" />
+        <line class="actor-line" x1="0" y1="46" x2="14" y2="72" />
+        <text class="actor-name" x="0" y="98" text-anchor="middle">Микрофон</text>
+        <text class="actor-sub" x="0" y="114" text-anchor="middle">Web Speech API</text>
+      </g>
+
+      <g class="actor-group" data-actor="onec" transform="translate(60, 1000)">
+        <circle class="actor-circle" cx="0" cy="0" r="10" />
+        <line class="actor-line" x1="0" y1="10" x2="0" y2="46" />
+        <line class="actor-line" x1="-18" y1="22" x2="18" y2="22" />
+        <line class="actor-line" x1="0" y1="46" x2="-14" y2="72" />
+        <line class="actor-line" x1="0" y1="46" x2="14" y2="72" />
+        <text class="actor-name" x="0" y="98" text-anchor="middle">1С</text>
+        <text class="actor-sub" x="0" y="114" text-anchor="middle">учётная система</text>
+      </g>
+
+      <rect class="sys-rect" x="160" y="20" width="1100" height="1060" rx="16" />
+      <rect class="sys-rect" x="160" y="20" width="280" height="32" rx="16" fill="var(--paper)" />
+      <text class="sys-subtitle" x="180" y="32">System</text>
+      <text class="sys-title" x="180" y="48" transform="translate(0,4)">SBBOL Demo MVP</text>
+      <text class="sys-subtitle" x="430" y="44">v0.4 &middot; Next.js 15 + FastAPI &middot; Vercel</text>
+
+      <g class="pkg">
+        <rect class="pkg-rect" x="190" y="90" width="560" height="360" rx="10" />
+        <rect class="pkg-tab" x="200" y="76" width="220" height="28" rx="6" />
+        <text class="pkg-tab-text" x="214" y="88">«package»</text>
+        <text class="pkg-tab-text" x="282" y="88" style="fill: var(--primary)">AI Ассистент</text>
+        <text class="pkg-tab-sub" x="214" y="100">9 UC &middot; Александр/Александра</text>
+
+        <g class="uc-group uc-cat-ai" data-uc="uc01" transform="translate(220, 120)">
+          <ellipse class="uc-ellipse" cx="120" cy="20" rx="120" ry="22" />
+          <text class="uc-id" x="120" y="14" text-anchor="middle">UC-01</text>
+          <text class="uc-text" x="120" y="28" text-anchor="middle">Текстовый чат</text>
+        </g>
+        <g class="uc-group uc-cat-ai" data-uc="uc02" transform="translate(220, 175)">
+          <ellipse class="uc-ellipse" cx="120" cy="20" rx="115" ry="22" />
+          <text class="uc-id" x="120" y="14" text-anchor="middle">UC-02</text>
+          <text class="uc-text" x="120" y="28" text-anchor="middle">Голосовой ввод</text>
+        </g>
+        <g class="uc-group uc-cat-ai" data-uc="uc03" transform="translate(220, 230)">
+          <ellipse class="uc-ellipse" cx="120" cy="20" rx="135" ry="22" />
+          <text class="uc-id" x="120" y="14" text-anchor="middle">UC-03</text>
+          <text class="uc-text" x="120" y="28" text-anchor="middle">OCR фото платёжки</text>
+        </g>
+        <g class="uc-group uc-cat-ai" data-uc="uc04" transform="translate(220, 285)">
+          <ellipse class="uc-ellipse" cx="120" cy="20" rx="140" ry="22" />
+          <text class="uc-id" x="120" y="14" text-anchor="middle">UC-04</text>
+          <text class="uc-text" x="120" y="28" text-anchor="middle">AI-заполнение формы</text>
+        </g>
+        <g class="uc-group uc-cat-ai" data-uc="uc05" transform="translate(470, 120)">
+          <ellipse class="uc-ellipse" cx="120" cy="20" rx="130" ry="22" />
+          <text class="uc-id" x="120" y="14" text-anchor="middle">UC-05</text>
+          <text class="uc-text" x="120" y="28" text-anchor="middle">Навигация через AI</text>
+        </g>
+        <g class="uc-group uc-cat-ai" data-uc="uc06" transform="translate(470, 175)">
+          <ellipse class="uc-ellipse" cx="120" cy="20" rx="120" ry="22" />
+          <text class="uc-id" x="120" y="14" text-anchor="middle">UC-06</text>
+          <text class="uc-text" x="120" y="28" text-anchor="middle">Озвучка ответа</text>
+        </g>
+        <g class="uc-group uc-cat-ai" data-uc="uc07" transform="translate(470, 230)">
+          <ellipse class="uc-ellipse" cx="120" cy="20" rx="110" ry="22" />
+          <text class="uc-id" x="120" y="14" text-anchor="middle">UC-07</text>
+          <text class="uc-text" x="120" y="28" text-anchor="middle">Выбор голоса</text>
+        </g>
+        <g class="uc-group uc-cat-ai" data-uc="uc08" transform="translate(470, 285)">
+          <ellipse class="uc-ellipse" cx="120" cy="20" rx="115" ry="22" />
+          <text class="uc-id" x="120" y="14" text-anchor="middle">UC-08</text>
+          <text class="uc-text" x="120" y="28" text-anchor="middle">Выбор 3D-модели</text>
+        </g>
+        <g class="uc-group uc-cat-ai" data-uc="uc09" transform="translate(345, 380)">
+          <ellipse class="uc-ellipse" cx="125" cy="20" rx="125" ry="22" />
+          <text class="uc-id" x="125" y="14" text-anchor="middle">UC-09</text>
+          <text class="uc-text" x="125" y="28" text-anchor="middle">Пресет характера</text>
+        </g>
+      </g>
+
+      <g class="pkg">
+        <rect class="pkg-rect" x="190" y="480" width="560" height="320" rx="10" />
+        <rect class="pkg-tab" x="200" y="466" width="280" height="28" rx="6" />
+        <text class="pkg-tab-text" x="214" y="478">«package»</text>
+        <text class="pkg-tab-text" x="282" y="478" style="fill: var(--accent)">Банковские действия</text>
+        <text class="pkg-tab-sub" x="214" y="490">7 UC &middot; реальные операции (демо-данные)</text>
+
+        <g class="uc-group uc-cat-banking" data-uc="uc10" transform="translate(220, 510)">
+          <ellipse class="uc-ellipse" cx="120" cy="20" rx="135" ry="22" />
+          <text class="uc-id" x="120" y="14" text-anchor="middle">UC-10</text>
+          <text class="uc-text" x="120" y="28" text-anchor="middle">Создать платёж</text>
+        </g>
+        <g class="uc-group uc-cat-banking" data-uc="uc11" transform="translate(220, 565)">
+          <ellipse class="uc-ellipse" cx="120" cy="20" rx="130" ry="22" />
+          <text class="uc-id" x="120" y="14" text-anchor="middle">UC-11</text>
+          <text class="uc-text" x="120" y="28" text-anchor="middle">Подписать документ</text>
+        </g>
+        <g class="uc-group uc-cat-banking" data-uc="uc12" transform="translate(220, 620)">
+          <ellipse class="uc-ellipse" cx="120" cy="20" rx="130" ry="22" />
+          <text class="uc-id" x="120" y="14" text-anchor="middle">UC-12</text>
+          <text class="uc-text" x="120" y="28" text-anchor="middle">Отправить в шлюз</text>
+        </g>
+        <g class="uc-group uc-cat-banking" data-uc="uc13" transform="translate(470, 510)">
+          <ellipse class="uc-ellipse" cx="120" cy="20" rx="120" ry="22" />
+          <text class="uc-id" x="120" y="14" text-anchor="middle">UC-13</text>
+          <text class="uc-text" x="120" y="28" text-anchor="middle">Просмотр выписки</text>
+        </g>
+        <g class="uc-group uc-cat-banking" data-uc="uc14" transform="translate(470, 565)">
+          <ellipse class="uc-ellipse" cx="120" cy="20" rx="100" ry="22" />
+          <text class="uc-id" x="120" y="14" text-anchor="middle">UC-14</text>
+          <text class="uc-text" x="120" y="28" text-anchor="middle">Скачать PDF</text>
+        </g>
+        <g class="uc-group uc-cat-banking" data-uc="uc15" transform="translate(470, 620)">
+          <ellipse class="uc-ellipse" cx="120" cy="20" rx="155" ry="22" />
+          <text class="uc-id" x="120" y="14" text-anchor="middle">UC-15</text>
+          <text class="uc-text" x="120" y="28" text-anchor="middle">Зарплатный проект</text>
+        </g>
+        <g class="uc-group uc-cat-banking" data-uc="uc16" transform="translate(345, 720)">
+          <ellipse class="uc-ellipse" cx="120" cy="20" rx="115" ry="22" />
+          <text class="uc-id" x="120" y="14" text-anchor="middle">UC-16</text>
+          <text class="uc-text" x="120" y="28" text-anchor="middle">Аналитика / cash-gap</text>
+        </g>
+      </g>
+
+      <g class="pkg">
+        <rect class="pkg-rect" x="190" y="830" width="560" height="160" rx="10" />
+        <rect class="pkg-tab" x="200" y="816" width="220" height="28" rx="6" />
+        <text class="pkg-tab-text" x="214" y="828">«package»</text>
+        <text class="pkg-tab-text" x="282" y="828" style="fill: var(--info)">3D + персонаж</text>
+        <text class="pkg-tab-sub" x="214" y="840">3 UC &middot; GLB-модели + анимация</text>
+
+        <g class="uc-group uc-cat-3d" data-uc="uc17" transform="translate(220, 860)">
+          <ellipse class="uc-ellipse" cx="120" cy="20" rx="130" ry="22" />
+          <text class="uc-id" x="120" y="14" text-anchor="middle">UC-17</text>
+          <text class="uc-text" x="120" y="28" text-anchor="middle">Загрузка GLB</text>
+        </g>
+        <g class="uc-group uc-cat-3d" data-uc="uc18" transform="translate(220, 915)">
+          <ellipse class="uc-ellipse" cx="120" cy="20" rx="110" ry="22" />
+          <text class="uc-id" x="120" y="14" text-anchor="middle">UC-18</text>
+          <text class="uc-text" x="120" y="28" text-anchor="middle">Idle-анимация</text>
+        </g>
+        <g class="uc-group uc-cat-3d" data-uc="uc19" transform="translate(470, 860)">
+          <ellipse class="uc-ellipse" cx="120" cy="20" rx="115" ry="22" />
+          <text class="uc-id" x="120" y="14" text-anchor="middle">UC-19</text>
+          <text class="uc-text" x="120" y="28" text-anchor="middle">Lip-sync</text>
+        </g>
+        <g class="uc-group uc-cat-3d" data-uc="uc20" transform="translate(470, 915)">
+          <ellipse class="uc-ellipse" cx="120" cy="20" rx="110" ry="22" />
+          <text class="uc-id" x="120" y="14" text-anchor="middle">UC-20</text>
+          <text class="uc-text" x="120" y="28" text-anchor="middle">Превью модели</text>
+        </g>
+      </g>
+
+      <g class="pkg">
+        <rect class="pkg-rect" x="790" y="90" width="450" height="350" rx="10" />
+        <rect class="pkg-tab" x="800" y="76" width="250" height="28" rx="6" />
+        <text class="pkg-tab-text" x="814" y="88">«package»</text>
+        <text class="pkg-tab-text" x="882" y="88" style="fill: var(--ink-3)">Навигация / UI</text>
+        <text class="pkg-tab-sub" x="814" y="100">6 UC &middot; Shell + sidebar + адаптив</text>
+
+        <g class="uc-group uc-cat-nav" data-uc="uc21" transform="translate(820, 120)">
+          <ellipse class="uc-ellipse" cx="115" cy="20" rx="115" ry="22" />
+          <text class="uc-id" x="115" y="14" text-anchor="middle">UC-21</text>
+          <text class="uc-text" x="115" y="28" text-anchor="middle">Открыть раздел</text>
+        </g>
+        <g class="uc-group uc-cat-nav" data-uc="uc22" transform="translate(820, 175)">
+          <ellipse class="uc-ellipse" cx="115" cy="20" rx="125" ry="22" />
+          <text class="uc-id" x="115" y="14" text-anchor="middle">UC-22</text>
+          <text class="uc-text" x="115" y="28" text-anchor="middle">Dashboard</text>
+        </g>
+        <g class="uc-group uc-cat-nav" data-uc="uc23" transform="translate(820, 230)">
+          <ellipse class="uc-ellipse" cx="115" cy="20" rx="125" ry="22" />
+          <text class="uc-id" x="115" y="14" text-anchor="middle">UC-23</text>
+          <text class="uc-text" x="115" y="28" text-anchor="middle">Sub-nav (flyout)</text>
+        </g>
+        <g class="uc-group uc-cat-nav" data-uc="uc24" transform="translate(1060, 120)">
+          <ellipse class="uc-ellipse" cx="85" cy="20" rx="85" ry="22" />
+          <text class="uc-id" x="85" y="14" text-anchor="middle">UC-24</text>
+          <text class="uc-text" x="85" y="28" text-anchor="middle">Мобильный</text>
+        </g>
+        <g class="uc-group uc-cat-nav" data-uc="uc25" transform="translate(1060, 175)">
+          <ellipse class="uc-ellipse" cx="85" cy="20" rx="85" ry="22" />
+          <text class="uc-id" x="85" y="14" text-anchor="middle">UC-25</text>
+          <text class="uc-text" x="85" y="28" text-anchor="middle">Sidebar</text>
+        </g>
+        <g class="uc-group uc-cat-nav" data-uc="uc30" transform="translate(940, 340)">
+          <ellipse class="uc-ellipse" cx="120" cy="20" rx="120" ry="22" />
+          <text class="uc-id" x="120" y="14" text-anchor="middle">UC-30</text>
+          <text class="uc-text" x="120" y="28" text-anchor="middle">Карта планет (3D-навигация)</text>
+        </g>
+      </g>
+
+      <g class="pkg">
+        <rect class="pkg-rect" x="790" y="470" width="450" height="520" rx="10" />
+        <rect class="pkg-tab" x="800" y="456" width="180" height="28" rx="6" />
+        <text class="pkg-tab-text" x="814" y="468">«package»</text>
+        <text class="pkg-tab-text" x="882" y="468" style="fill: var(--warn)">Мета</text>
+        <text class="pkg-tab-sub" x="814" y="480">7 UC &middot; auth, learning, integration</text>
+
+        <g class="uc-group uc-cat-meta" data-uc="uc26" transform="translate(820, 500)">
+          <ellipse class="uc-ellipse" cx="115" cy="20" rx="100" ry="22" />
+          <text class="uc-id" x="115" y="14" text-anchor="middle">UC-26</text>
+          <text class="uc-text" x="115" y="28" text-anchor="middle">Basic Auth</text>
+        </g>
+        <g class="uc-group uc-cat-meta" data-uc="uc27" transform="translate(820, 555)">
+          <ellipse class="uc-ellipse" cx="115" cy="20" rx="90" ry="22" />
+          <text class="uc-id" x="115" y="14" text-anchor="middle">UC-27</text>
+          <text class="uc-text" x="115" y="28" text-anchor="middle">JWT login</text>
+        </g>
+        <g class="uc-group uc-cat-meta" data-uc="uc28" transform="translate(820, 610)">
+          <ellipse class="uc-ellipse" cx="115" cy="20" rx="130" ry="22" />
+          <text class="uc-id" x="115" y="14" text-anchor="middle">UC-28</text>
+          <text class="uc-text" x="115" y="28" text-anchor="middle">AI-команды (Learning)</text>
+        </g>
+        <g class="uc-group uc-cat-meta" data-uc="uc29" transform="translate(1060, 500)">
+          <ellipse class="uc-ellipse" cx="85" cy="20" rx="85" ry="22" />
+          <text class="uc-id" x="85" y="14" text-anchor="middle">UC-29</text>
+          <text class="uc-text" x="85" y="28" text-anchor="middle">Сброс настроек</text>
+        </g>
+        <g class="uc-group uc-cat-meta" data-uc="uc31" transform="translate(1060, 555)">
+          <ellipse class="uc-ellipse" cx="85" cy="20" rx="85" ry="22" />
+          <text class="uc-id" x="85" y="14" text-anchor="middle">UC-31</text>
+          <text class="uc-text" x="85" y="28" text-anchor="middle">1С sync</text>
+        </g>
+        <g class="uc-group uc-cat-meta" data-uc="uc32" transform="translate(940, 690)">
+          <ellipse class="uc-ellipse" cx="115" cy="20" rx="115" ry="22" />
+          <text class="uc-id" x="115" y="14" text-anchor="middle">UC-32</text>
+          <text class="uc-text" x="115" y="28" text-anchor="middle">Демо-сидинг данных</text>
+        </g>
+        <g class="uc-group uc-cat-meta" data-uc="uc33" transform="translate(940, 770)">
+          <ellipse class="uc-ellipse" cx="115" cy="20" rx="115" ry="22" />
+          <text class="uc-id" x="115" y="14" text-anchor="middle">UC-33</text>
+          <text class="uc-text" x="115" y="28" text-anchor="middle">Health-check / admin</text>
+        </g>
+      </g>
+
+      <g class="actor-group" data-actor="llm" transform="translate(1300, 160)">
+        <rect class="sys-actor-rect" x="-44" y="-18" width="88" height="40" rx="6" />
+        <text class="sys-actor-text" x="0" y="0" text-anchor="middle">«system»</text>
+        <text class="sys-actor-text" x="0" y="14" text-anchor="middle" style="fill: var(--primary)">LLM</text>
+        <text class="sys-actor-sub" x="0" y="40" text-anchor="middle">OpenRouter</text>
+      </g>
+
+      <g class="actor-group" data-actor="tts" transform="translate(1300, 320)">
+        <rect class="sys-actor-rect" x="-44" y="-18" width="88" height="40" rx="6" />
+        <text class="sys-actor-text" x="0" y="0" text-anchor="middle">«system»</text>
+        <text class="sys-actor-text" x="0" y="14" text-anchor="middle" style="fill: var(--info)">TTS</text>
+        <text class="sys-actor-sub" x="0" y="40" text-anchor="middle">Inworld AI</text>
+      </g>
+
+      <g class="actor-group" data-actor="ocr" transform="translate(1300, 480)">
+        <rect class="sys-actor-rect" x="-44" y="-18" width="88" height="40" rx="6" />
+        <text class="sys-actor-text" x="0" y="0" text-anchor="middle">«system»</text>
+        <text class="sys-actor-text" x="0" y="14" text-anchor="middle" style="fill: var(--accent)">OCR</text>
+        <text class="sys-actor-sub" x="0" y="40" text-anchor="middle">ImageToText</text>
+      </g>
+
+      <g class="actor-group" data-actor="bank" transform="translate(1300, 800)">
+        <rect class="sys-actor-rect" x="-44" y="-18" width="88" height="40" rx="6" />
+        <text class="sys-actor-text" x="0" y="0" text-anchor="middle">«system»</text>
+        <text class="sys-actor-text" x="0" y="14" text-anchor="middle" style="fill: var(--warn)">Банк-шлюз</text>
+        <text class="sys-actor-sub" x="0" y="40" text-anchor="middle">payment gateway</text>
+      </g>
+
+      <line class="assoc" x1="80" y1="600" x2="220" y2="140" />
+      <line class="assoc" x1="80" y1="600" x2="220" y2="195" />
+      <line class="assoc" x1="80" y1="600" x2="220" y2="250" />
+      <line class="assoc" x1="80" y1="600" x2="220" y2="305" />
+      <line class="assoc" x1="80" y1="600" x2="470" y2="140" />
+      <line class="assoc" x1="80" y1="600" x2="470" y2="195" />
+      <line class="assoc" x1="80" y1="600" x2="470" y2="250" />
+      <line class="assoc" x1="80" y1="600" x2="470" y2="305" />
+      <line class="assoc" x1="80" y1="600" x2="470" y2="400" />
+      <line class="assoc" x1="80" y1="600" x2="220" y2="530" />
+      <line class="assoc" x1="80" y1="600" x2="220" y2="585" />
+      <line class="assoc" x1="80" y1="600" x2="220" y2="640" />
+      <line class="assoc" x1="80" y1="600" x2="470" y2="530" />
+      <line class="assoc" x1="80" y1="600" x2="470" y2="585" />
+      <line class="assoc" x1="80" y1="600" x2="470" y2="640" />
+      <line class="assoc" x1="80" y1="600" x2="465" y2="740" />
+      <line class="assoc" x1="80" y1="600" x2="220" y2="880" />
+      <line class="assoc" x1="80" y1="600" x2="220" y2="935" />
+      <line class="assoc" x1="80" y1="600" x2="470" y2="880" />
+      <line class="assoc" x1="80" y1="600" x2="470" y2="935" />
+      <line class="assoc" x1="80" y1="600" x2="820" y2="140" />
+      <line class="assoc" x1="80" y1="600" x2="820" y2="195" />
+      <line class="assoc" x1="80" y1="600" x2="820" y2="250" />
+      <line class="assoc" x1="80" y1="600" x2="1060" y2="140" />
+      <line class="assoc" x1="80" y1="600" x2="1060" y2="195" />
+      <line class="assoc" x1="80" y1="600" x2="940" y2="360" />
+      <line class="assoc" x1="80" y1="600" x2="820" y2="520" />
+      <line class="assoc" x1="80" y1="600" x2="820" y2="575" />
+      <line class="assoc" x1="80" y1="600" x2="820" y2="630" />
+      <line class="assoc" x1="80" y1="600" x2="1060" y2="520" />
+      <line class="assoc" x1="80" y1="600" x2="1060" y2="575" />
+      <line class="assoc" x1="80" y1="600" x2="940" y2="710" />
+      <line class="assoc" x1="80" y1="600" x2="940" y2="790" />
+      <line class="assoc" x1="80" y1="160" x2="340" y2="250" />
+      <line class="assoc" x1="80" y1="320" x2="335" y2="195" />
+      <line class="assoc" x1="80" y1="1000" x2="1060" y2="575" />
+      <line class="assoc-extend" x1="1256" y1="160" x2="590" y2="140" />
+      <line class="assoc-extend" x1="1256" y1="160" x2="470" y2="400" />
+      <line class="assoc-include" x1="1256" y1="320" x2="590" y2="195" />
+      <line class="assoc-include" x1="1256" y1="480" x2="340" y2="250" />
+      <line class="assoc-include" x1="1256" y1="800" x2="340" y2="640" />
+    </svg>
+
+    <div class="info" id="uc-info"></div>
+  </div>
+</section>
+
+<section id="states">
+  <div class="sec-head">
+    <div><span class="sec-num">§02</span><h2>State machine <small>&middot; сеанс пользователя</small></h2></div>
+    <span class="sec-tag">UML &middot; 17 состояний &middot; 22 перехода</span>
+  </div>
+  <p class="sec-sub">
+    Жизненный цикл одного сеанса: от первой загрузки страницы до момента, когда юзер
+    закрывает вкладку. Главная ветка — <code>Booting → Auth → Guest → Idle</code>,
+    подветка — <code>ChatOpen → Turn</code> с состояниями оборота реплики.
+    Детальный state machine голоса вынесен в <a href="tts-state-machine.html" style="color:var(--primary)">отдельный документ</a>.
+  </p>
+
+  <div class="frame">
+    <div class="frame-hd">
+      <div class="frame-title">App session state machine</div>
+      <div class="frame-hint">Кликни на узел, чтобы увидеть триггеры и файлы переходов</div>
+    </div>
+
+    <div class="legend">
+      <div class="legend-item"><span class="legend-dot" style="background: var(--ink-3)"></span> boot</div>
+      <div class="legend-item"><span class="legend-dot" style="background: var(--primary)"></span> ready</div>
+      <div class="legend-item"><span class="legend-dot" style="background: var(--info)"></span> chat / nav</div>
+      <div class="legend-item"><span class="legend-dot" style="background: var(--accent)"></span> user action</div>
+      <div class="legend-item"><span class="legend-dot" style="background: var(--warn)"></span> 3D / TTS</div>
+      <div class="legend-item"><span class="legend-dot" style="background: var(--danger)"></span> error</div>
+      <div class="legend-item" style="margin-left:auto"><span class="legend-line" style="background:var(--ink-3)"></span> auto</div>
+      <div class="legend-item"><span class="legend-line" style="background:var(--ink-3)"></span> user</div>
+      <div class="legend-item"><span class="legend-line" style="background:var(--danger); border-top:1px dashed var(--danger)"></span> fail</div>
+    </div>
+
+    <svg class="diagram-svg" viewBox="0 0 1280 800" xmlns="http://www.w3.org/2000/svg" id="state-diagram">
+      <defs>
+        <marker id="arr" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="6" markerHeight="6" orient="auto">
+          <path d="M0,0 L10,5 L0,10 z" fill="var(--ink-3)" />
+        </marker>
+        <marker id="arr-err" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="6" markerHeight="6" orient="auto">
+          <path d="M0,0 L10,5 L0,10 z" fill="var(--danger)" />
+        </marker>
+      </defs>
+
+      <circle class="init-circle" cx="30" cy="100" r="8" />
+
+      <g class="snode snode-cat-boot" data-state="booting" transform="translate(70, 60)">
+        <rect class="snode-rect" x="0" y="0" width="150" height="80" rx="10" />
+        <circle class="snode-dot" cx="20" cy="20" r="4" />
+        <text class="snode-id" x="34" y="24">S0</text>
+        <text class="snode-title" x="14" y="46">Booting</text>
+        <text class="snode-desc" x="14" y="64">Next.js hydrate</text>
+        <text class="snode-desc" x="14" y="78">stores init</text>
+      </g>
+
+      <g class="snode snode-cat-warn" data-state="authgate" transform="translate(280, 60)">
+        <rect class="snode-rect" x="0" y="0" width="170" height="80" rx="10" />
+        <circle class="snode-dot" cx="20" cy="20" r="4" />
+        <text class="snode-id" x="34" y="24">S1</text>
+        <text class="snode-title" x="14" y="46">AuthGate</text>
+        <text class="snode-desc" x="14" y="64">SITE_ACCESS_USER</text>
+        <text class="snode-desc" x="14" y="78">→ ввод пароля</text>
+      </g>
+
+      <g class="snode snode-cat-ok" data-state="guest" transform="translate(510, 60)">
+        <rect class="snode-rect" x="0" y="0" width="170" height="80" rx="10" />
+        <circle class="snode-dot" cx="20" cy="20" r="4" />
+        <text class="snode-id" x="34" y="24">S2</text>
+        <text class="snode-title" x="14" y="46">Guest</text>
+        <text class="snode-desc" x="14" y="64">анонимный вход</text>
+        <text class="snode-desc" x="14" y="78">/api/chat/guest</text>
+      </g>
+
+      <g class="snode snode-cat-ok" data-state="authenticated" transform="translate(740, 60)">
+        <rect class="snode-rect" x="0" y="0" width="170" height="80" rx="10" />
+        <circle class="snode-dot" cx="20" cy="20" r="4" />
+        <text class="snode-id" x="34" y="24">S3</text>
+        <text class="snode-title" x="14" y="46">Authenticated</text>
+        <text class="snode-desc" x="14" y="64">JWT в cookie</text>
+        <text class="snode-desc" x="14" y="78">scaffold</text>
+      </g>
+
+      <g class="snode snode-cat-ok" data-state="idle" transform="translate(960, 60)">
+        <rect class="snode-rect" x="0" y="0" width="170" height="80" rx="10" />
+        <circle class="snode-dot" cx="20" cy="20" r="4" />
+        <text class="snode-id" x="34" y="24">S4</text>
+        <text class="snode-title" x="14" y="46">Idle</text>
+        <text class="snode-desc" x="14" y="64">на странице</text>
+        <text class="snode-desc" x="14" y="78">чат закрыт</text>
+      </g>
+
+      <g class="snode snode-cat-info" data-state="chatopen" transform="translate(280, 200)">
+        <rect class="snode-rect" x="0" y="0" width="170" height="80" rx="10" />
+        <circle class="snode-dot" cx="20" cy="20" r="4" />
+        <text class="snode-id" x="34" y="24">S5</text>
+        <text class="snode-title" x="14" y="46">ChatOpen</text>
+        <text class="snode-desc" x="14" y="64">FAB → AssistantPanel</text>
+        <text class="snode-desc" x="14" y="78">chat UI mounted</text>
+      </g>
+
+      <g class="snode snode-cat-info" data-state="usertyping" transform="translate(70, 340)">
+        <rect class="snode-rect" x="0" y="0" width="160" height="80" rx="10" />
+        <circle class="snode-dot" cx="20" cy="20" r="4" />
+        <text class="snode-id" x="34" y="24">S6</text>
+        <text class="snode-title" x="14" y="46">UserTyping</text>
+        <text class="snode-desc" x="14" y="64">ChatInput has text</text>
+        <text class="snode-desc" x="14" y="78">Enter не нажат</text>
+      </g>
+
+      <g class="snode snode-cat-info" data-state="submitting" transform="translate(280, 340)">
+        <rect class="snode-rect" x="0" y="0" width="170" height="80" rx="10" />
+        <circle class="snode-dot" cx="20" cy="20" r="4" />
+        <text class="snode-id" x="34" y="24">S7</text>
+        <text class="snode-title" x="14" y="46">Submitting</text>
+        <text class="snode-desc" x="14" y="64">POST /api/chat</text>
+        <text class="snode-desc" x="14" y="78">abortController</text>
+      </g>
+
+      <g class="snode snode-cat-warn" data-state="aithinking" transform="translate(500, 340)">
+        <rect class="snode-rect" x="0" y="0" width="170" height="80" rx="10" />
+        <circle class="snode-dot" cx="20" cy="20" r="4" />
+        <text class="snode-id" x="34" y="24">S8</text>
+        <text class="snode-title" x="14" y="46">AIThinking</text>
+        <text class="snode-desc" x="14" y="64">LLM обрабатывает</text>
+        <text class="snode-desc" x="14" y="78">stream chunks</text>
+      </g>
+
+      <g class="snode snode-cat-warn" data-state="airesponding" transform="translate(720, 340)">
+        <rect class="snode-rect" x="0" y="0" width="170" height="80" rx="10" />
+        <circle class="snode-dot" cx="20" cy="20" r="4" />
+        <text class="snode-id" x="34" y="24">S9</text>
+        <text class="snode-title" x="14" y="46">AIResponding</text>
+        <text class="snode-desc" x="14" y="64">message + nav + form</text>
+        <text class="snode-desc" x="14" y="78">применяется в UI</text>
+      </g>
+
+      <g class="snode snode-cat-warn" data-state="ttsplaying" transform="translate(940, 340)">
+        <rect class="snode-rect" x="0" y="0" width="170" height="80" rx="10" />
+        <circle class="snode-dot" cx="20" cy="20" r="4" />
+        <text class="snode-id" x="34" y="24">S10</text>
+        <text class="snode-title" x="14" y="46">TTSPlaying</text>
+        <text class="snode-desc" x="14" y="64">POST /api/tts/speak</text>
+        <text class="snode-desc" x="14" y="78">lip-sync 3D</text>
+      </g>
+
+      <g class="snode snode-cat-info" data-state="pagenav" transform="translate(70, 500)">
+        <rect class="snode-rect" x="0" y="0" width="170" height="80" rx="10" />
+        <circle class="snode-dot" cx="20" cy="20" r="4" />
+        <text class="snode-id" x="34" y="24">S11</text>
+        <text class="snode-title" x="14" y="46">PageNavigating</text>
+        <text class="snode-desc" x="14" y="64">router.push / меню</text>
+        <text class="snode-desc" x="14" y="78">flyout open</text>
+      </g>
+
+      <g class="snode snode-cat-info" data-state="formfilling" transform="translate(280, 500)">
+        <rect class="snode-rect" x="0" y="0" width="170" height="80" rx="10" />
+        <circle class="snode-dot" cx="20" cy="20" r="4" />
+        <text class="snode-id" x="34" y="24">S12</text>
+        <text class="snode-title" x="14" y="46">FormFilling</text>
+        <text class="snode-desc" x="14" y="64">useSbbolFormFill</text>
+        <text class="snode-desc" x="14" y="78">patching inputs</text>
+      </g>
+
+      <g class="snode snode-cat-info" data-state="ocractive" transform="translate(500, 500)">
+        <rect class="snode-rect" x="0" y="0" width="170" height="80" rx="10" />
+        <circle class="snode-dot" cx="20" cy="20" r="4" />
+        <text class="snode-id" x="34" y="24">S13</text>
+        <text class="snode-title" x="14" y="46">OCRActive</text>
+        <text class="snode-desc" x="14" y="64">ImageToText upload</text>
+        <text class="snode-desc" x="14" y="78">postprocessing</text>
+      </g>
+
+      <g class="snode snode-cat-warn" data-state="modelloading" transform="translate(720, 500)">
+        <rect class="snode-rect" x="0" y="0" width="170" height="80" rx="10" />
+        <circle class="snode-dot" cx="20" cy="20" r="4" />
+        <text class="snode-id" x="34" y="24">S14</text>
+        <text class="snode-title" x="14" y="46">ModelLoading</text>
+        <text class="snode-desc" x="14" y="64">GLB streaming</text>
+        <text class="snode-desc" x="14" y="78">first render</text>
+      </g>
+
+      <g class="snode snode-cat-warn" data-state="modelspeaking" transform="translate(940, 500)">
+        <rect class="snode-rect" x="0" y="0" width="170" height="80" rx="10" />
+        <circle class="snode-dot" cx="20" cy="20" r="4" />
+        <text class="snode-id" x="34" y="24">S15</text>
+        <text class="snode-title" x="14" y="46">ModelSpeaking</text>
+        <text class="snode-desc" x="14" y="64">lip-sync blend</text>
+        <text class="snode-desc" x="14" y="78">morph targets</text>
+      </g>
+
+      <g class="snode snode-cat-error" data-state="error" transform="translate(280, 660)">
+        <rect class="snode-rect" x="0" y="0" width="170" height="80" rx="10" />
+        <circle class="snode-dot" cx="20" cy="20" r="4" />
+        <text class="snode-id" x="34" y="24">S16</text>
+        <text class="snode-title" x="14" y="46">Error</text>
+        <text class="snode-desc" x="14" y="64">5xx / network / 4xx</text>
+        <text class="snode-desc" x="14" y="78">тост + retry</text>
+      </g>
+
+      <g class="snode snode-cat-error" data-state="destroyed" transform="translate(720, 660)">
+        <rect class="snode-rect" x="0" y="0" width="170" height="80" rx="10" />
+        <circle class="snode-dot" cx="20" cy="20" r="4" />
+        <text class="snode-id" x="34" y="24">S17</text>
+        <text class="snode-title" x="14" y="46">Unmounted</text>
+        <text class="snode-desc" x="14" y="64">cleanup (chat, audio)</text>
+        <text class="snode-desc" x="14" y="78">→ final [*]</text>
+      </g>
+
+      <line class="sedge" x1="38" y1="100" x2="70" y2="100" marker-end="url(#arr)" />
+      <line class="sedge" x1="220" y1="100" x2="280" y2="100" marker-end="url(#arr)" />
+      <line class="sedge sedge-error" x1="365" y1="140" x2="365" y2="200" stroke-dasharray="3 3" />
+      <line class="sedge" x1="450" y1="100" x2="510" y2="100" marker-end="url(#arr)" />
+      <line class="sedge" x1="680" y1="100" x2="740" y2="100" marker-end="url(#arr)" />
+      <line class="sedge" x1="910" y1="100" x2="960" y2="100" marker-end="url(#arr)" />
+
+      <path class="sedge sedge-auto" d="M 595 60 Q 595 30 365 30 Q 365 30 365 60" marker-end="url(#arr)" />
+      <rect class="sedge-label-bg" x="445" y="18" width="70" height="14" rx="3" />
+      <text class="sedge-label" x="480" y="28" text-anchor="middle">login</text>
+
+      <path class="sedge" d="M 1045 140 Q 1045 170 365 170 Q 365 170 365 200" marker-end="url(#arr)" />
+      <rect class="sedge-label-bg" x="650" y="158" width="80" height="14" rx="3" />
+      <text class="sedge-label" x="690" y="168" text-anchor="middle">click FAB</text>
+
+      <line class="sedge" x1="960" y1="120" x2="240" y2="520" marker-end="url(#arr)" />
+      <rect class="sedge-label-bg" x="490" y="320" width="80" height="14" rx="3" />
+      <text class="sedge-label" x="530" y="330" text-anchor="middle">click menu</text>
+
+      <line class="sedge" x1="1040" y1="140" x2="820" y2="500" marker-end="url(#arr)" />
+      <rect class="sedge-label-bg" x="930" y="320" width="50" height="14" rx="3" />
+      <text class="sedge-label" x="955" y="330" text-anchor="middle">model</text>
+
+      <line class="sedge" x1="280" y1="260" x2="230" y2="340" marker-end="url(#arr)" />
+      <rect class="sedge-label-bg" x="208" y="285" width="50" height="14" rx="3" />
+      <text class="sedge-label" x="233" y="295" text-anchor="middle">input</text>
+
+      <line class="sedge" x1="230" y1="380" x2="280" y2="380" marker-end="url(#arr)" />
+      <rect class="sedge-label-bg" x="232" y="368" width="48" height="14" rx="3" />
+      <text class="sedge-label" x="256" y="378" text-anchor="middle">Enter</text>
+
+      <line class="sedge" x1="450" y1="380" x2="500" y2="380" marker-end="url(#arr)" />
+      <rect class="sedge-label-bg" x="452" y="368" width="46" height="14" rx="3" />
+      <text class="sedge-label" x="475" y="378" text-anchor="middle">POST</text>
+
+      <line class="sedge" x1="670" y1="380" x2="720" y2="380" marker-end="url(#arr)" />
+      <rect class="sedge-label-bg" x="670" y="368" width="50" height="14" rx="3" />
+      <text class="sedge-label" x="695" y="378" text-anchor="middle">chunks</text>
+
+      <line class="sedge" x1="890" y1="380" x2="940" y2="380" marker-end="url(#arr)" />
+      <rect class="sedge-label-bg" x="888" y="368" width="56" height="14" rx="3" />
+      <text class="sedge-label" x="916" y="378" text-anchor="middle">/speak</text>
+
+      <path class="sedge" d="M 940 360 Q 600 240 230 340" marker-end="url(#arr)" />
+      <rect class="sedge-label-bg" x="500" y="225" width="76" height="14" rx="3" />
+      <text class="sedge-label" x="538" y="235" text-anchor="middle">audio done</text>
+
+      <path class="sedge sedge-auto" d="M 585 420 Q 585 460 1025 460 Q 1025 480 1025 500" marker-end="url(#arr)" />
+      <rect class="sedge-label-bg" x="800" y="452" width="80" height="14" rx="3" />
+      <text class="sedge-label" x="840" y="462" text-anchor="middle">lip-sync</text>
+
+      <path class="sedge sedge-auto" d="M 1025 580 Q 1025 660 230 660 Q 230 480 150 480 Q 150 420 150 420" marker-end="url(#arr)" />
+      <rect class="sedge-label-bg" x="500" y="652" width="100" height="14" rx="3" />
+      <text class="sedge-label" x="550" y="662" text-anchor="middle">lip-sync end</text>
+
+      <line class="sedge sedge-auto" x1="365" y1="280" x2="365" y2="500" marker-end="url(#arr)" />
+      <rect class="sedge-label-bg" x="282" y="388" width="80" height="14" rx="3" />
+      <text class="sedge-label" x="322" y="398" text-anchor="middle">form_actions</text>
+
+      <line class="sedge" x1="450" y1="260" x2="540" y2="500" marker-end="url(#arr)" />
+      <rect class="sedge-label-bg" x="500" y="380" width="38" height="14" rx="3" />
+      <text class="sedge-label" x="519" y="390" text-anchor="middle">photo</text>
+
+      <path class="sedge sedge-error" d="M 365 420 Q 365 600 365 660" marker-end="url(#arr-err)" />
+      <path class="sedge sedge-error" d="M 500 420 Q 500 540 400 660" marker-end="url(#arr-err)" />
+      <path class="sedge sedge-error" d="M 1025 420 Q 1025 540 460 700" marker-end="url(#arr-err)" />
+
+      <path class="sedge" d="M 365 660 Q 365 300 365 280" marker-end="url(#arr)" />
+      <rect class="sedge-label-bg" x="370" y="468" width="48" height="14" rx="3" />
+      <text class="sedge-label" x="394" y="478" text-anchor="middle">retry</text>
+
+      <line class="sedge" x1="890" y1="700" x2="890" y2="780" marker-end="url(#arr)" />
+      <circle class="init-circle" cx="885" cy="790" r="4" />
+
+      <path class="sedge sedge-auto" d="M 1080 140 Q 1180 400 870 660" marker-end="url(#arr)" />
+      <rect class="sedge-label-bg" x="1090" y="380" width="60" height="14" rx="3" />
+      <text class="sedge-label" x="1120" y="390" text-anchor="middle">tab close</text>
+
+      <path class="sedge" d="M 450 240 Q 720 240 1045 140" marker-end="url(#arr)" />
+      <rect class="sedge-label-bg" x="660" y="216" width="120" height="14" rx="3" />
+      <text class="sedge-label" x="720" y="226" text-anchor="middle">close panel / Esc</text>
+    </svg>
+
+    <div class="info" id="state-info"></div>
+  </div>
+</section>
+
+<section id="matrix">
+  <div class="sec-head">
+    <div><span class="sec-num">§03</span><h2>Матрица «сущность × состояние»</h2></div>
+    <span class="sec-tag">cross-cut view</span>
+  </div>
+  <p class="sec-sub">
+    Состояния — это не одна машина, а <strong>связка ортогональных</strong>: App, Auth, Chat, Voice, 3D, Form, Page.
+    Каждая сущность живёт своей жизнью. Здесь собрано, в каких состояниях они могут одновременно находиться.
+  </p>
+
+  <div class="frame" style="padding:6px;overflow-x:auto;">
+    <table class="matrix-table">
+      <thead>
+        <tr>
+          <th class="entity" style="width:14%">Сущность</th>
+          <th style="width:11%">Состояние 1</th>
+          <th style="width:11%">Состояние 2</th>
+          <th style="width:11%">Состояние 3</th>
+          <th style="width:11%">Состояние 4</th>
+          <th style="width:11%">Состояние 5</th>
+          <th style="width:11%">Состояние 6</th>
+          <th>Где живёт</th>
+        </tr>
+      </thead>
+      <tbody>
+        <tr>
+          <td class="entity">App</td>
+          <td><span class="state-tag tag-boot">Booting</span></td>
+          <td><span class="state-tag tag-ok">AuthGate</span></td>
+          <td><span class="state-tag tag-ok">Guest</span></td>
+          <td><span class="state-tag tag-ok">Authenticated</span></td>
+          <td><span class="state-tag tag-info">Idle</span></td>
+          <td><span class="state-tag tag-error">Unmounted</span></td>
+          <td><code>frontend/app/layout.tsx</code></td>
+        </tr>
+        <tr>
+          <td class="entity">Chat panel</td>
+          <td><span class="state-tag tag-boot">Closed</span></td>
+          <td><span class="state-tag tag-info">Opening</span></td>
+          <td><span class="state-tag tag-ok">Open &middot; idle</span></td>
+          <td><span class="state-tag tag-warn">Turn active</span></td>
+          <td><span class="state-tag tag-accent">UserTyping</span></td>
+          <td><span class="state-tag tag-error">Error</span></td>
+          <td><code>AssistantDockPanel.tsx</code></td>
+        </tr>
+        <tr>
+          <td class="entity">Chat turn</td>
+          <td><span class="state-tag tag-boot">Idle</span></td>
+          <td><span class="state-tag tag-accent">UserTyping</span></td>
+          <td><span class="state-tag tag-info">Submitting</span></td>
+          <td><span class="state-tag tag-warn">AIThinking</span></td>
+          <td><span class="state-tag tag-warn">AIResponding</span></td>
+          <td><span class="state-tag tag-warn">TTSPlaying</span></td>
+          <td><code>AssistantPanel.tsx</code></td>
+        </tr>
+        <tr>
+          <td class="entity">Voice</td>
+          <td><span class="state-tag tag-boot">Loading</span></td>
+          <td><span class="state-tag tag-ok">AutoPick</span></td>
+          <td><span class="state-tag tag-accent">ManualPick</span></td>
+          <td><span class="state-tag tag-info">Resyncing</span></td>
+          <td><span class="state-tag tag-warn">Speaking</span></td>
+          <td><span class="state-tag tag-error">Error</span></td>
+          <td><code>store/ttsStore.ts</code></td>
+        </tr>
+        <tr>
+          <td class="entity">3D character</td>
+          <td><span class="state-tag tag-boot">NotLoaded</span></td>
+          <td><span class="state-tag tag-warn">ModelLoading</span></td>
+          <td><span class="state-tag tag-ok">Idle anim</span></td>
+          <td><span class="state-tag tag-warn">Speaking &middot; lip-sync</span></td>
+          <td><span class="state-tag tag-accent">Preview (hover)</span></td>
+          <td><span class="state-tag tag-error">GLB fail</span></td>
+          <td><code>character3d/*</code></td>
+        </tr>
+        <tr>
+          <td class="entity">Form fill</td>
+          <td><span class="state-tag tag-boot">Idle</span></td>
+          <td><span class="state-tag tag-accent">Capturing</span></td>
+          <td><span class="state-tag tag-info">Patching inputs</span></td>
+          <td><span class="state-tag tag-ok">Filled</span></td>
+          <td><span class="state-tag tag-warn">Submitting</span></td>
+          <td><span class="state-tag tag-error">Validation</span></td>
+          <td><code>useSbbolFormFill</code></td>
+        </tr>
+        <tr>
+          <td class="entity">OCR</td>
+          <td><span class="state-tag tag-boot">Idle</span></td>
+          <td><span class="state-tag tag-accent">Uploading</span></td>
+          <td><span class="state-tag tag-info">Processing</span></td>
+          <td><span class="state-tag tag-ok">Parsed</span></td>
+          <td><span class="state-tag tag-warn">Postprocessing</span></td>
+          <td><span class="state-tag tag-error">Quota fail</span></td>
+          <td><code>api/forms/ocr-fill</code></td>
+        </tr>
+        <tr>
+          <td class="entity">Page</td>
+          <td><span class="state-tag tag-boot">Loading</span></td>
+          <td><span class="state-tag tag-ok">Dashboard</span></td>
+          <td><span class="state-tag tag-info">Payments</span></td>
+          <td><span class="state-tag tag-info">Statement</span></td>
+          <td><span class="state-tag tag-info">Salary / Products</span></td>
+          <td><span class="state-tag tag-error">404</span></td>
+          <td><code>app/*/page.tsx</code></td>
+        </tr>
+        <tr>
+          <td class="entity">Auth (middleware)</td>
+          <td><span class="state-tag tag-boot">None</span></td>
+          <td><span class="state-tag tag-warn">Required</span></td>
+          <td><span class="state-tag tag-ok">Granted</span></td>
+          <td><span class="state-tag tag-error">Revoked</span></td>
+          <td><span class="state-tag tag-info">JWT expiring</span></td>
+          <td><span class="state-tag tag-info">Refresh</span></td>
+          <td><code>middleware.ts</code></td>
+        </tr>
+      </tbody>
+    </table>
+  </div>
+</section>
+
+<section id="catalog">
+  <div class="sec-head">
+    <div><span class="sec-num">§04</span><h2>Каталог use cases</h2></div>
+    <span class="sec-tag">33 UC &middot; полное описание</span>
+  </div>
+  <p class="sec-sub">
+    Краткое описание каждого UC: актёр, основной поток, API и файл с реализацией.
+    Сортировка по группам, внутри — по номеру.
+  </p>
+
+  <div class="frame" style="padding:6px;overflow-x:auto;">
+    <table class="uc-table">
+      <thead>
+        <tr>
+          <th style="width:7%">ID</th>
+          <th style="width:18%">Название</th>
+          <th style="width:9%">Пакет</th>
+          <th style="width:18%">Актёры</th>
+          <th style="width:18%">API / endpoint</th>
+          <th>Файл реализации</th>
+        </tr>
+      </thead>
+      <tbody>
+        <tr><td class="uc-id-cell">UC-01</td><td class="uc-name-cell">Текстовый чат</td><td><span class="uc-cat-pill pill-ai">AI</span></td><td>User</td><td><code>POST /api/chat</code></td><td><code>api/chat.py + AssistantPanel.tsx</code></td></tr>
+        <tr><td class="uc-id-cell">UC-02</td><td class="uc-name-cell">Голосовой ввод</td><td><span class="uc-cat-pill pill-ai">AI</span></td><td>User + Mic</td><td>Web Speech API</td><td><code>lib/tts/browserSpeech.ts</code></td></tr>
+        <tr><td class="uc-id-cell">UC-03</td><td class="uc-name-cell">OCR фото платёжки</td><td><span class="uc-cat-pill pill-ai">AI</span></td><td>User + Camera + OCR</td><td><code>POST /api/forms/ocr-fill</code></td><td><code>api/forms.py + ChatInput.tsx</code></td></tr>
+        <tr><td class="uc-id-cell">UC-04</td><td class="uc-name-cell">AI-заполнение формы</td><td><span class="uc-cat-pill pill-ai">AI</span></td><td>User</td><td><code>POST /api/chat</code> → form_actions</td><td><code>useSbbolFormFill + FormFillBridge</code></td></tr>
+        <tr><td class="uc-id-cell">UC-05</td><td class="uc-name-cell">Навигация через AI</td><td><span class="uc-cat-pill pill-ai">AI</span></td><td>User + LLM</td><td><code>POST /api/chat</code> → navigation_path</td><td><code>services/ui/page_actions.py</code></td></tr>
+        <tr><td class="uc-id-cell">UC-06</td><td class="uc-name-cell">Озвучка ответа</td><td><span class="uc-cat-pill pill-ai">AI</span></td><td>User + TTS</td><td><code>POST /api/tts/speak</code></td><td><code>api/tts.py + playback.ts</code></td></tr>
+        <tr><td class="uc-id-cell">UC-07</td><td class="uc-name-cell">Выбор голоса</td><td><span class="uc-cat-pill pill-ai">AI</span></td><td>User</td><td><code>GET /api/tts/voices</code></td><td><code>VoicePicker.tsx + PersonalizationMenu</code></td></tr>
+        <tr><td class="uc-id-cell">UC-08</td><td class="uc-name-cell">Выбор 3D-модели</td><td><span class="uc-cat-pill pill-ai">AI</span></td><td>User</td><td>— (localStorage)</td><td><code>PersonalizationMenu.tsx + characterStore</code></td></tr>
+        <tr><td class="uc-id-cell">UC-09</td><td class="uc-name-cell">Пресет характера</td><td><span class="uc-cat-pill pill-ai">AI</span></td><td>User + LLM</td><td>system prompt</td><td><code>lib/character/presets.ts</code></td></tr>
+
+        <tr><td class="uc-id-cell">UC-10</td><td class="uc-name-cell">Создать платёж</td><td><span class="uc-cat-pill pill-banking">Bank</span></td><td>User</td><td><code>POST /api/banking/documents</code></td><td><code>app/payments/*/page.tsx</code></td></tr>
+        <tr><td class="uc-id-cell">UC-11</td><td class="uc-name-cell">Подписать документ</td><td><span class="uc-cat-pill pill-banking">Bank</span></td><td>User</td><td><code>POST /api/banking/documents/{id}/sign</code></td><td><code>api/banking.py:sign</code></td></tr>
+        <tr><td class="uc-id-cell">UC-12</td><td class="uc-name-cell">Отправить в шлюз</td><td><span class="uc-cat-pill pill-banking">Bank</span></td><td>User + Банк-шлюз</td><td><code>POST /api/banking/gateway/payments/{id}/advance</code></td><td><code>api/banking.py:gateway</code></td></tr>
+        <tr><td class="uc-id-cell">UC-13</td><td class="uc-name-cell">Просмотр выписки</td><td><span class="uc-cat-pill pill-banking">Bank</span></td><td>User</td><td><code>GET /api/banking/statement</code></td><td><code>app/statement/page.tsx</code></td></tr>
+        <tr><td class="uc-id-cell">UC-14</td><td class="uc-name-cell">Скачать PDF</td><td><span class="uc-cat-pill pill-banking">Bank</span></td><td>User</td><td><code>GET /api/banking/documents/{id}/pdf</code></td><td><code>api/banking.py:pdf</code></td></tr>
+        <tr><td class="uc-id-cell">UC-15</td><td class="uc-name-cell">Зарплатный проект</td><td><span class="uc-cat-pill pill-banking">Bank</span></td><td>User</td><td><code>GET /api/banking/employees</code></td><td><code>app/salary/page.tsx</code></td></tr>
+        <tr><td class="uc-id-cell">UC-16</td><td class="uc-name-cell">Аналитика / cash-gap</td><td><span class="uc-cat-pill pill-banking">Bank</span></td><td>User</td><td><code>GET /api/banking/analytics/cash-gap</code></td><td><code>api/banking.py:analytics</code></td></tr>
+
+        <tr><td class="uc-id-cell">UC-17</td><td class="uc-name-cell">Загрузка GLB</td><td><span class="uc-cat-pill pill-3d">3D</span></td><td>User</td><td>— (static)</td><td><code>character3d/GlbCharacter3D.tsx</code></td></tr>
+        <tr><td class="uc-id-cell">UC-18</td><td class="uc-name-cell">Idle-анимация</td><td><span class="uc-cat-pill pill-3d">3D</span></td><td>—</td><td>—</td><td><code>character3d/Humanoid3D.tsx</code></td></tr>
+        <tr><td class="uc-id-cell">UC-19</td><td class="uc-name-cell">Lip-sync</td><td><span class="uc-cat-pill pill-3d">3D</span></td><td>—</td><td>—</td><td><code>lib/character/mouthVertexDeform</code></td></tr>
+        <tr><td class="uc-id-cell">UC-20</td><td class="uc-name-cell">Превью модели</td><td><span class="uc-cat-pill pill-3d">3D</span></td><td>User</td><td>—</td><td><code>PersonalizationMenu.tsx:ModelPreview3D</code></td></tr>
+
+        <tr><td class="uc-id-cell">UC-21</td><td class="uc-name-cell">Открыть раздел</td><td><span class="uc-cat-pill pill-nav">Nav</span></td><td>User</td><td>— (client route)</td><td><code>lib/sbbol/navigation.ts</code></td></tr>
+        <tr><td class="uc-id-cell">UC-22</td><td class="uc-name-cell">Dashboard</td><td><span class="uc-cat-pill pill-nav">Nav</span></td><td>User</td><td><code>GET /api/banking/summary</code></td><td><code>app/page.tsx</code></td></tr>
+        <tr><td class="uc-id-cell">UC-23</td><td class="uc-name-cell">Sub-nav (flyout)</td><td><span class="uc-cat-pill pill-nav">Nav</span></td><td>User</td><td>—</td><td><code>SUB_NAV в navigation.ts</code></td></tr>
+        <tr><td class="uc-id-cell">UC-24</td><td class="uc-name-cell">Мобильный адаптив</td><td><span class="uc-cat-pill pill-nav">Nav</span></td><td>User</td><td>—</td><td><code>BankingShell.tsx</code></td></tr>
+        <tr><td class="uc-id-cell">UC-25</td><td class="uc-name-cell">Sidebar</td><td><span class="uc-cat-pill pill-nav">Nav</span></td><td>User</td><td>—</td><td><code>BankingShell.tsx</code></td></tr>
+        <tr><td class="uc-id-cell">UC-30</td><td class="uc-name-cell">Карта планет (3D-навигация)</td><td><span class="uc-cat-pill pill-nav">Nav</span></td><td>User</td><td>—</td><td><code>PlanetMapOverlay.tsx</code></td></tr>
+
+        <tr><td class="uc-id-cell">UC-26</td><td class="uc-name-cell">Basic Auth</td><td><span class="uc-cat-pill pill-meta">Meta</span></td><td>User</td><td>— (middleware)</td><td><code>middleware.ts</code></td></tr>
+        <tr><td class="uc-id-cell">UC-27</td><td class="uc-name-cell">JWT login</td><td><span class="uc-cat-pill pill-meta">Meta</span></td><td>User</td><td><code>POST /api/auth/login</code></td><td><code>api/auth.py + app/login/page.tsx</code></td></tr>
+        <tr><td class="uc-id-cell">UC-28</td><td class="uc-name-cell">AI-команды (Learning)</td><td><span class="uc-cat-pill pill-meta">Meta</span></td><td>User</td><td>— (статика)</td><td><code>app/learning/page.tsx</code></td></tr>
+        <tr><td class="uc-id-cell">UC-29</td><td class="uc-name-cell">Сброс настроек</td><td><span class="uc-cat-pill pill-meta">Meta</span></td><td>User</td><td>—</td><td><code>characterStore.resetCharacter</code></td></tr>
+        <tr><td class="uc-id-cell">UC-31</td><td class="uc-name-cell">1С sync</td><td><span class="uc-cat-pill pill-meta">Meta</span></td><td>User + 1С</td><td><code>POST /api/onec/sync</code></td><td><code>api/onec.py</code></td></tr>
+        <tr><td class="uc-id-cell">UC-32</td><td class="uc-name-cell">Демо-сидинг данных</td><td><span class="uc-cat-pill pill-meta">Meta</span></td><td>— (admin)</td><td><code>POST /api/admin/reseed</code></td><td><code>api/admin.py</code></td></tr>
+        <tr><td class="uc-id-cell">UC-33</td><td class="uc-name-cell">Health-check / admin</td><td><span class="uc-cat-pill pill-meta">Meta</span></td><td>— (admin)</td><td><code>GET /api/health</code></td><td><code>main.py + api/admin.py</code></td></tr>
+      </tbody>
+    </table>
+  </div>
+</section>
+
+<footer class="foot">
+  <div><strong>SBBOL Demo</strong> &middot; System diagrams</div>
+  <div>14 Jun 2026 &middot; docs/diagrams/system-state-and-use-cases.html</div>
+</footer>
+
+</div>
+
+<script>
+const UC_DATA = {
+  uc01: { id: 'UC-01', cat: 'ai', catLabel: 'AI', name: 'Текстовый чат',
+    desc: 'Основной use case. Юзер вводит текст в ChatInput, POST /api/chat/guest, LLM (OpenRouter) обрабатывает, бэк возвращает message + navigation_path + form_actions. UI рендерит MessageBubble, применяет router.push, запускает TTS.',
+    file: 'api/chat.py + AssistantPanel.tsx',
+    flow: ['input', 'POST', 'LLM stream', 'render + nav', 'TTS speak']
+  },
+  uc02: { id: 'UC-02', cat: 'ai', catLabel: 'AI', name: 'Голосовой ввод',
+    desc: 'Web Speech API в браузере (ru-RU), распознанный текст попадает в ChatInput и идёт в UC-01.',
+    file: 'lib/tts/browserSpeech.ts',
+    flow: ['mic click', 'recognition.start', 'onResult', '→ UC-01']
+  },
+  uc03: { id: 'UC-03', cat: 'ai', catLabel: 'AI', name: 'OCR фото платёжки',
+    desc: 'multipart/form-data → POST /api/forms/ocr-fill. Бэк → ImageToText → LLM-нормализатор → form_actions для UC-04.',
+    file: 'api/forms.py + ChatInput.tsx',
+    flow: ['photo', 'multipart', 'ImageToText', 'LLM norm', '→ UC-04']
+  },
+  uc04: { id: 'UC-04', cat: 'ai', catLabel: 'AI', name: 'AI-заполнение формы',
+    desc: 'form_actions: [{selector, value, action}]. useSbbolFormFill патчит DOM-инпуты. Юзер подтверждает → submit.',
+    file: 'useSbbolFormFill + FormFillBridge',
+    flow: ['AI resp', 'parse form_actions', 'DOM patch', 'confirm', 'submit']
+  },
+  uc05: { id: 'UC-05', cat: 'ai', catLabel: 'AI', name: 'Навигация через AI',
+    desc: 'Вместо клика юзер пишет «открой выписку» — LLM возвращает navigation_path. router.push.',
+    file: 'services/ui/page_actions.py',
+    flow: ['text', 'LLM classify', 'navigation_path', 'router.push']
+  },
+  uc06: { id: 'UC-06', cat: 'ai', catLabel: 'AI', name: 'Озвучка ответа',
+    desc: 'POST /api/tts/speak. Бэк → Inworld. MP3 + lip-sync параллельно.',
+    file: 'api/tts.py + playback.ts',
+    flow: ['reply ready', 'POST /speak', 'Inworld stream', 'mp3', 'lip-sync']
+  },
+  uc07: { id: 'UC-07', cat: 'ai', catLabel: 'AI', name: 'Выбор голоса',
+    desc: 'Кебаб-меню → VoicePicker. setVoiceId + setVoiceOverride. localStorage.',
+    file: 'VoicePicker.tsx',
+    flow: ['click', 'picker', 'select', 'store + override', 'localStorage']
+  },
+  uc08: { id: 'UC-08', cat: 'ai', catLabel: 'AI', name: 'Выбор 3D-модели',
+    desc: '3 GLB-модели в PersonalizationMenu. Hover → preview 3D, click → modelOverride.',
+    file: 'PersonalizationMenu.tsx',
+    flow: ['hover', 'preview', 'click', 'override', 'voice resync']
+  },
+  uc09: { id: 'UC-09', cat: 'ai', catLabel: 'AI', name: 'Пресет характера',
+    desc: 'Системный промпт зависит от пресета (Александр/Александра/нейтральный). Меняет тон, подпись.',
+    file: 'lib/character/presets.ts',
+    flow: ['preset', 'system prompt', 'next reply in tone']
+  },
+  uc10: { id: 'UC-10', cat: 'banking', catLabel: 'Банковские', name: 'Создать платёж',
+    desc: 'POST /api/banking/documents. Валидация, persist в Postgres.',
+    file: 'app/payments/*/page.tsx',
+    flow: ['fill', 'validate', 'POST', 'persist', 'doc_id']
+  },
+  uc11: { id: 'UC-11', cat: 'banking', catLabel: 'Банковские', name: 'Подписать документ',
+    desc: 'PATCH /api/banking/documents/{id}/sign. В проде — КЭП/SMS, в демо — мок.',
+    file: 'api/banking.py:sign',
+    flow: ['click', 'confirm', 'PATCH', 'signed']
+  },
+  uc12: { id: 'UC-12', cat: 'banking', catLabel: 'Банковские', name: 'Отправить в шлюз',
+    desc: 'POST /api/banking/gateway/payments/{id}/advance. Мок: 2-5 сек → sent_to_gateway.',
+    file: 'api/banking.py:gateway',
+    flow: ['submit', 'POST', 'mock delay', 'sent']
+  },
+  uc13: { id: 'UC-13', cat: 'banking', catLabel: 'Банковские', name: 'Просмотр выписки',
+    desc: 'GET /api/banking/statement. Пагинация + фильтры по дате/счёту/контрагенту.',
+    file: 'app/statement/page.tsx',
+    flow: ['open', 'GET', 'list', 'filter']
+  },
+  uc14: { id: 'UC-14', cat: 'banking', catLabel: 'Банковские', name: 'Скачать PDF',
+    desc: 'GET /api/banking/documents/{id}/pdf → application/pdf через Jinja2 + weasyprint.',
+    file: 'api/banking.py:pdf',
+    flow: ['click PDF', 'GET', 'render', 'application/pdf']
+  },
+  uc15: { id: 'UC-15', cat: 'banking', catLabel: 'Банковские', name: 'Зарплатный проект',
+    desc: 'GET /api/banking/employees. Сотрудники + обязательства + пенсионные.',
+    file: 'app/salary/page.tsx',
+    flow: ['open', 'GET', 'list']
+  },
+  uc16: { id: 'UC-16', cat: 'banking', catLabel: 'Банковские', name: 'Аналитика / cash-gap',
+    desc: 'GET /api/banking/analytics/{monthly,compare,cash-gap}. Прогноз кассового разрыва на N дней.',
+    file: 'api/banking.py:analytics',
+    flow: ['GET', 'aggregate', 'forecast', 'chart']
+  },
+  uc17: { id: 'UC-17', cat: '3d', catLabel: '3D', name: 'Загрузка GLB',
+    desc: 'GlbCharacter3D через useGLTF (@react-three/drei). GLB в public/. Suspense + ErrorBoundary.',
+    file: 'character3d/GlbCharacter3D.tsx',
+    flow: ['mount', 'useGLTF', 'fallback', 'ready']
+  },
+  uc18: { id: 'UC-18', cat: '3d', catLabel: '3D', name: 'Idle-анимация',
+    desc: 'Humanoid3D катает morph / позицию по синусу — дыхание, покачивание.',
+    file: 'character3d/Humanoid3D.tsx',
+    flow: ['useFrame', 'sin(t)', 'morph']
+  },
+  uc19: { id: 'UC-19', cat: '3d', catLabel: '3D', name: 'Lip-sync',
+    desc: 'audio.currentTime → амплитуда → blend morph target mouthOpen. lerp для сглаживания.',
+    file: 'lib/character/mouthVertexDeform',
+    flow: ['audio tick', 'amp', 'lerp', 'gl.draw']
+  },
+  uc20: { id: 'UC-20', cat: '3d', catLabel: '3D', name: 'Превью модели',
+    desc: 'ModelPreview3D (140px) в PersonalizationMenu. Hover/focus показывает модель, не перезагружая сцену.',
+    file: 'PersonalizationMenu.tsx:ModelPreview3D',
+    flow: ['hover', 'preview', 'GLB', 'unmount']
+  },
+  uc21: { id: 'UC-21', cat: 'nav', catLabel: 'Навигация', name: 'Открыть раздел',
+    desc: 'Клик MAIN_NAV → router.push(href). Shell перерисовывается.',
+    file: 'lib/sbbol/navigation.ts',
+    flow: ['click', 'router.push', 'page', 'highlight']
+  },
+  uc22: { id: 'UC-22', cat: 'nav', catLabel: 'Навигация', name: 'Dashboard',
+    desc: 'GET /api/banking/summary + notifications + balance. Карточки на главной.',
+    file: 'app/page.tsx',
+    flow: ['mount', 'GET', 'render']
+  },
+  uc23: { id: 'UC-23', cat: 'nav', catLabel: 'Навигация', name: 'Sub-nav (flyout)',
+    desc: 'SUB_NAV открывается hover/focus на пункте MAIN_NAV. На мобиле — drawer.',
+    file: 'SUB_NAV',
+    flow: ['hover', 'flyout', 'sub-item', 'router.push']
+  },
+  uc24: { id: 'UC-24', cat: 'nav', catLabel: 'Навигация', name: 'Мобильный адаптив',
+    desc: '<768px: сайдбар → drawer, FAB → bottom sheet.',
+    file: 'BankingShell.tsx',
+    flow: ['resize', 'media query', 'drawer/sheet']
+  },
+  uc25: { id: 'UC-25', cat: 'nav', catLabel: 'Навигация', name: 'Sidebar',
+    desc: 'MAIN_NAV слева. На мобиле — гамбургер.',
+    file: 'BankingShell.tsx',
+    flow: ['render', 'active', 'click → UC-21']
+  },
+  uc26: { id: 'UC-26', cat: 'meta', catLabel: 'Мета', name: 'Basic Auth',
+    desc: 'middleware.ts + FastAPI SiteBasicAuthMiddleware. Требует Basic Auth если SITE_ACCESS_USER задан.',
+    file: 'middleware.ts',
+    flow: ['request', 'check SITE_ACCESS', 'WWW-Authenticate', 'verify']
+  },
+  uc27: { id: 'UC-27', cat: 'meta', catLabel: 'Мета', name: 'JWT login',
+    desc: 'POST /api/auth/login → JWT в cookie. Scaffold для будущей интеграции.',
+    file: 'api/auth.py + app/login/page.tsx',
+    flow: ['POST', 'verify', 'JWT', 'cookie']
+  },
+  uc28: { id: 'UC-28', cat: 'meta', catLabel: 'Мета', name: 'AI-команды (Learning)',
+    desc: 'Каталог 130+ команд в 12 категориях для самообучения / демо.',
+    file: 'app/learning/page.tsx',
+    flow: ['open', 'render', 'click', 'demo']
+  },
+  uc29: { id: 'UC-29', cat: 'meta', catLabel: 'Мета', name: 'Сброс настроек',
+    desc: 'Кнопка «Сброс» в PersonalizationMenu → resetCharacter(). Чистит localStorage.',
+    file: 'characterStore.resetCharacter',
+    flow: ['click', 'reset', 'localStorage clear']
+  },
+  uc30: { id: 'UC-30', cat: 'nav', catLabel: 'Навигация', name: 'Карта планет (3D-навигация)',
+    desc: 'SberSolarSystem — 7 планет-разделов. Hover/click → planet link → section.',
+    file: 'PlanetMapOverlay.tsx',
+    flow: ['hover', 'planet highlight', 'click', 'router.push']
+  },
+  uc31: { id: 'UC-31', cat: 'meta', catLabel: 'Мета', name: '1С sync',
+    desc: 'POST /api/onec/sync. Демо-интеграция с 1С — обмен документами.',
+    file: 'api/onec.py',
+    flow: ['POST', 'connect', 'sync', 'list']
+  },
+  uc32: { id: 'UC-32', cat: 'meta', catLabel: 'Мета', name: 'Демо-сидинг данных',
+    desc: 'POST /api/admin/reseed. Пересоздаёт демо-данные в Postgres.',
+    file: 'api/admin.py',
+    flow: ['admin token', 'POST', 'truncate', 'seed']
+  },
+  uc33: { id: 'UC-33', cat: 'meta', catLabel: 'Мета', name: 'Health-check / admin',
+    desc: 'GET /api/health (liveness) + GET /api/admin/health (детальный).',
+    file: 'main.py + api/admin.py',
+    flow: ['GET', 'check db/tts/llm', 'json status']
+  }
+};
+
+const STATE_DATA = {
+  booting: { id: 'S0', name: 'Booting',
+    desc: 'Next.js гидратирует клиент, инициализируются Zustand stores. TtsBootstrap ещё не запущен. Короткое состояние, обычно <300ms.',
+    file: 'frontend/app/layout.tsx + store/*',
+    trigger: 'cold start / hard reload'
+  },
+  authgate: { id: 'S1', name: 'AuthGate',
+    desc: 'Если SITE_ACCESS_USER задан в env, middleware требует Basic Auth. Юзер видит модалку ввода логина/пароля.',
+    file: 'middleware.ts + SiteBasicAuthMiddleware',
+    trigger: 'env SITE_ACCESS_USER не пустой'
+  },
+  guest: { id: 'S2', name: 'Guest',
+    desc: 'Анонимный вход. Чат работает через /api/chat/guest, история не сохраняется на бэке (только в localStorage).',
+    file: 'api/chat.py:guest endpoint',
+    trigger: 'AuthGate пройден ИЛИ отсутствует'
+  },
+  authenticated: { id: 'S3', name: 'Authenticated',
+    desc: 'JWT в HttpOnly cookie. История сохраняется на бэке, доступ к /api/chat (не guest).',
+    file: 'api/auth.py + /api/auth/login',
+    trigger: 'POST /api/auth/login → 200 + JWT'
+  },
+  idle: { id: 'S4', name: 'Idle',
+    desc: 'Главное «спокойное» состояние. Юзер на странице, чат закрыт. Доступны навигация, действия с документами, выбор 3D-модели.',
+    file: 'BankingShell + pages',
+    trigger: 'mount / after close'
+  },
+  chatopen: { id: 'S5', name: 'ChatOpen',
+    desc: 'AssistantPanel смонтирован. ChatInput пуст, история загружена, TTS-каталог применён. Юзер может писать / говорить / прикладывать фото.',
+    file: 'AssistantDockPanel.tsx + TtsBootstrap',
+    trigger: 'click FAB / click on assistant'
+  },
+  usertyping: { id: 'S6', name: 'UserTyping',
+    desc: 'ChatInput имеет текст. Кнопка «отправить» активна. LLM ещё не вызван.',
+    file: 'ChatInput.tsx + useChatDraft',
+    trigger: 'input value !== ""'
+  },
+  submitting: { id: 'S7', name: 'Submitting',
+    desc: 'POST /api/chat с abortController. Если юзер нажмёт Stop — fetch отменяется → S6.',
+    file: 'AssistantPanel.tsx:handleSubmit',
+    trigger: 'Enter / click send'
+  },
+  aithinking: { id: 'S8', name: 'AIThinking',
+    desc: 'LLM (OpenRouter) обрабатывает запрос. Идёт streaming. Пустой MessageBubble + spinner «Думаю...».',
+    file: 'services/llm/openrouter + api/chat.py',
+    trigger: '200 OK + chunked transfer'
+  },
+  airesponding: { id: 'S9', name: 'AIResponding',
+    desc: 'Получен полный message. Применяются navigation_path (router.push), form_actions (useSbbolFormFill), source_chips. MessageBubble рендерится.',
+    file: 'services/ui/page_actions + useSbbolFormFill',
+    trigger: 'stream end + JSON parse'
+  },
+  ttsplaying: { id: 'S10', name: 'TTSPlaying',
+    desc: 'POST /api/tts/speak с очищенным текстом. MP3 играет в <audio>. Параллельно запускается lip-sync (S15).',
+    file: 'api/tts.py + lib/tts/playback.ts',
+    trigger: 'S9 done + TTS enabled'
+  },
+  pagenav: { id: 'S11', name: 'PageNavigating',
+    desc: 'router.push(href) в процессе. Next.js прогружает чанк, BankingShell перерисовывается, активный пункт подсвечивается.',
+    file: 'next/router + BankingShell',
+    trigger: 'click MAIN_NAV / SUB_NAV / nav_path from AI'
+  },
+  formfilling: { id: 'S12', name: 'FormFilling',
+    desc: 'useSbbolFormFill патчит DOM-инпуты на текущей странице по form_actions от AI. Юзер видит, как поля заполняются сами.',
+    file: 'hooks/useSbbolFormFill + FormFillBridge',
+    trigger: 'form_actions in AI response'
+  },
+  ocractive: { id: 'S13', name: 'OCRActive',
+    desc: 'multipart/form-data → POST /api/forms/ocr-fill. Бэк грузит фото в ImageToText, получает JSON с реквизитами, нормализует через LLM.',
+    file: 'api/forms.py + ImageToText SDK',
+    trigger: 'photo attached in ChatInput'
+  },
+  modelloading: { id: 'S14', name: 'ModelLoading',
+    desc: 'GlbCharacter3D через useGLTF качает .glb. Suspense fallback показывает спиннер.',
+    file: 'character3d/GlbCharacter3D.tsx',
+    trigger: 'mount / model change'
+  },
+  modelspeaking: { id: 'S15', name: 'ModelSpeaking',
+    desc: 'Активен lip-sync. audio.currentTime → амплитуда → lerp в morph target mouthOpen. Параллельно с S10.',
+    file: 'lib/character/mouthVertexDeform',
+    trigger: 'audio play start'
+  },
+  error: { id: 'S16', name: 'Error',
+    desc: 'Любой fetch вернул 4xx/5xx, network abort, или LLM-парсер упал. Показывается тост, есть retry → S5/S6.',
+    file: 'lib/tts/playback.ts error handler',
+    trigger: '5xx / network / parse error'
+  },
+  destroyed: { id: 'S17', name: 'Unmounted',
+    desc: 'Юзер закрыл вкладку / перешёл на другой сайт. cleanup(): abortController.abort(), audio.pause(), gltf.dispose().',
+    file: 'useEffect cleanup в AssistantPanel',
+    trigger: 'beforeunload / route change'
+  }
+};
+
+function showUCInfo(key) {
+  const data = UC_DATA[key];
+  const panel = document.getElementById('uc-info');
+  if (!data) { panel.classList.remove('open'); panel.innerHTML = ''; return; }
+  panel.classList.add('open');
+  const flowHtml = data.flow.map(f => '<code>' + f + '</code>').join(' → ');
+  panel.innerHTML =
+    '<div class="info-head">' +
+      '<span class="info-id">' + data.id + '</span>' +
+      '<span class="info-title">' + data.name + '</span>' +
+      '<span class="info-tag cat-' + data.cat + '">' + data.catLabel + '</span>' +
+    '</div>' +
+    '<div class="info-desc">' + data.desc + '</div>' +
+    '<dl class="info-rows">' +
+      '<dt>Поток</dt><dd class="text">' + flowHtml + '</dd>' +
+      '<dt>Файл</dt><dd><code>' + data.file + '</code></dd>' +
+    '</dl>';
+}
+
+function showStateInfo(key) {
+  const data = STATE_DATA[key];
+  const panel = document.getElementById('state-info');
+  if (!data) { panel.classList.remove('open'); panel.innerHTML = ''; return; }
+  panel.classList.add('open');
+  panel.innerHTML =
+    '<div class="info-head">' +
+      '<span class="info-id">' + data.id + '</span>' +
+      '<span class="info-title">' + data.name + '</span>' +
+      '<span class="info-tag">state</span>' +
+    '</div>' +
+    '<div class="info-desc">' + data.desc + '</div>' +
+    '<dl class="info-rows">' +
+      '<dt>Триггер</dt><dd class="text">' + data.trigger + '</dd>' +
+      '<dt>Файл</dt><dd><code>' + data.file + '</code></dd>' +
+    '</dl>';
+}
+
+// UC diagram: click on UC or actor
+const ucGroups = document.querySelectorAll('#uc-diagram .uc-group');
+const assocLines = document.querySelectorAll('#uc-diagram .assoc, #uc-diagram .assoc-extend, #uc-diagram .assoc-include');
+const actorGroups = document.querySelectorAll('#uc-diagram .actor-group');
+
+ucGroups.forEach(g => {
+  g.addEventListener('click', (e) => {
+    e.stopPropagation();
+    const key = g.dataset.uc;
+    ucGroups.forEach(x => { if (x !== g) x.classList.add('dim'); });
+    actorGroups.forEach(x => { x.classList.add('highlight'); });
+    g.classList.add('active');
+    showUCInfo(key);
+  });
+});
+
+actorGroups.forEach(a => {
+  a.addEventListener('click', (e) => {
+    e.stopPropagation();
+    const key = a.dataset.actor;
+    actorGroups.forEach(x => { if (x !== a) x.classList.add('dim'); });
+    ucGroups.forEach(x => { x.classList.add('dim'); x.classList.remove('active'); });
+    a.classList.add('highlight');
+    a.classList.remove('dim');
+    // show info about this actor
+    const actorDescriptions = {
+      user: { id: 'Actor', cat: 'meta', catLabel: 'Primary', name: 'Пользователь-юрлицо',
+        desc: 'Бухгалтер / директор демо-СберБизнес. Все UI use cases инициируются этим актёром. Управляет платежами, выписками, зарплатой, AI-ассистентом, 3D-персонажем.',
+        file: '— (через UI: BankingShell, AssistantPanel, page.tsx)', flow: ['click', 'type', 'speak', 'photo', 'wait'] },
+      camera: { id: 'Actor', cat: 'meta', catLabel: 'Device', name: 'Камера (мобильная/веб)',
+        desc: 'Источник фото платёжки для UC-03 (OCR). Через input[type=file] + capture=environment.',
+        file: 'ChatInput.tsx:file input', flow: ['capture', 'file', 'POST'] },
+      mic: { id: 'Actor', cat: 'meta', catLabel: 'Device', name: 'Микрофон',
+        desc: 'Web Speech API для UC-02 (голосовой ввод). Распознавание в браузере, без бэка.',
+        file: 'lib/tts/browserSpeech.ts', flow: ['mic click', 'onResult'] },
+      onec: { id: 'Actor', cat: 'meta', catLabel: 'External', name: '1С',
+        desc: 'Внешняя учётная система. UC-31 sync обменивается документами с бэком.',
+        file: 'api/onec.py', flow: ['POST sync', 'list docs'] },
+      llm: { id: 'Actor', cat: 'meta', catLabel: 'System', name: 'LLM (OpenRouter)',
+        desc: 'Системный актёр. Обрабатывает UC-01 (text), UC-04 (form_actions), UC-05 (nav_path), UC-09 (presets).',
+        file: 'services/llm/openrouter + api/chat.py', flow: ['POST', 'stream', 'JSON'] },
+      tts: { id: 'Actor', cat: 'meta', catLabel: 'System', name: 'TTS (Inworld AI)',
+        desc: 'Системный актёр. Синтез речи для UC-06. Primary — Inworld, fallback цепочка (Qwen/Google/Edge) — в плане.',
+        file: 'api/tts.py + inworld_tts.py', flow: ['POST', 'NDJSON stream', 'mp3'] },
+      ocr: { id: 'Actor', cat: 'meta', catLabel: 'System', name: 'OCR (ImageToText)',
+        desc: 'Системный актёр. Распознавание реквизитов платёжки для UC-03.',
+        file: 'services/ocr/imagetext + api/forms.py', flow: ['upload', 'JSON'] },
+      bank: { id: 'Actor', cat: 'meta', catLabel: 'External', name: 'Банк-шлюз',
+        desc: 'Внешний системный актёр. Принимает подписанные платежи в UC-12.',
+        file: 'api/banking.py:gateway', flow: ['advance', 'sent'] }
+    };
+    showUCInfo(key);
+    const data = actorDescriptions[key];
+    const panel = document.getElementById('uc-info');
+    if (data) {
+      panel.classList.add('open');
+      const flowHtml = data.flow.map(f => '<code>' + f + '</code>').join(' → ');
+      panel.innerHTML =
+        '<div class="info-head">' +
+          '<span class="info-id">' + data.id + '</span>' +
+          '<span class="info-title">' + data.name + '</span>' +
+          '<span class="info-tag cat-' + data.cat + '">' + data.catLabel + '</span>' +
+        '</div>' +
+        '<div class="info-desc">' + data.desc + '</div>' +
+        '<dl class="info-rows">' +
+          '<dt>Поток</dt><dd class="text">' + flowHtml + '</dd>' +
+          '<dt>Файл</dt><dd><code>' + data.file + '</code></dd>' +
+        '</dl>';
+    }
+  });
+});
+
+// State diagram
+const snodes = document.querySelectorAll('#state-diagram .snode');
+const sedges = document.querySelectorAll('#state-diagram .sedge');
+
+snodes.forEach(n => {
+  n.addEventListener('click', (e) => {
+    e.stopPropagation();
+    const key = n.dataset.state;
+    snodes.forEach(x => { if (x !== n) x.classList.add('dim'); else x.classList.add('active'); });
+    sedges.forEach(s => s.classList.add('dim'));
+    showStateInfo(key);
+  });
+});
+
+// Click on empty area to reset both diagrams
+document.querySelectorAll('.diagram-svg').forEach(svg => {
+  svg.addEventListener('click', (e) => {
+    if (e.target.tagName === 'svg' || e.target.tagName === 'rect' && e.target.classList.contains('sys-rect')) {
+      snodes.forEach(x => x.classList.remove('dim', 'active'));
+      ucGroups.forEach(x => x.classList.remove('dim', 'active'));
+      actorGroups.forEach(x => { x.classList.remove('dim', 'highlight'); });
+      sedges.forEach(x => x.classList.remove('dim'));
+      document.getElementById('uc-info').classList.remove('open');
+      document.getElementById('uc-info').innerHTML = '';
+      document.getElementById('state-info').classList.remove('open');
+      document.getElementById('state-info').innerHTML = '';
+    }
+  });
+});
+</script>
+</body>
+</html>
