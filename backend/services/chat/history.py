@@ -147,3 +147,32 @@ async def list_sessions(user_id: str | None, limit: int = 50) -> list[dict[str, 
         # Сортируем: сначала пользовательские (не гость), потом гостевые; внутри — свежие сверху
         out.sort(key=lambda x: (x["is_guest"], x["created_at"] or ""), reverse=True)
         return out
+
+
+async def delete_session(session_id: str, user_id: str | None) -> bool:
+    """Удалить сессию чата и все её сообщения из БД.
+
+    Проверяет владельца:
+      - гостевые сессии (user_id IS NULL) удаляются только если передан
+        user_id == 'guest' (или None — для очистки мусора).
+      - авторизованный пользователь может удалить только свою сессию.
+
+    Возвращает True, если сессия удалена, False если не найдена или нет прав.
+    """
+    from sqlalchemy import delete as sa_delete
+
+    async with AsyncSessionLocal() as db:
+        sess = await db.get(ChatSession, session_id)
+        if not sess:
+            return False
+        if user_id == "guest" or user_id is None:
+            if sess.user_id is not None:
+                return False
+        else:
+            if sess.user_id != user_id:
+                return False
+        # Удаляем все сообщения сессии.
+        await db.execute(sa_delete(Message).where(Message.session_id == session_id))
+        await db.delete(sess)
+        await db.commit()
+        return True

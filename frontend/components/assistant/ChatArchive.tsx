@@ -3,7 +3,7 @@
 import { useEffect, useState } from "react";
 import { History, MessageSquare, RefreshCw, X, Clock, Plus, Trash2 } from "lucide-react";
 import { useAssistantStore } from "@/store/assistantStore";
-import { fetchChatHistory, fetchChatSessions, type ChatSessionSummary } from "@/lib/api/chat";
+import { deleteChatSession, fetchChatHistory, fetchChatSessions, type ChatSessionSummary } from "@/lib/api/chat";
 
 interface Props {
   open: boolean;
@@ -63,6 +63,27 @@ export function ChatArchive({ open, onClose, activeSessionId }: Props) {
   const handleNew = () => {
     startNewChat();
     onClose();
+  };
+
+  const handleDelete = async (sid: string, isGuest: boolean) => {
+    const ok = window.confirm("Удалить диалог? Это действие нельзя отменить.");
+    if (!ok) return;
+    try {
+      const deleted = await deleteChatSession(sid, { guest: isGuest });
+      if (!deleted) {
+        setError("Не удалось удалить диалог — возможно, он уже удалён или нет прав.");
+        return;
+      }
+      // Если удалили активную сессию — начинаем новый диалог, чтобы чат не висел
+      // на удалённой sessionId.
+      if (useAssistantStore.getState().sessionId === sid) {
+        startNewChat();
+      }
+      // Убираем из локального списка без полного reload.
+      setSessions((prev) => prev.filter((s) => s.session_id !== sid));
+    } catch (err) {
+      setError(err instanceof Error ? err.message : String(err));
+    }
   };
 
   if (!open) return null;
@@ -139,6 +160,7 @@ export function ChatArchive({ open, onClose, activeSessionId }: Props) {
                   session={s}
                   active={s.session_id === activeSessionId}
                   onClick={() => void handleOpen(s.session_id)}
+                  onDelete={() => void handleDelete(s.session_id, false)}
                 />
               ))}
             </Section>
@@ -152,6 +174,7 @@ export function ChatArchive({ open, onClose, activeSessionId }: Props) {
                   session={s}
                   active={s.session_id === activeSessionId}
                   onClick={() => void handleOpen(s.session_id)}
+                  onDelete={() => void handleDelete(s.session_id, true)}
                 />
               ))}
             </Section>
@@ -196,35 +219,52 @@ function SessionRow({
   session,
   active,
   onClick,
+  onDelete,
 }: {
   session: ChatSessionSummary;
   active: boolean;
   onClick: () => void;
+  onDelete: () => void;
 }) {
+  // Кнопка удаления — отдельный <button>, чтобы клик по ней не
+  // триггерил открытие сессии (onClick родительской кнопки).
   return (
-    <button
-      type="button"
-      onClick={onClick}
-      className={`w-full text-left px-2.5 py-2 rounded-lg transition-colors flex items-start gap-2 group ${
+    <div
+      className={`group relative w-full text-left rounded-lg transition-colors flex items-start gap-2 ${
         active
           ? "bg-[#e5fcf7] border border-[#128e8b]/40"
           : "border border-transparent hover:bg-[#f2f4f7]"
       }`}
     >
-      <MessageSquare
-        className={`w-3.5 h-3.5 mt-0.5 shrink-0 ${active ? "text-[#128e8b]" : "text-[#7d838a] group-hover:text-[#107f8c]"}`}
-      />
-      <div className="flex-1 min-w-0">
-        <p className={`text-xs font-bold leading-tight truncate ${active ? "text-[#0f6c69]" : "text-[#2c3e50]"}`}>
-          {session.title}
-        </p>
-        <div className="flex items-center gap-1.5 mt-1 text-[10px] text-[#9aa1a8]">
-          <Clock className="w-2.5 h-2.5" />
-          <span>{formatRelative(session.created_at)}</span>
-          <span>·</span>
-          <span>{session.message_count} сообщ.</span>
+      <button
+        type="button"
+        onClick={onClick}
+        className="flex-1 min-w-0 text-left px-2.5 py-2 flex items-start gap-2"
+      >
+        <MessageSquare
+          className={`w-3.5 h-3.5 mt-0.5 shrink-0 ${active ? "text-[#128e8b]" : "text-[#7d838a] group-hover:text-[#107f8c]"}`}
+        />
+        <div className="flex-1 min-w-0">
+          <p className={`text-xs font-bold leading-tight truncate ${active ? "text-[#0f6c69]" : "text-[#2c3e50]"}`}>
+            {session.title}
+          </p>
+          <div className="flex items-center gap-1.5 mt-1 text-[10px] text-[#9aa1a8]">
+            <Clock className="w-2.5 h-2.5" />
+            <span>{formatRelative(session.created_at)}</span>
+            <span>·</span>
+            <span>{session.message_count} сообщ.</span>
+          </div>
         </div>
-      </div>
-    </button>
+      </button>
+      <button
+        type="button"
+        onClick={onDelete}
+        aria-label="Удалить диалог"
+        title="Удалить диалог"
+        className="shrink-0 self-center mr-1.5 w-7 h-7 rounded-md flex items-center justify-center text-[#9aa1a8] hover:text-[#e53935] hover:bg-[#fde8e8] opacity-0 group-hover:opacity-100 focus:opacity-100 transition"
+      >
+        <Trash2 className="w-3.5 h-3.5" />
+      </button>
+    </div>
   );
 }

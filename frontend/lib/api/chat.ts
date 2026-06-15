@@ -31,6 +31,26 @@ export async function fetchChatSessions(limit = 50): Promise<ChatSessionSummary[
   return (data.sessions ?? []) as ChatSessionSummary[];
 }
 
+/** Удалить сессию чата и все её сообщения из БД. Авторизованный пользователь
+ *  может удалить только свою сессию. Гость — только гостевую.
+ *  Возвращает true, если бэкенд подтвердил удаление. */
+export async function deleteChatSession(
+  sessionId: string,
+  options?: { guest?: boolean }
+): Promise<boolean> {
+  const authed = Boolean(authHeaders().Authorization);
+  const path = options?.guest || !authed
+    ? `/api/chat/guest/sessions/${encodeURIComponent(sessionId)}`
+    : `/api/chat/sessions/${encodeURIComponent(sessionId)}`;
+  const res = await fetch(apiUrl(path), {
+    method: "DELETE",
+    credentials: "same-origin",
+    headers: authHeaders(),
+  });
+  if (res.status === 404) return false;
+  return res.ok;
+}
+
 export async function streamChatMessage(
   body: Record<string, unknown>,
   onToken: (partial: string) => void,

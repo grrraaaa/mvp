@@ -1294,7 +1294,7 @@ class AssistantService:
             message, page_route
         ):
             # Admin не может переходить в документные/платёжные разделы через ассистента.
-            denied = self._maybe_admin_navigation_denied(message, role)
+            denied = self._maybe_admin_navigation_denied(message, session_id, role)
             if denied:
                 return self._attach_reformulation(denied, reformulation_meta)
             demo_nav = self._maybe_demo_navigation(message, session_id)

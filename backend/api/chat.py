@@ -11,7 +11,7 @@ from fastapi.responses import StreamingResponse
 from models.schemas import ChatRequest, AssistantResponse
 from services.ai.assistant import AssistantService
 from services.chat.enrichment import enrich_response
-from services.chat.history import load_history, list_sessions, save_message
+from services.chat.history import delete_session, load_history, list_sessions, save_message
 from core.dependencies import get_current_user
 from db.database import AsyncSessionLocal
 from db.models import OrganizationProfile
@@ -211,3 +211,32 @@ async def get_sessions(
     """
     sessions = await list_sessions(user_id=current_user.id, limit=limit)
     return {"sessions": sessions}
+
+
+@router.delete("/sessions/{session_id}")
+async def remove_session(
+    session_id: str,
+    current_user=Depends(get_current_user),
+):
+    """Удалить сессию чата и все её сообщения из БД.
+
+    Доступно только владельцу сессии. Гостевые сессии (user_id IS NULL)
+    удалить нельзя — их нет на бэке для авторизованного пользователя.
+    """
+    ok = await delete_session(session_id, user_id=current_user.id)
+    if not ok:
+        raise HTTPException(status_code=404, detail="Сессия не найдена или нет прав на удаление")
+    return {"deleted": session_id}
+
+
+@router.delete("/guest/sessions/{session_id}")
+async def remove_guest_session(session_id: str):
+    """Удалить гостевую сессию (user_id IS NULL).
+
+    Гостевой чат на демо-режиме: каждый мог оставить сессию без авторизации.
+    Удалить можно только если сессия действительно гостевая.
+    """
+    ok = await delete_session(session_id, user_id="guest")
+    if not ok:
+        raise HTTPException(status_code=404, detail="Сессия не найдена или не гостевая")
+    return {"deleted": session_id}
