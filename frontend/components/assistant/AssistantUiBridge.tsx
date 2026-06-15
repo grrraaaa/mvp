@@ -46,6 +46,7 @@ export function AssistantUiBridge() {
   const { openDocumentModal, openServiceApplication } = useSbbolUi();
   const { can } = useRole();
   const canFormatDocumentAi = can("format_document_ai");
+  const canCreateDocument = can("create_document");
 
   useEffect(() => {
     const handler = (e: Event) => {
@@ -56,6 +57,16 @@ export function AssistantUiBridge() {
        *  Блокируем на входе, чтобы админ не мог обойти проверки в AssistantPanel. */
       if (action.startsWith("fill:") && !canFormatDocumentAi) {
         console.warn("[AssistantUiBridge] fill blocked: insufficient permissions");
+        return;
+      }
+
+      /** Создание документа — отдельный пермишен create_document.
+       *  Без него открывать модалку нельзя (для admin запрещено). */
+      if (
+        (action === "open-doc-modal" || action === "create-document") &&
+        !canCreateDocument
+      ) {
+        console.warn("[AssistantUiBridge] create-document blocked: insufficient permissions");
         return;
       }
 
@@ -133,7 +144,7 @@ export function AssistantUiBridge() {
       window.removeEventListener(ASSISTANT_ACTION_EVENT, handler);
       window.removeEventListener(ASSISTANT_NAVIGATE_EVENT, onNavigate);
     };
-  }, [openDocumentModal, openServiceApplication, router]);
+  }, [openDocumentModal, openServiceApplication, router, canFormatDocumentAi, canCreateDocument]);
 
   return null;
 }
