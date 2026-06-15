@@ -1232,10 +1232,23 @@ class AssistantService:
         form_type: Optional[str] = None,
         org_id: Optional[str] = None,
         form_fields: Optional[Dict[str, str]] = None,
+        app_role: Optional[str] = None,
     ) -> AssistantResponse:
         if not session_id:
             session_id = str(uuid.uuid4())
         effective_org = org_id or "demo"
+
+        # ── Определить UI-роль: фронт прислал явно → из БД → маппинг из user_role
+        from core.permissions import resolve_app_role
+        try:
+            async with AsyncSessionLocal() as role_db:
+                org = await role_db.get(OrganizationProfile, effective_org)
+                org_app_role = getattr(org, "app_role", None) if org else None
+                org_user_role = getattr(org, "user_role", None) if org else None
+        except Exception:
+            org_app_role = None
+            org_user_role = None
+        role = resolve_app_role(org_app_role, org_user_role, app_role)
 
         if _is_greeting_or_empty(message):
             return await self._build_welcome(session_id, effective_org, page_route)
@@ -1261,7 +1274,6 @@ class AssistantService:
                     "original": message,
                     "canonical": ref.canonical,
                     "intent": ref.intent,
-                    "confidence": ref.confidence,
                     "params": ref.params,
                     "via_llm": ref.via_llm,
                     "elapsed_ms": ref.elapsed_ms,
@@ -1280,6 +1292,10 @@ class AssistantService:
         if is_navigation_message(message) and not is_banking_document_command(
             message, page_route
         ):
+            # Admin не может переходить в документные/платёжные разделы через ассистента.
+            denied = self._maybe_admin_navigation_denied(message, role)
+            if denied:
+                return self._attach_reformulation(denied, reformulation_meta)
             demo_nav = self._maybe_demo_navigation(message, session_id)
             if demo_nav:
                 return self._attach_reformulation(demo_nav, reformulation_meta)
@@ -1295,12 +1311,13 @@ class AssistantService:
                 session_id,
                 effective_org,
                 form_fields=form_fields,
+                role=role,
             )
             if form_reply is not None:
                 return self._attach_reformulation(form_reply, reformulation_meta)
 
         banking_reply = await self._maybe_banking_query(
-            message, session_id, effective_org, page_route=page_route
+            message, session_id, effective_org, page_route=page_route, role=role
         )
         if banking_reply:
             return self._attach_reformulation(banking_reply, reformulation_meta)
@@ -1364,6 +1381,7 @@ class AssistantService:
         session_id: str,
         org_id: str = "demo",
         form_fields: Optional[Dict[str, str]] = None,
+        role: str = "manager",
     ) -> Optional[AssistantResponse]:
         schema = load_form_schema(form_type)
         if not schema:
@@ -1371,6 +1389,14 @@ class AssistantService:
 
         if is_navigation_message(message):
             return None
+
+        if role == "admin":
+            from core.permissions import deny_title
+            return AssistantResponse(
+                message=deny_title(role, "format_document_ai")
+                + "\n\nИИ-ассистент не может заполнять/форматировать документы для вашей роли.",
+                session_id=session_id,
+            )
 
         state = _get_form_session(session_id, form_type)
         _sync_form_snapshot(state, schema, form_fields)
@@ -1656,6 +1682,33 @@ class AssistantService:
             for f in args.get("fields", [])
         ]
 
+    def _maybe_admin_navigation_denied(
+        self, message: str, session_id: str, role: str
+    ) -> Optional[AssistantResponse]:
+        """Если role=admin и match_demo_route вернёт запрещённый маршрут —
+        вернём ответ «недостаточно прав» вместо навигации.
+        Блокируются: /other/documents*, /payments/*, /statement, /salary.
+        """
+        if role != "admin":
+            return None
+        from core.permissions import format_deny_message, is_route_blocked_for_role
+        route = match_demo_route(message)
+        if not route:
+            return None
+        if not is_route_blocked_for_role(route, role):
+            return None
+        return AssistantResponse(
+            message=format_deny_message(route, role),
+            session_id=session_id,
+            action_buttons=[
+                ActionButton(
+                    label="Открыть обучение",
+                    url="/learning",
+                    variant="secondary",
+                ),
+            ],
+        )
+
     def _maybe_demo_navigation(
         self, message: str, session_id: str
     ) -> Optional[AssistantResponse]:
@@ -1765,7 +1818,29 @@ class AssistantService:
         org_id: str = "demo",
         *,
         page_route: str | None = None,
+        role: str = "manager",
     ) -> Optional[AssistantResponse]:
+        from core.permissions import deny_title, format_deny_message, is_route_blocked_for_role
+
+        # Admin: запрет на команды «открой все документы / покажи документы за
+        # период / счёт №N / …» через banking-обработчик. Вместо этого
+        # перенаправляем на навигацию по разделам через _maybe_demo_navigation
+        # (которая выше уже заблокирована для admin) или возвращаем «нет прав».
+        if role == "admin":
+            denied = self._maybe_admin_navigation_denied(message, session_id, role)
+            if denied:
+                return denied
+            # Если match_demo_route ничего не вернул (например, команда с фильтром),
+            # блокируем «недостаточно прав» на документы/выписки/зарплату.
+            if re.search(r"документ\w*|выписк\w*|зарплат\w*|плат[её]ж\w*|платёж\w*", message, re.I):
+                return AssistantResponse(
+                    message=deny_title(role, "open_document")
+                    + "\n\nИИ-ассистент не может работать с документами и платежами для вашей роли.",
+                    session_id=session_id,
+                )
+            # Не banking-команда — пропускаем дальше.
+            return None
+
         async with AsyncSessionLocal() as session:
             result = await handle_banking_query(
                 session,
@@ -1773,9 +1848,20 @@ class AssistantService:
                 org_id=org_id,
                 session_id=session_id,
                 page_route=page_route,
+                role=role,
             )
         if not result:
             return None
+
+        # Admin: дополнительно вычищаем form_actions и open_modal,
+        # если бы они просочились (страховка от LLM-галлюцинаций).
+        if role == "admin":
+            result = dict(result)
+            result.pop("form_actions", None)
+            for btn in result.get("action_buttons", []) or []:
+                url = (btn.get("url") if isinstance(btn, dict) else getattr(btn, "url", None)) or ""
+                if is_route_blocked_for_role(url, role):
+                    pass  # кнопка остаётся, но user не нажмёт — router.push всё равно
         form_actions = result.get("form_actions")
         return AssistantResponse(
             message=result["message"],

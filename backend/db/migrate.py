@@ -28,6 +28,7 @@ PG_MIGRATIONS = [
     "ALTER TABLE counterparties ADD COLUMN IF NOT EXISTS risk_score FLOAT DEFAULT 50.0",
     "ALTER TABLE counterparties ADD COLUMN IF NOT EXISTS risk_level VARCHAR DEFAULT 'medium'",
     "ALTER TABLE counterparties ADD COLUMN IF NOT EXISTS risk_notes TEXT DEFAULT ''",
+    "ALTER TABLE organization_profiles ADD COLUMN IF NOT EXISTS app_role VARCHAR",
 ]
 
 

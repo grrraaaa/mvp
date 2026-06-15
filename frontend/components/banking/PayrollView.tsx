@@ -47,9 +47,6 @@ export default function PayrollView() {
     const handler = (e: Event) => {
       const action = (e as CustomEvent<{ action: string }>).detail?.action;
       if (action === "run-payroll") {
-        /** Зарплатная ведомость — это документ. Заполнение/форматирование
-         *  через ИИ-ассистента доступно не всем ролям (admin — нельзя). */
-        if (!can("format_document_ai")) return;
         setActiveTab("payout");
         const byn = accounts.find((a) => a.currency === "BYN");
         if (byn && !payoutBynAccount) setPayoutBynAccount(byn.id);
@@ -57,7 +54,7 @@ export default function PayrollView() {
     };
     window.addEventListener(ASSISTANT_ACTION_EVENT, handler);
     return () => window.removeEventListener(ASSISTANT_ACTION_EVENT, handler);
-  }, [accounts, can, payoutBynAccount]);
+  }, [accounts, payoutBynAccount]);
 
   const handleAddEmployee = (e: FormEvent) => {
     e.preventDefault();

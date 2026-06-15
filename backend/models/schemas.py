@@ -39,6 +39,9 @@ class ChatRequest(BaseModel):
     form_type: Optional[str] = None  # paydocby | instant | paydoccur
     org_id: Optional[str] = None
     form_fields: Optional[dict[str, str]] = None  # DOM name → value с открытой формы
+    # UI-роль из RoleSelector (manager | admin | user). Если None — берётся
+    # из OrganizationProfile.app_role или маппится из user_role.
+    app_role: Optional[str] = None
 
 class NavigationStep(BaseModel):
     label: str

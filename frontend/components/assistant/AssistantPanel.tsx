@@ -13,7 +13,7 @@ import { WelcomeScreen } from "./WelcomeScreen";
 import { useAssistantStore } from "@/store/assistantStore";
 import { useAuthStore } from "@/store/authStore";
 import { useCharacterStore } from "@/store/characterStore";
-import { useRole } from "@/store/roleStore";
+import { useRoleStore } from "@/store/roleStore";
 import { collectFormFieldSnapshot } from "@/lib/assistant/formFillRunner";
 import { getSbbolPageContext } from "@/lib/sbbol/formContext";
 import { getAssistantQuickChips } from "@/lib/sbbol/assistantQuickChips";
@@ -45,9 +45,6 @@ interface Props {
 interface NavRoute {
   path: string;
   title: string;
-  /** true, если переход открывает/создаёт конкретный документ —
-   *  для admin нужно блокировать по праву `open_document`. */
-  requiresOpenDocument?: boolean;
 }
 
 /** Глаголы-триггеры навигации. Сюда попадают «открой», «открыть»,
@@ -61,9 +58,9 @@ const NAV_RULES: { pattern: RegExp; route: NavRoute }[] = [
   { pattern: /плат[её]жн\w+\s+поручен/i, route: { path: "/payments/paydocbyn", title: "Платёжное поручение (BYN)" } },
   { pattern: /валют\w*\s+плат|валюта|usd|eur|paydoccur/i, route: { path: "/payments/paydoccur", title: "Платежное поручение (валюта)" } },
   { pattern: /плат[её]жк\w+|плат[её]ж\b|созда\w+\s+плат/i, route: { path: "/payments/paydocbyn", title: "Платёжное поручение (BYN)" } },
-  { pattern: /выписк\w+/i, route: { path: "/statement", title: "Выписка", requiresOpenDocument: true } },
-  { pattern: /зарплат\w+/i, route: { path: "/salary", title: "Зарплатный проект", requiresOpenDocument: true } },
-  { pattern: /документ\w+/i, route: { path: "/other/documents", title: "Все документы", requiresOpenDocument: true } },
+  { pattern: /выписк\w+/i, route: { path: "/statement", title: "Выписка" } },
+  { pattern: /зарплат\w+/i, route: { path: "/salary", title: "Зарплатный проект" } },
+  { pattern: /документ\w+/i, route: { path: "/other/documents", title: "Все документы" } },
   { pattern: /контрагент|вернифика|проверь\s+контрагента/i, route: { path: "/other/counterparty", title: "Проверка контрагента" } },
   { pattern: /услуг\w+|сервис\w+/i, route: { path: "/services", title: "Услуги и сервисы" } },
   { pattern: /продукт\w+|кредит\w+|депозит\w+|карт\w+/i, route: { path: "/products", title: "Продукты" } },
@@ -74,28 +71,11 @@ const NAV_RULES: { pattern: RegExp; route: NavRoute }[] = [
 
 /** Локальный intent: если пользователь пишет «открой …», «создай …»,
  *  «покажи …», «перейди …» — возвращаем маршрут сразу, без LLM.
- *  Возвращает null, если ничего не подошло или роль не имеет права
- *  переходить в выбранный раздел (например, /payments/* для admin). */
-function matchNavigationIntent(
-  text: string,
-  canFormatDocumentAi: boolean,
-  canOpenDocument: boolean,
-): NavRoute | null {
+ *  Возвращает null, если ничего не подошло. */
+function matchNavigationIntent(text: string): NavRoute | null {
   if (!NAV_TRIGGERS.test(text)) return null;
   for (const { pattern, route } of NAV_RULES) {
     if (pattern.test(text)) {
-      if (!canFormatDocumentAi && /^\/payments(\/|$)/.test(route.path)) {
-        if (typeof window !== "undefined") {
-          console.warn("[assistant] navigation blocked (format_document_ai missing):", route.path);
-        }
-        return null;
-      }
-      if (route.requiresOpenDocument && !canOpenDocument) {
-        if (typeof window !== "undefined") {
-          console.warn("[assistant] navigation blocked (open_document missing):", route.path);
-        }
-        return null;
-      }
       return route;
     }
   }
@@ -140,12 +120,6 @@ export function AssistantPanel({ variant = "default", compactMobile = false, onR
   } = useAssistantStore();
   const orgId = useAuthStore((s) => s.user?.org_id);
   const { config, setSettingsOpen } = useCharacterStore();
-  const { can, denyTitle } = useRole();
-  const canOpenDocument = can("open_document");
-  const canFormatDocumentAi = can("format_document_ai");
-  const canCreateDocument = can("create_document");
-  const docDenyTitle = denyTitle("open_document");
-  const formatDenyTitle = denyTitle("format_document_ai");
   const { revealLastAssistant, cancelReveal } = useAssistantReveal();
   const { setEmotion } = useCharacterBehaviorStore();
   const lastToneRef = useRef<string | undefined>(undefined);
@@ -291,28 +265,7 @@ export function AssistantPanel({ variant = "default", compactMobile = false, onR
           (data.navigation_path as unknown[]).length - 1
         ]?.url;
         if (target?.startsWith("/")) {
-          const isDocNav =
-            isDocumentUuid(
-              new URL(target, window.location.origin).searchParams.get("highlight"),
-            ) ||
-            /\/other\/documents(\/|$)/.test(target) ||
-            /^\/statement(\/|$)/.test(target) ||
-            /^\/salary(\/|$)/.test(target) ||
-            /[?&]doc=/.test(target);
-          const isPaymentNav = /^\/payments(\/|$)/.test(target);
-          if (isDocNav && !canOpenDocument) {
-            addMessage({
-              role: "assistant",
-              content: `🚫 ${docDenyTitle}\n\nИИ-ассистент не может открывать документы для вашей роли.`,
-            });
-          } else if (isPaymentNav && !canFormatDocumentAi) {
-            addMessage({
-              role: "assistant",
-              content: `🚫 ${formatDenyTitle}\n\nИИ-ассистент не может переходить в раздел платежей для вашей роли.`,
-            });
-          } else {
-            router.push(target);
-          }
+          router.push(target);
         }
       }
       if (data.session_id && typeof data.session_id === "string") {
@@ -322,75 +275,22 @@ export function AssistantPanel({ variant = "default", compactMobile = false, onR
       }
       const pendingFormActions = data.form_actions as never;
       if (pendingFormActions && (pendingFormActions as unknown[]).length) {
-        if (!canFormatDocumentAi) {
-          addMessage({
-            role: "assistant",
-            content: `🚫 ${formatDenyTitle}\n\nИИ-ассистент не может заполнять/форматировать документы для вашей роли.`,
-          });
-          // Гарантируем, что FormFillBridge не применит эти действия с прошлой сессии.
-          useAssistantStore.getState().clearFormActions();
-          // И не оставляем чипы-подсказки от бэкенда, которые могли намекать
-          // на форматирование («Заполнить с фото», «Сумма 1500, назначение — …»).
-          setSuggestedChips([]);
+        const hasNav = Boolean(
+          (data.navigation_path as unknown[] | undefined)?.length ||
+            (data.ui_actions as { type: string; target: string }[] | undefined)?.some(
+              (a) => a.type === "navigate" && a.target?.startsWith("/"),
+            ),
+        );
+        if (hasNav) {
+          window.setTimeout(() => applyFormActions(pendingFormActions), 120);
         } else {
-          const hasNav = Boolean(
-            (data.navigation_path as unknown[] | undefined)?.length ||
-              (data.ui_actions as { type: string; target: string }[] | undefined)?.some(
-                (a) => a.type === "navigate" && a.target?.startsWith("/"),
-              ),
-          );
-          if (hasNav) {
-            window.setTimeout(() => applyFormActions(pendingFormActions), 120);
-          } else {
-            applyFormActions(pendingFormActions);
-          }
+          applyFormActions(pendingFormActions);
         }
       }
       if (data.ui_actions && (data.ui_actions as unknown[]).length) {
         for (const a of data.ui_actions as { type: string; target: string }[]) {
           if (a.type === "navigate" && a.target?.startsWith("/")) {
-            const isDocNav =
-              isDocumentUuid(
-                new URL(a.target, window.location.origin).searchParams.get("highlight"),
-              ) ||
-              /\/other\/documents(\/|$)/.test(a.target) ||
-              /^\/statement(\/|$)/.test(a.target) ||
-              /^\/salary(\/|$)/.test(a.target) ||
-              /[?&]doc=/.test(a.target);
-            const isPaymentNav = /^\/payments(\/|$)/.test(a.target);
-            if (isDocNav && !canOpenDocument) {
-              addMessage({
-                role: "assistant",
-                content: `🚫 ${docDenyTitle}\n\nИИ-ассистент не может открывать документы для вашей роли.`,
-              });
-            } else if (isPaymentNav && !canFormatDocumentAi) {
-              addMessage({
-                role: "assistant",
-                content: `🚫 ${formatDenyTitle}\n\nИИ-ассистент не может переходить в раздел платежей для вашей роли.`,
-              });
-            } else {
-              router.push(a.target);
-            }
-          } else if (
-            a.type === "fill" &&
-            !canFormatDocumentAi
-          ) {
-            /** Бэкенд может прислать fill как обход проверок.
-             *  Для admin блокируем на входе, не давая выполнить через AssistantUiBridge. */
-            addMessage({
-              role: "assistant",
-              content: `🚫 ${formatDenyTitle}\n\nИИ-ассистент не может заполнять/форматировать документы для вашей роли.`,
-            });
-          } else if (
-            a.type === "open_modal" &&
-            !canCreateDocument
-          ) {
-            /** Создание документов через ИИ-ассистента — отдельный пермишен.
-             *  Без create_document (admin) модалку не открываем. */
-            addMessage({
-              role: "assistant",
-              content: `🚫 ${denyTitle("create_document")}\n\nИИ-ассистент не может создавать документы для вашей роли.`,
-            });
+            router.push(a.target);
           } else {
             executeUiActions([a]);
           }
@@ -403,7 +303,16 @@ export function AssistantPanel({ variant = "default", compactMobile = false, onR
       }
       lastToneRef.current = data.response_tone as string | undefined;
     },
-    [addMessage, applyFormActions, canFormatDocumentAi, canOpenDocument, docDenyTitle, formatDenyTitle, router, setEmotion, setLastEmotion, setNavigationPath, setSessionId, setSuggestedChips],
+    [
+      addMessage,
+      applyFormActions,
+      router,
+      setEmotion,
+      setLastEmotion,
+      setNavigationPath,
+      setSessionId,
+      setSuggestedChips,
+    ],
   );
 
   const sendMessage = useCallback(
@@ -411,51 +320,10 @@ export function AssistantPanel({ variant = "default", compactMobile = false, onR
       if (!text.trim() || isLoading) return;
       const trimmed = text.trim();
 
-      /** Стоп-кран для admin: если запрос содержит триггер «открой/создай/…
-       *  документ/платёж/выписку/зарплату/контрагента в платежах» — НЕ отдаём
-       *  запрос в LLM, а сразу выдаём «недостаточно прав». Это страховка
-       *  для всех остальных путей (matchNavigationIntent, applyAssistantPayload,
-       *  ui_actions) — даже если что-то из них по какой-то причине пропустит,
-       *  этот guard всё равно сработает. */
-      if (
-        NAV_TRIGGERS.test(trimmed) &&
-        (/\b(документ|документы|документа|документов)\b/i.test(trimmed) ||
-          /\b(мгновенн|валют\w*\s+плат|usd\b|eur\b|paydoccur|оплата|оплатить|платить|перевод)\b/i.test(trimmed) ||
-          /\b(плат[её]ж|платёжк|поручен)\b/i.test(trimmed) ||
-          /\bвыписк\w+\b/i.test(trimmed) ||
-          /\bзарплат\w+\b/i.test(trimmed) ||
-          /\bназначен\w+\s+платеж|сумма\s+перевода|чек\b/i.test(trimmed)) &&
-        !canFormatDocumentAi &&
-        !canOpenDocument
-      ) {
-        if (typeof window !== "undefined") {
-          console.warn("[assistant] stop-guard fired (admin) for:", trimmed);
-        }
-        setInput("");
-        setWelcomeOpen(false);
-        addMessage({ role: "user", content: trimmed });
-        addMessage({
-          role: "assistant",
-          content: `🚫 ${formatDenyTitle}\n\nИИ-ассистент не может работать с документами и платежами для вашей роли. Попробуйте обратиться как Руководитель или ИП.`,
-        });
-        // Чистим form_actions, чтобы FormFillBridge ничего не применил.
-        useAssistantStore.getState().clearFormActions();
-        return;
-      }
-
       /** Локальный intent: «Помоги заполнить платёж по фото счёта».
        *  Показываем запрос фото и сами открываем /payments/instant,
        *  не дожидаясь ответа бэкенда. */
       if (/помоги\s+заполнить\s+плат[её]ж\s+по\s+фото\s+сч[её]та/i.test(trimmed)) {
-        if (!canFormatDocumentAi) {
-          setInput("");
-          addMessage({ role: "user", content: trimmed });
-          addMessage({
-            role: "assistant",
-            content: `🚫 ${formatDenyTitle}\n\nИИ-ассистент не может заполнять/форматировать документы для вашей роли.`,
-          });
-          return;
-        }
         setInput("");
         setWelcomeOpen(false);
         addMessage({ role: "user", content: trimmed });
@@ -466,10 +334,6 @@ export function AssistantPanel({ variant = "default", compactMobile = false, onR
             "Открываю страницу **Мгновенный платёж** — там нажмите иконку 📎 внизу чата, " +
             "выберите файл, и я сразу подставлю получателя, счёт, сумму и назначение.",
         });
-        // Очищаем form_actions: на новой странице FormFillBridge не должен
-        // применить что-то от прошлого LLM-ответа (например, заполнить
-        // "Назначение платежа" текстом не по фото).
-        useAssistantStore.getState().clearFormActions();
         router.push("/payments/instant");
         return;
       }
@@ -479,18 +343,8 @@ export function AssistantPanel({ variant = "default", compactMobile = false, onR
        *  /payments/instant и /payments/paydocbyn) ДО отправки в LLM — иначе
        *  бэкенд отвечает инструкциями «указажите поле», не понимая, что
        *  пользователь хочет перейти в другой раздел. */
-      const navRoute = matchNavigationIntent(trimmed, canFormatDocumentAi, canOpenDocument);
+      const navRoute = matchNavigationIntent(trimmed);
       if (navRoute) {
-        if (navRoute.requiresOpenDocument && !canOpenDocument) {
-          setInput("");
-          setWelcomeOpen(false);
-          addMessage({ role: "user", content: trimmed });
-          addMessage({
-            role: "assistant",
-            content: `🚫 ${docDenyTitle}\n\nИИ-ассистент не может открывать документы для вашей роли.`,
-          });
-          return;
-        }
         setInput("");
         setWelcomeOpen(false);
         addMessage({ role: "user", content: trimmed });
@@ -498,48 +352,8 @@ export function AssistantPanel({ variant = "default", compactMobile = false, onR
           role: "assistant",
           content: `Открываю **${navRoute.title}**…`,
         });
-        // Навигация по ассистенту означает, что мы уходим с текущей страницы.
-        // form_actions, лежащие в сторе от прошлого LLM-ответа, не должны
-        // применяться к форме на новой странице — иначе FormFillBridge мог бы
-        // заполнить, например, "Назначение платежа" на странице /other/documents.
-        useAssistantStore.getState().clearFormActions();
         router.push(navRoute.path);
         return;
-      }
-
-      /** Если навигационный триггер сработал, но прав не хватило —
-       *  провалимся в LLM, но сначала покажем пользователю явное «недостаточно
-       *  прав» вместо ответа бэкенда «Открываю список всех документов» (старый
-       *  лог, который мы блокируем). Сопоставляем фразу с правилами без учёта
-       *  прав и решаем, какое право нужно. */
-      if (NAV_TRIGGERS.test(trimmed)) {
-        const wanted = matchNavigationIntent(trimmed, true, true);
-        if (wanted) {
-          setInput("");
-          setWelcomeOpen(false);
-          addMessage({ role: "user", content: trimmed });
-          if (wanted.requiresOpenDocument && !canOpenDocument) {
-            addMessage({
-              role: "assistant",
-              content: `🚫 ${docDenyTitle}\n\nИИ-ассистент не может открывать документы для вашей роли.`,
-            });
-          } else if (/^\/payments(\/|$)/.test(wanted.path) && !canFormatDocumentAi) {
-            addMessage({
-              role: "assistant",
-              content: `🚫 ${formatDenyTitle}\n\nИИ-ассистент не может работать с платежами для вашей роли.`,
-            });
-          } else if (!canCreateDocument) {
-            addMessage({
-              role: "assistant",
-              content: `🚫 ${denyTitle("create_document")}\n\nИИ-ассистент не может создавать документы для вашей роли.`,
-            });
-          }
-          // При любом «открыть/создать» через ассистента чистим отложенные
-          // form_actions — иначе FormFillBridge может заполнить поле формы
-          // на текущей странице сразу после навигации.
-          useAssistantStore.getState().clearFormActions();
-          return;
-        }
       }
 
       setInput("");
@@ -555,6 +369,9 @@ export function AssistantPanel({ variant = "default", compactMobile = false, onR
         page_route: pageContext.page_route,
         form_type: pageContext.form_type,
         org_id: orgId,
+        // UI-роль из RoleSelector (manager | admin | user) — бэкенд использует
+        // её для разграничения доступа к документам и платежам.
+        app_role: useRoleStore.getState().roleId,
       };
       if (pageContext.form_type) {
         const snapshot = collectFormFieldSnapshot(pageContext.form_type);
@@ -601,11 +418,6 @@ export function AssistantPanel({ variant = "default", compactMobile = false, onR
       addMessage,
       applyAssistantPayload,
       assistantMetaFromPayload,
-      canCreateDocument,
-      canFormatDocumentAi,
-      canOpenDocument,
-      docDenyTitle,
-      formatDenyTitle,
       isLoading,
       lastEmotion,
       orgId,
@@ -635,17 +447,6 @@ export function AssistantPanel({ variant = "default", compactMobile = false, onR
   const handleShowSource = useCallback(
     (source: SourceRef) => {
       if (source.url?.startsWith("/")) {
-        const isDocLink =
-          isDocumentUuid(new URL(source.url, window.location.origin).searchParams.get("highlight")) ||
-          /\/other\/documents\/view/.test(source.url) ||
-          /[?&]doc=/.test(source.url);
-        if (isDocLink && !canOpenDocument) {
-          addMessage({
-            role: "assistant",
-            content: `🚫 ${docDenyTitle}\n\nИИ-ассистент не может открывать документы для вашей роли.`,
-          });
-          return;
-        }
         try {
           const parsed = new URL(source.url, window.location.origin);
           const highlightParam = parsed.searchParams.get("highlight");
@@ -671,7 +472,7 @@ export function AssistantPanel({ variant = "default", compactMobile = false, onR
         return;
       }
     },
-    [router, canOpenDocument, docDenyTitle, addMessage],
+    [router, addMessage],
   );
 
   const handleSuggestionSelect = useCallback(
@@ -707,13 +508,6 @@ export function AssistantPanel({ variant = "default", compactMobile = false, onR
   const handlePhotoOcr = useCallback(
     async (file: File) => {
       if (isLoading) return;
-      if (!canFormatDocumentAi) {
-        addMessage({
-          role: "assistant",
-          content: `🚫 ${formatDenyTitle}\n\nИИ-ассистент не может заполнять/форматировать документы для вашей роли.`,
-        });
-        return;
-      }
       if (!pageContext.form_type) {
         addMessage({ role: "assistant", content: "", streaming: true });
         void revealLastAssistant(
@@ -760,8 +554,6 @@ export function AssistantPanel({ variant = "default", compactMobile = false, onR
     [
       addMessage,
       applyFormActions,
-      canFormatDocumentAi,
-      formatDenyTitle,
       isLoading,
       pageContext.form_type,
       revealLastAssistant,

@@ -11,11 +11,7 @@ export type Permission =
   | "manage_security"
   | "manage_services"
   | "verify_counterparty"
-  | "order_cash"
-  /** Открытие/просмотр документа по запросу ИИ-ассистента. */
-  | "open_document"
-  /** Заполнение/форматирование документа средствами ИИ-ассистента. */
-  | "format_document_ai";
+  | "order_cash";
 
 export interface Role {
   id: RoleId;
@@ -50,8 +46,6 @@ export const ROLES: Record<RoleId, Role> = {
       "verify_counterparty",
       "order_cash",
       "manage_employees",
-      "open_document",
-      "format_document_ai",
     ],
   },
   admin: {
@@ -63,14 +57,8 @@ export const ROLES: Record<RoleId, Role> = {
     initials: "АП",
     portrait: "/images/roles/role_admin.png",
     description:
-      "Настройки безопасности, IP, ЭЦП, API-ключи и сервисы. Управление сотрудниками реестра. Не подписывает финансовые документы и не работает с их содержимым через ИИ-ассистент.",
-    permissions: [
-      "manage_security",
-      "manage_services",
-      "manage_employees",
-      "edit_account",
-      "verify_counterparty",
-    ],
+      "Настройки безопасности, IP, ЭЦП, API-ключи и сервисы. Управление сотрудниками реестра. Не подписывает финансовые документы.",
+    permissions: ["manage_security", "manage_services", "manage_employees", "edit_account", "verify_counterparty"],
   },
   user: {
     id: "user",
@@ -81,13 +69,8 @@ export const ROLES: Record<RoleId, Role> = {
     initials: "АС",
     portrait: "/images/roles/role_user.png",
     description:
-      "Индивидуальный предприниматель. Готовит черновики документов, проверяет контрагентов, смотрит выписки. Не подписывает и не проводит платежи. Может открывать и заполнять документы с помощью ИИ-ассистента.",
-    permissions: [
-      "create_document",
-      "verify_counterparty",
-      "open_document",
-      "format_document_ai",
-    ],
+      "Индивидуальный предприниматель. Готовит черновики документов, проверяет контрагентов, смотрит выписки. Не подписывает и не проводит платежи.",
+    permissions: ["create_document", "verify_counterparty"],
   },
 };
 
@@ -105,6 +88,4 @@ export const PERMISSION_LABEL: Record<Permission, string> = {
   manage_services: "управление сервисами",
   verify_counterparty: "проверка контрагентов",
   order_cash: "кассовые операции",
-  open_document: "открытие документов через ИИ-ассистента",
-  format_document_ai: "форматирование документов с помощью ИИ-ассистента",
 };

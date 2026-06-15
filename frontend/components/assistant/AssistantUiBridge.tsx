@@ -10,7 +10,6 @@ import {
 import { useSbbolUi } from "@/components/layout/SbbolUiContext";
 import { PRODUCT_ROUTES } from "@/lib/banking/productCatalog";
 import { useBankingStore } from "@/store/bankingStore";
-import { useRole } from "@/store/roleStore";
 
 const ROUTE_BY_ACTION: Record<string, string> = {
   "open-payments": "/payments",
@@ -44,31 +43,11 @@ const ROUTE_BY_ACTION: Record<string, string> = {
 export function AssistantUiBridge() {
   const router = useRouter();
   const { openDocumentModal, openServiceApplication } = useSbbolUi();
-  const { can } = useRole();
-  const canFormatDocumentAi = can("format_document_ai");
-  const canCreateDocument = can("create_document");
 
   useEffect(() => {
     const handler = (e: Event) => {
       const { action, value } = (e as CustomEvent<AssistantActionDetail>).detail;
       if (!action) return;
-
-      /** Заполнение полей формы через ИИ-ассистента доступно не всем ролям.
-       *  Блокируем на входе, чтобы админ не мог обойти проверки в AssistantPanel. */
-      if (action.startsWith("fill:") && !canFormatDocumentAi) {
-        console.warn("[AssistantUiBridge] fill blocked: insufficient permissions");
-        return;
-      }
-
-      /** Создание документа — отдельный пермишен create_document.
-       *  Без него открывать модалку нельзя (для admin запрещено). */
-      if (
-        (action === "open-doc-modal" || action === "create-document") &&
-        !canCreateDocument
-      ) {
-        console.warn("[AssistantUiBridge] create-document blocked: insufficient permissions");
-        return;
-      }
 
       if (action === "open-doc-modal" || action === "create-document") {
         openDocumentModal();
@@ -144,7 +123,7 @@ export function AssistantUiBridge() {
       window.removeEventListener(ASSISTANT_ACTION_EVENT, handler);
       window.removeEventListener(ASSISTANT_NAVIGATE_EVENT, onNavigate);
     };
-  }, [openDocumentModal, openServiceApplication, router, canFormatDocumentAi, canCreateDocument]);
+  }, [openDocumentModal, openServiceApplication, router]);
 
   return null;
 }

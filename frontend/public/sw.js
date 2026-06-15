@@ -1,4 +1,4 @@
-const CACHE = "sberbiz-demo-v2";
+const CACHE = "sberbiz-demo-v1";
 const PRECACHE = ["/", "/manifest.json", "/favicon-sbbol.ico"];
 
 self.addEventListener("install", (event) => {

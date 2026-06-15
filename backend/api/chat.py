@@ -20,6 +20,19 @@ router = APIRouter()
 logger = logging.getLogger(__name__)
 
 
+async def _resolve_app_role(org_id: str | None, request_app_role: str | None) -> str:
+    """Достаём из OrganizationProfile.app_role (или маппим из user_role),
+    если фронт не прислал явно в request.app_role.
+    """
+    from core.permissions import resolve_app_role
+    oid = org_id or "demo"
+    async with AsyncSessionLocal() as db:
+        org = await db.get(OrganizationProfile, oid)
+        org_app_role = getattr(org, "app_role", None) if org else None
+        org_user_role = getattr(org, "user_role", None) if org else None
+    return resolve_app_role(org_app_role, org_user_role, request_app_role)
+
+
 async def _user_role(org_id: str | None) -> str:
     oid = org_id or "demo"
     async with AsyncSessionLocal() as db:
@@ -35,6 +48,7 @@ async def _finalize_chat(
     page_route: str | None,
     form_type: str | None,
     org_id: str | None,
+    app_role: str | None = None,
 ) -> AssistantResponse:
     role = await _user_role(org_id)
     enriched = await enrich_response(
@@ -62,6 +76,7 @@ async def chat(
     current_user=Depends(get_current_user),
 ):
     assistant = AssistantService()
+    app_role = await _resolve_app_role(current_user.org_id, request.app_role)
     response = await assistant.process(
         message=request.message,
         session_id=request.session_id,
@@ -70,6 +85,7 @@ async def chat(
         form_type=request.form_type,
         org_id=current_user.org_id,
         form_fields=request.form_fields,
+        app_role=app_role,
     )
     return await _finalize_chat(
         response,
@@ -78,6 +94,7 @@ async def chat(
         page_route=request.page_route,
         form_type=request.form_type,
         org_id=current_user.org_id,
+        app_role=app_role,
     )
 
 
@@ -85,6 +102,7 @@ async def chat(
 async def chat_guest(request: ChatRequest):
     """Chat without auth — for demo."""
     assistant = AssistantService()
+    app_role = await _resolve_app_role(request.org_id, request.app_role)
     response = await assistant.process(
         message=request.message,
         session_id=request.session_id,
@@ -93,6 +111,7 @@ async def chat_guest(request: ChatRequest):
         form_type=request.form_type,
         org_id=request.org_id,
         form_fields=request.form_fields,
+        app_role=app_role,
     )
     return await _finalize_chat(
         response,
@@ -101,6 +120,7 @@ async def chat_guest(request: ChatRequest):
         page_route=request.page_route,
         form_type=request.form_type,
         org_id=request.org_id,
+        app_role=app_role,
     )
 
 
@@ -110,18 +130,31 @@ async def chat_stream(
     current_user=Depends(get_current_user),
 ):
     """SSE streaming for authenticated users."""
-    return await _stream_response(request, user_id=current_user.id, org_id=current_user.org_id)
+    return await _stream_response(
+        request,
+        user_id=current_user.id,
+        org_id=current_user.org_id,
+        app_role_hint=request.app_role,
+    )
 
 
 @router.post("/guest/stream")
 async def chat_guest_stream(request: ChatRequest):
     """SSE-стриминг ответа ассистента (демо)."""
-    return await _stream_response(request, user_id="guest", org_id=request.org_id)
+    return await _stream_response(
+        request,
+        user_id="guest",
+        org_id=request.org_id,
+        app_role_hint=request.app_role,
+    )
 
 
-async def _stream_response(request: ChatRequest, user_id: str, org_id: str | None):
+async def _stream_response(
+    request: ChatRequest, user_id: str, org_id: str | None, app_role_hint: str | None = None
+):
     try:
         assistant = AssistantService()
+        app_role = await _resolve_app_role(org_id, app_role_hint)
         response = await assistant.process(
             message=request.message,
             session_id=request.session_id,
@@ -130,6 +163,7 @@ async def _stream_response(request: ChatRequest, user_id: str, org_id: str | Non
             form_type=request.form_type,
             org_id=org_id,
             form_fields=request.form_fields,
+            app_role=app_role,
         )
         response = await _finalize_chat(
             response,
@@ -138,6 +172,7 @@ async def _stream_response(request: ChatRequest, user_id: str, org_id: str | Non
             page_route=request.page_route,
             form_type=request.form_type,
             org_id=org_id,
+            app_role=app_role,
         )
     except Exception as exc:
         logger.exception("chat stream failed: %s", exc)

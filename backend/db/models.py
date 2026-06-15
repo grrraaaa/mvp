@@ -159,6 +159,10 @@ class OrganizationProfile(Base):
     id: Mapped[str] = mapped_column(String, primary_key=True, default="demo")
     org_name: Mapped[str] = mapped_column(String, nullable=False)
     user_role: Mapped[str] = mapped_column(String, default="businessman")  # businessman | accountant | ip
+    # Роль для UI-прав доступа (manager | admin | user). Если None — берётся
+    # маппинг из user_role: businessman→manager, accountant→admin, ip→user.
+    # Фронт может переопределить через ChatRequest.app_role.
+    app_role: Mapped[Optional[str]] = mapped_column(String, nullable=True)
     daily_payment_limit: Mapped[float] = mapped_column(Float, default=5000.0)
 
 

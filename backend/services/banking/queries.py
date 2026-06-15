@@ -1354,11 +1354,13 @@ async def handle_banking_query(
     org_id: str = "demo",
     session_id: str | None = None,
     page_route: str | None = None,
+    role: str = "manager",
 ) -> dict | None:
     from services.chat.session_sources import get_source
     from services.banking.counterparty_risk import format_risk_report, get_counterparty_risk
     from services.tax.calendar import demo_fszh_amount, format_tax_calendar_reply, get_tax_calendar
     from services.onec.assistant import is_onec_query
+    from core.permissions import deny_title
     import uuid as _uuid
 
     # 1С — отдельный домен с собственным обработчиком (handle_onec_query).
@@ -1369,6 +1371,38 @@ async def handle_banking_query(
         return None
 
     low = message.lower()
+
+    # Admin: блокируем заполнение форм и работу с документами/выписками/зарплатой
+    # через banking-обработчик. Возвращаем «нет прав» прямо отсюда, чтобы
+    # _maybe_banking_query / _maybe_demo_navigation в assistant.py
+    # не дошли до собственно заполнения.
+    if role == "admin":
+        # Поддерживаем: «открой выписку», «покажи выписку», «выписка»,
+        # «документы», «документ», «зарплата», «зарплатный проект», «повтори
+        # последний платёж», «найди платёж», «открой документ №N», «подпиши и
+        # отправь», «покажи остаток по счёту» — всё, что относится к
+        # банковским операциям через ассистента.
+        if re.search(
+            r"документ\w*|выписк\w*|зарплат\w*|подпиш\w+|повтор\w+\s+послед|"
+            r"остаток\w*\s+по\s+счет|остаток\w*\s+на\s+счет|остатк\w+|"
+            r"источник\s*№?\s*\d",
+            low,
+        ):
+            return {
+                "message": (
+                    f"🚫 {deny_title(role, 'open_document')}\n\n"
+                    "ИИ-ассистент не может работать с документами и платежами для вашей роли."
+                ),
+                "session_id": session_id,
+                "action_buttons": [
+                    {
+                        "label": "Открыть обучение",
+                        "url": "/learning",
+                        "variant": "secondary",
+                    },
+                ],
+            }
+        return None
 
     note_reply = await _account_note_reply(session, message, org_id)
     if note_reply:
