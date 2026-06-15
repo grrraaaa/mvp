@@ -428,6 +428,9 @@ export function AssistantPanel({ variant = "default", compactMobile = false, onR
         !canFormatDocumentAi &&
         !canOpenDocument
       ) {
+        if (typeof window !== "undefined") {
+          console.warn("[assistant] stop-guard fired (admin) for:", trimmed);
+        }
         setInput("");
         setWelcomeOpen(false);
         addMessage({ role: "user", content: trimmed });
