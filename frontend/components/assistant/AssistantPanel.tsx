@@ -264,6 +264,34 @@ export function AssistantPanel({ variant = "default", compactMobile = false, onR
     async (text: string) => {
       if (!text.trim() || isLoading) return;
       const trimmed = text.trim();
+
+      /** Локальный intent: «Помоги заполнить платёж по фото счёта».
+       *  Показываем запрос фото и сами открываем /payments/instant,
+       *  не дожидаясь ответа бэкенда. */
+      if (/помоги\s+заполнить\s+плат[её]ж\s+по\s+фото\s+сч[её]та/i.test(trimmed)) {
+        if (!canFormatDocumentAi) {
+          setInput("");
+          addMessage({ role: "user", content: trimmed });
+          addMessage({
+            role: "assistant",
+            content: `🚫 ${formatDenyTitle}\n\nИИ-ассистент не может заполнять/форматировать документы для вашей роли.`,
+          });
+          return;
+        }
+        setInput("");
+        setWelcomeOpen(false);
+        addMessage({ role: "user", content: trimmed });
+        addMessage({
+          role: "assistant",
+          content:
+            "📷 **Пришлите фото счёта** (или PDF) — я распознаю реквизиты и заполню платёж.\n\n" +
+            "Открываю страницу **Мгновенный платёж** — там нажмите иконку 📎 внизу чата, " +
+            "выберите файл, и я сразу подставлю получателя, счёт, сумму и назначение.",
+        });
+        router.push("/payments/instant");
+        return;
+      }
+
       setInput("");
       setWelcomeOpen(false);
       addMessage({ role: "user", content: trimmed });
@@ -323,11 +351,14 @@ export function AssistantPanel({ variant = "default", compactMobile = false, onR
       addMessage,
       applyAssistantPayload,
       assistantMetaFromPayload,
+      canFormatDocumentAi,
+      formatDenyTitle,
       isLoading,
       lastEmotion,
       orgId,
       pageContext,
       revealLastAssistant,
+      router,
       sessionId,
       setLoading,
       useStreaming,

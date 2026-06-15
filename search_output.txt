@@ -1,0 +1,27 @@
+﻿28:     DEMO_ROUTE_LABELS,
+--- 1042 ---
+        return [purpose_code_action]
+
+    boundary = _field_value_boundary()
+
+    from services.forms.account_resolve import account_hint_from_message
+
+    account_hint = account_hint_from_message(text)
+    if account_hint:
+        field = next((f for f in fields if f["key"] == "COMMON_COLUMNS_CUSTOMER_ACCOUNT"), None)
+        if field:
+            return [
+----
+--- 1052 ---
+            return [
+                FormFieldAction(
+                    field=field["name"],
+                    value=account_hint,
+                    label=field.get("label"),
+                )
+            ]
+
+    recipient = re.match(
+        rf"^(?:╨┐╨╛╨╗╤Г╤З╨░╤В╨╡╨╗\w*|╨║╨╛╨╜╤В╤А╨░╨│╨╡╨╜╤В\w*)\s*[:тАФ-]?\s*(.+?){boundary}$",
+        text,
+----

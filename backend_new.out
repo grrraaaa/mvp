@@ -1,0 +1,17 @@
+INFO:     127.0.0.1:64099 - "GET /api/banking/balance/summary HTTP/1.1" 401 Unauthorized
+INFO:     127.0.0.1:64102 - "GET /api/banking/balance/summary HTTP/1.1" 401 Unauthorized
+INFO:     127.0.0.1:64103 - "GET /health HTTP/1.1" 200 OK
+INFO:     127.0.0.1:64109 - "POST /api/chat/guest HTTP/1.1" 200 OK
+INFO:     127.0.0.1:64123 - "POST /api/chat/guest HTTP/1.1" 200 OK
+INFO:     127.0.0.1:64628 - "POST /api/auth/guest HTTP/1.1" 200 OK
+INFO:     127.0.0.1:64630 - "GET /api/banking/balance/summary?history_months=6 HTTP/1.1" 200 OK
+INFO:     127.0.0.1:64647 - "POST /api/chat/guest HTTP/1.1" 200 OK
+INFO:     127.0.0.1:64651 - "POST /api/chat/guest HTTP/1.1" 200 OK
+INFO:     127.0.0.1:64664 - "POST /api/chat/guest HTTP/1.1" 200 OK
+INFO:     127.0.0.1:64667 - "POST /api/chat/guest HTTP/1.1" 200 OK
+INFO:     127.0.0.1:64670 - "POST /api/chat/guest HTTP/1.1" 200 OK
+INFO:     127.0.0.1:64673 - "POST /api/chat/guest HTTP/1.1" 200 OK
+INFO:     127.0.0.1:64680 - "POST /api/chat/guest HTTP/1.1" 200 OK
+INFO:     127.0.0.1:64683 - "POST /api/chat/guest HTTP/1.1" 200 OK
+INFO:     127.0.0.1:64687 - "POST /api/chat/guest HTTP/1.1" 200 OK
+INFO:     127.0.0.1:64694 - "POST /api/chat/guest HTTP/1.1" 200 OK

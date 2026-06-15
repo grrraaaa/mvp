@@ -6,35 +6,38 @@ import { authHeaders } from "@/lib/auth/tokenRef";
 
 const VALIDATION_CLASS = "assistant-field-validation";
 
+const DATE_PATTERN = /^(\d{2})\.(\d{2})\.(\d{4})$/;
+
 function parseAmount(raw: string): number {
   const n = Number.parseFloat(raw.replace(/\s/g, "").replace(",", "."));
   return Number.isFinite(n) ? n : 0;
 }
 
+/** Только валидация полей с датой. Любые другие поля (УНП, IBAN, сумма,
+ *  назначение и т.п.) валидацию не проходят — пользователь явно попросил
+ *  оставить в форме платежа только проверки про даты. */
 function validateField(el: HTMLInputElement | HTMLTextAreaElement): "ok" | "warn" | "error" {
   const name = el.name || "";
   const val = el.value.trim();
-  if (name.includes("UNP") || name.includes("UNP")) {
-    const digits = val.replace(/\D/g, "");
-    if (!digits) return "error";
-    if (digits.length !== 9) return "error";
-    return "ok";
-  }
-  if (name.includes("ACCOUNT") || name.includes("IBAN")) {
-    const compact = val.replace(/\s/g, "").toUpperCase();
-    if (!compact.startsWith("BY") || compact.length !== 28) return "error";
-    return "ok";
-  }
-  if (name.includes("AMOUNT")) {
-    const amt = parseAmount(val);
-    if (amt <= 0) return "error";
-    if (amt > 5000) return "warn";
-    return "ok";
-  }
-  if (name.includes("PURPOSE")) {
-    const minLen = name.includes("INSTANT") ? 2 : 5;
-    if (!val) return "warn";
-    if (val.length < minLen) return "warn";
+  if (!name.includes("DATE")) return "ok";
+
+  if (!val) return "warn";
+  const m = DATE_PATTERN.exec(val);
+  if (!m) return "error";
+  const dd = Number(m[1]);
+  const mm = Number(m[2]);
+  const yyyy = Number(m[3]);
+  if (mm < 1 || mm > 12) return "error";
+  if (dd < 1 || dd > 31) return "error";
+  if (yyyy < 2000 || yyyy > 2100) return "error";
+  // Простая проверка существования даты (напр. 31.02 отлавливаем).
+  const probe = new Date(yyyy, mm - 1, dd);
+  if (
+    probe.getFullYear() !== yyyy ||
+    probe.getMonth() !== mm - 1 ||
+    probe.getDate() !== dd
+  ) {
+    return "error";
   }
   return "ok";
 }
@@ -88,19 +91,19 @@ export async function submitPaymentFormFromDom(root: HTMLElement): Promise<{ ok:
   const purpose = getVal("PURPOSE") || getVal("DETAILS") || "";
   const currency = root.querySelector("[name*='CURRENCY']")?.textContent?.includes("USD") ? "USD" : "BYN";
 
-  const critical: string[] = [];
+  const badDates: string[] = [];
   root.querySelectorAll("input[name*='forms.'], textarea[name*='forms.']").forEach((el) => {
     if (el instanceof HTMLInputElement || el instanceof HTMLTextAreaElement) {
       const level = validateField(el);
       applyValidationBorder(el, level);
-      if (level === "error") critical.push(el.name);
+      if (level === "error" && el.name.includes("DATE")) badDates.push(el.name);
     }
   });
 
-  if (critical.length > 0) {
+  if (badDates.length > 0) {
     return {
       ok: false,
-      message: `Отправка заблокирована: исправьте ${critical.length} поле(я) с красной рамкой (УНП, IBAN, сумма).`,
+      message: `Отправка заблокирована: некорректный формат даты в ${badDates.length} поле(я) (ожидается ДД.ММ.ГГГГ).`,
     };
   }
 
