@@ -1241,8 +1241,9 @@ class AssistantService:
         # ── Определить UI-роль: фронт прислал явно → из БД → маппинг из user_role
         from core.permissions import resolve_app_role
         try:
+            from db.models import OrganizationProfile as _OrgProfile
             async with AsyncSessionLocal() as role_db:
-                org = await role_db.get(OrganizationProfile, effective_org)
+                org = await role_db.get(_OrgProfile, effective_org)
                 org_app_role = getattr(org, "app_role", None) if org else None
                 org_user_role = getattr(org, "user_role", None) if org else None
         except Exception:

@@ -334,6 +334,9 @@ export function AssistantPanel({ variant = "default", compactMobile = false, onR
             "Открываю страницу **Мгновенный платёж** — там нажмите иконку 📎 внизу чата, " +
             "выберите файл, и я сразу подставлю получателя, счёт, сумму и назначение.",
         });
+        // Чистим form_actions, чтобы FormFillBridge не применил «хвост» от
+        // прошлой LLM-команды к форме после перехода.
+        useAssistantStore.getState().clearFormActions();
         router.push("/payments/instant");
         return;
       }
@@ -352,6 +355,11 @@ export function AssistantPanel({ variant = "default", compactMobile = false, onR
           role: "assistant",
           content: `Открываю **${navRoute.title}**…`,
         });
+        // Чистим form_actions перед навигацией, чтобы FormFillBridge не применил
+        // «хвост» от прошлого LLM-ответа к полям новой страницы. Например,
+        // после «открой мгновенный платёж» → «открой все документы» поле
+        // «Назначение платежа» не должно заполняться на /other/documents.
+        useAssistantStore.getState().clearFormActions();
         router.push(navRoute.path);
         return;
       }

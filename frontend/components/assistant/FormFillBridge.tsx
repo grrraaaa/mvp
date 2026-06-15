@@ -16,6 +16,18 @@ export function FormFillBridge() {
   useEffect(() => {
     if (!formActions?.length || runningRef.current) return;
 
+    // form_actions предназначены для формы платежа. Если мы НЕ на странице
+    // платежа — это либо «хвост» от прошлой команды, либо баг. Ни в коем
+    // случае не применяем — иначе можно случайно заполнить «Назначение
+    // платежа» на странице /other/documents или «Сумму перевода» на странице
+    // настроек. Сценарий: «открой мгновенный платёж» → «открой все документы» —
+    // без этого guard поле «Назначение платежа» заполнялось бы на
+    // /other/documents.
+    if (!pathname.startsWith("/payments/")) {
+      clearFormActions();
+      return;
+    }
+
     runningRef.current = true;
     let cancelled = false;
 
