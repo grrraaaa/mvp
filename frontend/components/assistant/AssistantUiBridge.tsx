@@ -12,8 +12,6 @@ import { PRODUCT_ROUTES } from "@/lib/banking/productCatalog";
 import { useBankingStore } from "@/store/bankingStore";
 
 const ROUTE_BY_ACTION: Record<string, string> = {
-  "open-doc-modal": "/payments",
-  "create-document": "/payments",
   "open-payments": "/payments",
   "open-statement": "/statement",
   "open-salary": "/salary",
@@ -44,12 +42,17 @@ const ROUTE_BY_ACTION: Record<string, string> = {
 /** Слушает custom events от ассистента и открывает модалки / навигацию. */
 export function AssistantUiBridge() {
   const router = useRouter();
-  const { openServiceApplication } = useSbbolUi();
+  const { openDocumentModal, openServiceApplication } = useSbbolUi();
 
   useEffect(() => {
     const handler = (e: Event) => {
       const { action, value } = (e as CustomEvent<AssistantActionDetail>).detail;
       if (!action) return;
+
+      if (action === "open-doc-modal" || action === "create-document") {
+        openDocumentModal();
+        return;
+      }
 
       if (action === "reload-banking") {
         void useBankingStore.getState().loadAll();
@@ -120,7 +123,7 @@ export function AssistantUiBridge() {
       window.removeEventListener(ASSISTANT_ACTION_EVENT, handler);
       window.removeEventListener(ASSISTANT_NAVIGATE_EVENT, onNavigate);
     };
-  }, [openServiceApplication, router]);
+  }, [openDocumentModal, openServiceApplication, router]);
 
   return null;
 }

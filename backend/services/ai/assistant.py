@@ -1631,12 +1631,25 @@ class AssistantService:
         label = DEMO_ROUTE_LABELS.get(route, route)
         nav_path = build_demo_nav_path(route)
         if route == "/payments" and is_create_document_request(message):
-            msg = (
-                "Открываю раздел «Расчёты». Нажмите «Создать документ» на странице "
-                "или выберите тип платежа в чате."
+            return AssistantResponse(
+                message="Открываю окно «Новый документ». Выберите тип платежа.",
+                session_id=session_id,
+                ui_actions=[UiAction(type="click", target="open-doc-modal")],
+                action_buttons=[
+                    ActionButton(
+                        label="Платёжное поручение BYN",
+                        message="создай поручение BYN",
+                        variant="secondary",
+                    ),
+                    ActionButton(
+                        label="Мгновенный платёж",
+                        message="мгновенный платёж",
+                        variant="secondary",
+                    ),
+                ],
             )
-        else:
-            msg = f"Открываю раздел «{label}» в демо интернет-банка."
+
+        msg = f"Открываю раздел «{label}» в демо интернет-банка."
         return AssistantResponse(
             message=msg,
             session_id=session_id,

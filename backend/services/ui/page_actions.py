@@ -82,7 +82,6 @@ PAGE_REGISTRY: dict[str, list[dict]] = {
         {
             "target": "create-document",
             "labels": ["создать документ", "новый документ", "создай документ"],
-            "navigate": "/payments",
             "description": "Создать новый документ — выбрать тип и начать заполнение",
         },
         {
@@ -117,7 +116,6 @@ PAGE_REGISTRY: dict[str, list[dict]] = {
         {
             "target": "open-doc-modal",
             "labels": ["создать документ", "тип документа", "новый документ", "создай документ"],
-            "navigate": "/payments",
             "description": "Создать документ — выбрать тип: поручение, инвойс, требование…",
         },
         {
@@ -634,7 +632,6 @@ PAGE_REGISTRY: dict[str, list[dict]] = {
         {
             "target": "create-document",
             "labels": ["создать документ", "новый документ"],
-            "navigate": "/payments",
             "description": "Создать новый документ — выбрать тип и заполнить",
         },
         {
@@ -748,7 +745,6 @@ GLOBAL_ACTIONS: list[dict] = [
     {
         "target": "open-doc-modal",
         "labels": ["создать документ", "новый документ", "создай документ"],
-        "navigate": "/payments",
         "description": "Создать новый документ — выбрать тип",
     },
     {
@@ -837,11 +833,11 @@ CLICK_PATTERNS = [
 # ──────────────────────────────────────────────────────────────────────────────
 
 ACTION_DESCRIPTIONS: dict[str, str] = {
-    "create-document": "Открывает раздел «Расчёты» для создания документа",
+    "create-document": "Открывает окно выбора типа документа",
     "open-payment-instant": "Открывает мгновенный платёж — перевод на карту за секунды",
     "open-payment-byn": "Открывает платёжное поручение BYN",
     "open-payment-cur": "Открывает перевод в инвалюте",
-    "open-doc-modal": "Открывает раздел «Расчёты» для создания документа",
+    "open-doc-modal": "Показывает окно выбора типа документа",
     "generate-statement": "Формирует выписку за выбранный период по счетам",
     "run-payroll": "Запускает массовую зарплатную выплату сотрудникам",
     "add-employee": "Добавляет сотрудника в зарплатный список",
@@ -1005,7 +1001,7 @@ def _match_action(message: str, page_route: Optional[str]) -> Optional[dict]:
 
     # 3) Fallback: ключевые слова без маршрута
     if re.search(r"создать документ|новый документ", msg):
-        return {"target": "open-doc-modal", "labels": ["документ"], "navigate": "/payments", "description": "Создать новый документ"}
+        return {"target": "open-doc-modal", "labels": ["документ"], "description": "Создать новый документ"}
     if re.search(r"мгновенн|instant|срочн\w*\s+платеж", msg):
         return {"target": "open-payment-instant", "labels": ["мгновенн"], "navigate": "/payments/instant", "description": "Мгновенный платёж"}
     if re.search(r"инвалют|валютн\w*\s+перевод|paydoccur", msg):

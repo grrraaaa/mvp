@@ -1,7 +1,8 @@
 "use client";
 
 import { ReactNode, Suspense, useEffect, useMemo, useState } from "react";
-import { usePathname, useRouter, useSearchParams } from "next/navigation";
+import { usePathname, useSearchParams } from "next/navigation";
+import { DocumentTypeSelectionModal } from "@/components/sbbol/DocumentTypeSelectionModal";
 import { SbbolUiContext } from "@/components/layout/SbbolUiContext";
 import { AssistantUiBridge } from "@/components/assistant/AssistantUiBridge";
 import { FormFillBridge } from "@/components/assistant/FormFillBridge";
@@ -18,24 +19,23 @@ interface Props {
   documentModalHtml?: string;
 }
 
-function NewDocQueryOpener() {
+function NewDocQueryOpener({ onOpen }: { onOpen: () => void }) {
   const searchParams = useSearchParams();
-  const router = useRouter();
 
   useEffect(() => {
-    if (searchParams.get("newDoc") === "1") router.push("/payments");
-  }, [searchParams, router]);
+    if (searchParams.get("newDoc") === "1") onOpen();
+  }, [searchParams, onOpen]);
 
   return null;
 }
 
 function AppProvidersInner({ children, documentModalHtml }: Props) {
   const pathname = usePathname();
-  const router = useRouter();
   const token = useAuthStore((s) => s.token);
   const isLoginPage = pathname === "/login";
   const showBankingExtras = Boolean(token) && !isLoginPage;
 
+  const [docModalOpen, setDocModalOpen] = useState(false);
   const [serviceModalOpen, setServiceModalOpen] = useState(false);
   const [serviceModalName, setServiceModalName] = useState<string | undefined>();
 
@@ -47,7 +47,7 @@ function AppProvidersInner({ children, documentModalHtml }: Props) {
 
   const ui = useMemo(
     () => ({
-      openDocumentModal: () => router.push("/payments"),
+      openDocumentModal: () => setDocModalOpen(true),
       openChat: () => useAssistantDockStore.getState().expand(),
       toggleChat: () => useAssistantDockStore.getState().toggleChat(),
       openServiceApplication: (serviceName?: string) => {
@@ -55,13 +55,13 @@ function AppProvidersInner({ children, documentModalHtml }: Props) {
         setServiceModalOpen(true);
       },
     }),
-    [router],
+    [],
   );
 
   return (
     <SbbolUiContext.Provider value={ui}>
       <Suspense fallback={null}>
-        <NewDocQueryOpener />
+        <NewDocQueryOpener onOpen={() => setDocModalOpen(true)} />
       </Suspense>
       {showBankingExtras ? <BankingShell>{children}</BankingShell> : children}
       {showBankingExtras && (
@@ -73,6 +73,12 @@ function AppProvidersInner({ children, documentModalHtml }: Props) {
           <GatewayStatusBanner />
         </>
       )}
+      {showBankingExtras && docModalOpen && documentModalHtml ? (
+        <DocumentTypeSelectionModal
+          html={documentModalHtml}
+          onClose={() => setDocModalOpen(false)}
+        />
+      ) : null}
       {showBankingExtras && serviceModalOpen ? (
         <ServiceApplicationModal
           serviceName={serviceModalName}
