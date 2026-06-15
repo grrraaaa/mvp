@@ -1,4 +1,5 @@
 import { create } from "zustand";
+import { persist, createJSONStorage } from "zustand/middleware";
 import type { ChoiceCard } from "@/components/assistant/ChoiceCards";
 
 function newSessionId(): string {
@@ -124,7 +125,9 @@ interface AssistantState {
   setWelcomeOpen: (open: boolean) => void;
 }
 
-export const useAssistantStore = create<AssistantState>((set) => ({
+export const useAssistantStore = create<AssistantState>()(
+  persist(
+    (set) => ({
   messages: [],
   isLoading: false,
   sessionId: newSessionId(),
@@ -207,4 +210,16 @@ export const useAssistantStore = create<AssistantState>((set) => ({
     }),
 
   setWelcomeOpen: (open) => set({ welcomeOpen: open }),
-}));
+    }),
+    {
+      name: "sbbol-assistant-session",
+      storage: createJSONStorage(() => localStorage),
+      /** Сохраняем только sessionId, чтобы при следующем запуске
+       *  восстановить последний диалог. Сообщения и форму — грузим с бэка. */
+      partialize: (state) => ({ sessionId: state.sessionId }),
+      /** Если персистнутый sessionId уже не существует на бэке (например,
+       *  после очистки истории), переключатель в AssistantPanel сгенерит
+       *  новый при первом сообщении. */
+    },
+  ),
+);

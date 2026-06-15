@@ -10,6 +10,7 @@ import {
 import { useSbbolUi } from "@/components/layout/SbbolUiContext";
 import { PRODUCT_ROUTES } from "@/lib/banking/productCatalog";
 import { useBankingStore } from "@/store/bankingStore";
+import { useRole } from "@/store/roleStore";
 
 const ROUTE_BY_ACTION: Record<string, string> = {
   "open-payments": "/payments",
@@ -43,11 +44,20 @@ const ROUTE_BY_ACTION: Record<string, string> = {
 export function AssistantUiBridge() {
   const router = useRouter();
   const { openDocumentModal, openServiceApplication } = useSbbolUi();
+  const { can } = useRole();
+  const canFormatDocumentAi = can("format_document_ai");
 
   useEffect(() => {
     const handler = (e: Event) => {
       const { action, value } = (e as CustomEvent<AssistantActionDetail>).detail;
       if (!action) return;
+
+      /** Заполнение полей формы через ИИ-ассистента доступно не всем ролям.
+       *  Блокируем на входе, чтобы админ не мог обойти проверки в AssistantPanel. */
+      if (action.startsWith("fill:") && !canFormatDocumentAi) {
+        console.warn("[AssistantUiBridge] fill blocked: insufficient permissions");
+        return;
+      }
 
       if (action === "open-doc-modal" || action === "create-document") {
         openDocumentModal();

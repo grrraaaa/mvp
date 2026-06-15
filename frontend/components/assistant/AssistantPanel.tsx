@@ -28,7 +28,7 @@ import { documentViewPath, isDocumentUuid } from "@/lib/banking/documentDeepLink
 import { buildHighlightUrl } from "@/lib/sbbol/fieldHighlight";
 import { NotificationSummary } from "./NotificationSummary";
 import { fetchNotifications, fetchOrgProfile, type SmartNotification } from "@/lib/api/banking";
-import { fetchChatHistory, streamChatMessage } from "@/lib/api/chat";
+import { fetchChatHistory, fetchChatSessions, streamChatMessage } from "@/lib/api/chat";
 import { useCharacterBehaviorStore } from "@/store/characterBehaviorStore";
 import type { SourceRef } from "@/store/assistantStore";
 
@@ -38,6 +38,49 @@ interface Props {
   compactMobile?: boolean;
   /** Floating chat: scroll to welcome / top */
   onRegisterReset?: (reset: () => void) => void;
+}
+
+/** Описание приоритетного маршрута: куда перекинуть пользователя
+ *  по локальному intent'у (без LLM). */
+interface NavRoute {
+  path: string;
+  title: string;
+  /** true, если переход открывает/создаёт конкретный документ —
+   *  для admin нужно блокировать по праву `open_document`. */
+  requiresOpenDocument?: boolean;
+}
+
+/** Глаголы-триггеры навигации. Сюда попадают «открой», «открыть»,
+ *  «создай», «создать», «перейди», «перейти», «покажи», «показать». */
+const NAV_TRIGGERS = /\b(открой|открыть|открывай|откройте|создай|создать|создавай|создайте|перейди|перейти|перейдите|покажи|показать|показывай)\b/i;
+
+/** Сопоставление ключевых слов → маршрут. Более специфичные правила
+ *  должны идти раньше (например, «мгновенный» раньше «платёж»). */
+const NAV_RULES: { pattern: RegExp; route: NavRoute }[] = [
+  { pattern: /мгновенн\w*\s+плат/i, route: { path: "/payments/instant", title: "Мгновенный платёж" } },
+  { pattern: /плат[её]жн\w+\s+поручен/i, route: { path: "/payments/paydocbyn", title: "Платёжное поручение (BYN)" } },
+  { pattern: /валют\w*\s+плат|валюта|usd|eur|paydoccur/i, route: { path: "/payments/paydoccur", title: "Платежное поручение (валюта)" } },
+  { pattern: /плат[её]жк\w+|плат[её]ж\b|созда\w+\s+плат/i, route: { path: "/payments/paydocbyn", title: "Платёжное поручение (BYN)" } },
+  { pattern: /выписк\w+/i, route: { path: "/statement", title: "Выписка" } },
+  { pattern: /зарплат\w+/i, route: { path: "/salary", title: "Зарплатный проект" } },
+  { pattern: /документ\w+/i, route: { path: "/other/documents", title: "Все документы" } },
+  { pattern: /контрагент|вернифика|проверь\s+контрагента/i, route: { path: "/other/counterparty", title: "Проверка контрагента" } },
+  { pattern: /услуг\w+|сервис\w+/i, route: { path: "/services", title: "Услуги и сервисы" } },
+  { pattern: /продукт\w+|кредит\w+|депозит\w+|карт\w+/i, route: { path: "/products", title: "Продукты" } },
+  { pattern: /настройк\w+|безопасност\w+/i, route: { path: "/settings", title: "Настройки" } },
+  { pattern: /обучен\w+|что\s+я\s+умею/i, route: { path: "/learning", title: "Обучение" } },
+  { pattern: /главн\w+|на\s+главную|домой/i, route: { path: "/", title: "Главная" } },
+];
+
+/** Локальный intent: если пользователь пишет «открой …», «создай …»,
+ *  «покажи …», «перейди …» — возвращаем маршрут сразу, без LLM.
+ *  Возвращает null, если ничего не подошло. */
+function matchNavigationIntent(text: string): NavRoute | null {
+  if (!NAV_TRIGGERS.test(text)) return null;
+  for (const { pattern, route } of NAV_RULES) {
+    if (pattern.test(text)) return route;
+  }
+  return null;
 }
 
 export function AssistantPanel({ variant = "default", compactMobile = false, onRegisterReset }: Props) {
@@ -100,13 +143,55 @@ export function AssistantPanel({ variant = "default", compactMobile = false, onR
   }, [messages, isLoading]);
 
   useEffect(() => {
-    if (historyLoaded || !sessionId || messages.length > 0) return;
-    void fetchChatHistory(sessionId).then((msgs) => {
-      if (msgs.length > 0) loadMessages(msgs);
-      else if (useAssistantStore.getState().messages.length === 0) {
-        useAssistantStore.setState({ historyLoaded: true });
+    if (historyLoaded || messages.length > 0) return;
+    let cancelled = false;
+
+    const adopt = async (sid: string) => {
+      try {
+        const msgs = await fetchChatHistory(sid);
+        if (cancelled) return;
+        if (msgs.length > 0) {
+          loadMessages(msgs);
+        } else {
+          useAssistantStore.setState({ historyLoaded: true });
+        }
+      } catch {
+        if (!cancelled) useAssistantStore.setState({ historyLoaded: true });
       }
-    });
+    };
+
+    const init = async () => {
+      // 1) Пробуем персистнутый sessionId: если на бэке он ещё живой — берём его.
+      if (sessionId) {
+        const msgs = await fetchChatHistory(sessionId).catch(() => []);
+        if (cancelled) return;
+        if (msgs.length > 0) {
+          loadMessages(msgs);
+          return;
+        }
+      }
+      // 2) Иначе — последний непустой диалог с бэка (любой, где были сообщения).
+      try {
+        const sessions = await fetchChatSessions(50);
+        if (cancelled) return;
+        const lastWithMessages = sessions
+          .filter((s) => !s.is_guest && s.message_count > 0)
+          .sort((a, b) => (b.created_at ?? "").localeCompare(a.created_at ?? ""))[0];
+        if (lastWithMessages) {
+          useAssistantStore.setState({ sessionId: lastWithMessages.session_id });
+          await adopt(lastWithMessages.session_id);
+          return;
+        }
+      } catch {
+        /* нет сессий / гость — оставляем дефолт */
+      }
+      if (!cancelled) useAssistantStore.setState({ historyLoaded: true });
+    };
+
+    void init();
+    return () => {
+      cancelled = true;
+    };
   }, [sessionId, historyLoaded, loadMessages, messages.length]);
 
   const mergedChips = useMemo(() => {
@@ -214,6 +299,8 @@ export function AssistantPanel({ variant = "default", compactMobile = false, onR
             role: "assistant",
             content: `🚫 ${formatDenyTitle}\n\nИИ-ассистент не может заполнять/форматировать документы для вашей роли.`,
           });
+          // Гарантируем, что FormFillBridge не применит эти действия с прошлой сессии.
+          useAssistantStore.getState().clearFormActions();
         } else {
           const hasNav = Boolean(
             (data.navigation_path as unknown[] | undefined)?.length ||
@@ -245,6 +332,13 @@ export function AssistantPanel({ variant = "default", compactMobile = false, onR
             } else {
               router.push(a.target);
             }
+          } else if ((a.type === "fill" || a.type === "open_modal") && !canFormatDocumentAi) {
+            /** Бэкенд может прислать fill/open_modal как обход проверок.
+             *  Для admin блокируем на входе, не давая выполнить через AssistantUiBridge. */
+            addMessage({
+              role: "assistant",
+              content: `🚫 ${formatDenyTitle}\n\nИИ-ассистент не может заполнять/форматировать документы для вашей роли.`,
+            });
           } else {
             executeUiActions([a]);
           }
@@ -289,6 +383,34 @@ export function AssistantPanel({ variant = "default", compactMobile = false, onR
             "выберите файл, и я сразу подставлю получателя, счёт, сумму и назначение.",
         });
         router.push("/payments/instant");
+        return;
+      }
+
+      /** Приоритетные команды навигации/создания: «открой», «создай», «перейди»,
+       *  «покажи». Перехватываем локально и уходим с текущей страницы (включая
+       *  /payments/instant и /payments/paydocbyn) ДО отправки в LLM — иначе
+       *  бэкенд отвечает инструкциями «указажите поле», не понимая, что
+       *  пользователь хочет перейти в другой раздел. */
+      const navRoute = matchNavigationIntent(trimmed);
+      if (navRoute) {
+        if (navRoute.requiresOpenDocument && !canOpenDocument) {
+          setInput("");
+          setWelcomeOpen(false);
+          addMessage({ role: "user", content: trimmed });
+          addMessage({
+            role: "assistant",
+            content: `🚫 ${docDenyTitle}\n\nИИ-ассистент не может открывать документы для вашей роли.`,
+          });
+          return;
+        }
+        setInput("");
+        setWelcomeOpen(false);
+        addMessage({ role: "user", content: trimmed });
+        addMessage({
+          role: "assistant",
+          content: `Открываю **${navRoute.title}**…`,
+        });
+        router.push(navRoute.path);
         return;
       }
 
