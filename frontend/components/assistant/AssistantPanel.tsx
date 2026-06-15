@@ -13,6 +13,7 @@ import { WelcomeScreen } from "./WelcomeScreen";
 import { useAssistantStore } from "@/store/assistantStore";
 import { useAuthStore } from "@/store/authStore";
 import { useCharacterStore } from "@/store/characterStore";
+import { useRole } from "@/store/roleStore";
 import { collectFormFieldSnapshot } from "@/lib/assistant/formFillRunner";
 import { getSbbolPageContext } from "@/lib/sbbol/formContext";
 import { getAssistantQuickChips } from "@/lib/sbbol/assistantQuickChips";
@@ -77,6 +78,11 @@ export function AssistantPanel({ variant = "default", compactMobile = false, onR
   } = useAssistantStore();
   const orgId = useAuthStore((s) => s.user?.org_id);
   const { config, setSettingsOpen } = useCharacterStore();
+  const { can, denyTitle } = useRole();
+  const canOpenDocument = can("open_document");
+  const canFormatDocumentAi = can("format_document_ai");
+  const docDenyTitle = denyTitle("open_document");
+  const formatDenyTitle = denyTitle("format_document_ai");
   const { revealLastAssistant, cancelReveal } = useAssistantReveal();
   const { setEmotion } = useCharacterBehaviorStore();
   const lastToneRef = useRef<string | undefined>(undefined);
@@ -179,7 +185,22 @@ export function AssistantPanel({ variant = "default", compactMobile = false, onR
         const target = (data.navigation_path as { url: string }[])[
           (data.navigation_path as unknown[]).length - 1
         ]?.url;
-        if (target?.startsWith("/")) router.push(target);
+        if (target?.startsWith("/")) {
+          const isDocNav =
+            isDocumentUuid(
+              new URL(target, window.location.origin).searchParams.get("highlight"),
+            ) ||
+            /\/other\/documents\/view/.test(target) ||
+            /[?&]doc=/.test(target);
+          if (isDocNav && !canOpenDocument) {
+            addMessage({
+              role: "assistant",
+              content: `🚫 ${docDenyTitle}\n\nИИ-ассистент не может открывать документы для вашей роли.`,
+            });
+          } else {
+            router.push(target);
+          }
+        }
       }
       if (data.session_id && typeof data.session_id === "string") {
         const sid = data.session_id;
@@ -188,22 +209,42 @@ export function AssistantPanel({ variant = "default", compactMobile = false, onR
       }
       const pendingFormActions = data.form_actions as never;
       if (pendingFormActions && (pendingFormActions as unknown[]).length) {
-        const hasNav = Boolean(
-          (data.navigation_path as unknown[] | undefined)?.length ||
-            (data.ui_actions as { type: string; target: string }[] | undefined)?.some(
-              (a) => a.type === "navigate" && a.target?.startsWith("/"),
-            ),
-        );
-        if (hasNav) {
-          window.setTimeout(() => applyFormActions(pendingFormActions), 120);
+        if (!canFormatDocumentAi) {
+          addMessage({
+            role: "assistant",
+            content: `🚫 ${formatDenyTitle}\n\nИИ-ассистент не может заполнять/форматировать документы для вашей роли.`,
+          });
         } else {
-          applyFormActions(pendingFormActions);
+          const hasNav = Boolean(
+            (data.navigation_path as unknown[] | undefined)?.length ||
+              (data.ui_actions as { type: string; target: string }[] | undefined)?.some(
+                (a) => a.type === "navigate" && a.target?.startsWith("/"),
+              ),
+          );
+          if (hasNav) {
+            window.setTimeout(() => applyFormActions(pendingFormActions), 120);
+          } else {
+            applyFormActions(pendingFormActions);
+          }
         }
       }
       if (data.ui_actions && (data.ui_actions as unknown[]).length) {
         for (const a of data.ui_actions as { type: string; target: string }[]) {
           if (a.type === "navigate" && a.target?.startsWith("/")) {
-            router.push(a.target);
+            const isDocNav =
+              isDocumentUuid(
+                new URL(a.target, window.location.origin).searchParams.get("highlight"),
+              ) ||
+              /\/other\/documents\/view/.test(a.target) ||
+              /[?&]doc=/.test(a.target);
+            if (isDocNav && !canOpenDocument) {
+              addMessage({
+                role: "assistant",
+                content: `🚫 ${docDenyTitle}\n\nИИ-ассистент не может открывать документы для вашей роли.`,
+              });
+            } else {
+              router.push(a.target);
+            }
           } else {
             executeUiActions([a]);
           }
@@ -216,7 +257,7 @@ export function AssistantPanel({ variant = "default", compactMobile = false, onR
       }
       lastToneRef.current = data.response_tone as string | undefined;
     },
-    [applyFormActions, router, setEmotion, setLastEmotion, setNavigationPath, setSessionId, setSuggestedChips],
+    [addMessage, applyFormActions, canFormatDocumentAi, canOpenDocument, docDenyTitle, formatDenyTitle, router, setEmotion, setLastEmotion, setNavigationPath, setSessionId, setSuggestedChips],
   );
 
   const sendMessage = useCallback(
@@ -310,6 +351,17 @@ export function AssistantPanel({ variant = "default", compactMobile = false, onR
   const handleShowSource = useCallback(
     (source: SourceRef) => {
       if (source.url?.startsWith("/")) {
+        const isDocLink =
+          isDocumentUuid(new URL(source.url, window.location.origin).searchParams.get("highlight")) ||
+          /\/other\/documents\/view/.test(source.url) ||
+          /[?&]doc=/.test(source.url);
+        if (isDocLink && !canOpenDocument) {
+          addMessage({
+            role: "assistant",
+            content: `🚫 ${docDenyTitle}\n\nИИ-ассистент не может открывать документы для вашей роли.`,
+          });
+          return;
+        }
         try {
           const parsed = new URL(source.url, window.location.origin);
           const highlightParam = parsed.searchParams.get("highlight");
@@ -335,7 +387,7 @@ export function AssistantPanel({ variant = "default", compactMobile = false, onR
         return;
       }
     },
-    [router],
+    [router, canOpenDocument, docDenyTitle, addMessage],
   );
 
   const handleSuggestionSelect = useCallback(
@@ -371,6 +423,13 @@ export function AssistantPanel({ variant = "default", compactMobile = false, onR
   const handlePhotoOcr = useCallback(
     async (file: File) => {
       if (isLoading) return;
+      if (!canFormatDocumentAi) {
+        addMessage({
+          role: "assistant",
+          content: `🚫 ${formatDenyTitle}\n\nИИ-ассистент не может заполнять/форматировать документы для вашей роли.`,
+        });
+        return;
+      }
       if (!pageContext.form_type) {
         addMessage({ role: "assistant", content: "", streaming: true });
         void revealLastAssistant(
@@ -417,6 +476,8 @@ export function AssistantPanel({ variant = "default", compactMobile = false, onR
     [
       addMessage,
       applyFormActions,
+      canFormatDocumentAi,
+      formatDenyTitle,
       isLoading,
       pageContext.form_type,
       revealLastAssistant,

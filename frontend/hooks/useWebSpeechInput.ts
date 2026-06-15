@@ -129,7 +129,7 @@ export function useWebSpeechInput(
       interimRef.current = "";
       setIsListening(true);
       setStatusKind("listening");
-      setStatus("Слушаю… отпустите, чтобы отправить.");
+      setStatus("Слушаю… нажмите ещё раз, чтобы отправить.");
     };
 
     recognition.onresult = (event) => {

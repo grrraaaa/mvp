@@ -232,7 +232,7 @@ export function LoginView() {
           </article>
 
           <article className="bg-white rounded-2xl shadow-sm border border-white/80 overflow-hidden flex flex-col hover:shadow-md transition-shadow">
-            <div className="relative h-28 w-full">
+            <div className="relative h-24 w-full">
               <Image
                 src="/images/login/team-meeting.jpg"
                 alt="Команда за работой"
@@ -240,13 +240,13 @@ export function LoginView() {
                 className="object-cover"
                 sizes="300px"
               />
-              <div className="absolute inset-0 bg-[#138d8a]/75 mix-blend-multiply" />
+              <div className="absolute inset-0 bg-[#138d8a]/65" />
             </div>
-            <div className="p-5 flex items-start gap-3 -mt-8 relative z-10">
-              <div className="w-12 h-12 rounded-xl bg-white shadow-md border border-gray-100 flex items-center justify-center shrink-0">
-                <Clock className="w-6 h-6 text-[#138d8a]" />
+            <div className="p-5 flex items-start gap-3">
+              <div className="w-10 h-10 rounded-lg bg-[#e7f4f4] flex items-center justify-center shrink-0">
+                <Clock className="w-5 h-5 text-[#138d8a]" />
               </div>
-              <div className="pt-1">
+              <div className="pt-0.5">
                 <h3 className="text-sm font-bold text-[#2c3e50] mb-1 leading-snug">Режим работы подразделений</h3>
                 <p className="text-xs text-gray-500">Пн–Пт: 9:00–18:00</p>
                 <p className="text-xs text-gray-400 mt-1">Сб–Вс: выходной</p>

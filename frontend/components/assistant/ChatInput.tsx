@@ -4,16 +4,6 @@ import { KeyboardEvent, useEffect, useRef, useState } from "react";
 import { Paperclip, Mic, Send, StopCircle, BarChart3, Wallet, TrendingUp, PieChart, Scale } from "lucide-react";
 import { useWebSpeechInput } from "@/hooks/useWebSpeechInput";
 
-/** Глобальная push-to-talk клавиша. Не реагируем, если фокус в input/textarea
- *  (юзер печатает в нашем чате — не запускаем запись латиницей/кириллицей). */
-function isTypingTarget(target: EventTarget | null): boolean {
-  if (!(target instanceof HTMLElement)) return false;
-  const tag = target.tagName;
-  if (tag === "INPUT" || tag === "TEXTAREA" || tag === "SELECT") return true;
-  if (target.isContentEditable) return true;
-  return false;
-}
-
 interface ChartQuickPreset {
   label: string;
   icon: React.ReactNode;
@@ -114,82 +104,8 @@ export function ChatInput({
     onSend();
   };
 
-  /** Метка времени последнего pointerup на кнопке-микрофоне. Используется,
-   *  чтобы отличить «настоящий» клик (клавиатура, программный) от
-   *  синтетического click, который браузер всё-таки диспатчит после pointerup
-   *  в обход preventDefault — иначе он перезапускает запись через
-   *  toggleListening. */
-  const lastPointerUpAtRef = useRef(0);
-  /** true только между pointerdown и pointerup на микрофоне */
-  const micPressedRef = useRef(false);
-
-  /** Кнопка-микрофон: push-to-talk. pointerdown → start,
-   *  pointerup/pointerleave/pointercancel → stop. */
-  const handleMicPressStart = (e: React.PointerEvent<HTMLButtonElement>) => {
-    if (!supported || disabled) return;
-    e.preventDefault();
-    micPressedRef.current = true;
-    // Не даём уйти pointerleave в blur textarea, поэтому держим capture.
-    e.currentTarget.setPointerCapture?.(e.pointerId);
-    startListening(value);
-  };
-
-  const handleMicPressEnd = (e: React.PointerEvent<HTMLButtonElement>) => {
-    if (!supported || !micPressedRef.current) return;
-    micPressedRef.current = false;
-    e.preventDefault();
-    try {
-      e.currentTarget.releasePointerCapture?.(e.pointerId);
-    } catch {
-      /* ignore */
-    }
-    lastPointerUpAtRef.current = Date.now();
-    stopListening();
-  };
-
-  /** Глобальный хоткей: удерживать M = записывать. На keyup — отправляем.
-   *  Используем `e.code === "KeyM"`, чтобы срабатывало и в EN, и в RU
-   *  раскладке (одна и та же физическая клавиша). */
-  useEffect(() => {
-    if (!supported || disabled) return;
-
-    const isPushKey = (e: globalThis.KeyboardEvent) =>
-      e.code === "KeyM" && !e.metaKey && !e.ctrlKey && !e.altKey;
-
-    const onKeyDown = (e: globalThis.KeyboardEvent) => {
-      if (!isPushKey(e)) return;
-      if (e.repeat) return;
-      if (isTypingTarget(e.target)) return;
-      e.preventDefault();
-      startListening(value);
-    };
-    const onKeyUp = (e: globalThis.KeyboardEvent) => {
-      if (!isPushKey(e)) return;
-      if (isTypingTarget(e.target)) return;
-      e.preventDefault();
-      stopListening();
-    };
-    const onBlur = () => {
-      // Потеряли окно/фокус → на keyup надеяться нельзя, стопаем сразу.
-      stopListening();
-    };
-
-    window.addEventListener("keydown", onKeyDown);
-    window.addEventListener("keyup", onKeyUp);
-    window.addEventListener("blur", onBlur);
-    return () => {
-      window.removeEventListener("keydown", onKeyDown);
-      window.removeEventListener("keyup", onKeyUp);
-      window.removeEventListener("blur", onBlur);
-    };
-  }, [supported, disabled, value, startListening, stopListening]);
-
-  /** Tap-to-toggle (a11y fallback для пользователей без удержания).
-   *  Синтетический click после pointerup игнорируем — иначе он перезапустит
-   *  запись, противореча push-to-talk. Реальный клик (клавиатура, программный)
-   *  пройдёт нормально. */
+  /** Tap-to-toggle: один клик по микрофону — старт записи, второй — стоп и отправка. */
   const handleMicClick = () => {
-    if (Date.now() - lastPointerUpAtRef.current < 350) return;
     if (!supported || disabled) return;
     toggleListening(value);
   };
@@ -388,25 +304,21 @@ export function ChatInput({
         {mounted && supported ? (
           <button
             type="button"
-            onPointerDown={handleMicPressStart}
-            onPointerUp={handleMicPressEnd}
-            onPointerLeave={handleMicPressEnd}
-            onPointerCancel={handleMicPressEnd}
             onClick={handleMicClick}
             disabled={disabled}
             className={`${btnSize} rounded-full flex items-center justify-center flex-shrink-0 transition-colors select-none touch-none disabled:opacity-40 disabled:cursor-not-allowed focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#008064]/30 ${
               isListening
-                ? "bg-red-50 text-red-600 ring-2 ring-red-400/50 animate-pulse cursor-grabbing"
+                ? "bg-red-50 text-red-600 ring-2 ring-red-400/50 animate-pulse"
                 : highlightVoice
                   ? "bg-[#e5fcf7] text-[#008064] ring-2 ring-[#008064]/20 hover:bg-[#d4f6ec]"
                   : "bg-[#f2f4f7] text-[#7d838a] hover:bg-[#e5fcf7] hover:text-[#008064]"
             }`}
-            aria-label={isListening ? "Идёт запись — отпустите, чтобы отправить" : "Голосовой ввод (удерживайте или M)"}
+            aria-label={isListening ? "Идёт запись — нажмите ещё раз, чтобы отправить" : "Голосовой ввод"}
             aria-pressed={isListening}
             title={
               isListening
-                ? "Идёт запись — отпустите, чтобы отправить"
-                : "Удерживайте кнопку или клавишу M — записывайте голосом"
+                ? "Идёт запись — нажмите ещё раз, чтобы отправить"
+                : "Нажмите, чтобы начать запись голосом"
             }
           >
             {isListening ? (
@@ -429,12 +341,6 @@ export function ChatInput({
           <Send className={iconSize} />
         </button>
       </div>
-
-      {mounted && supported && !compact && !simplified && (
-        <p className="text-[10px] text-[#9aa1a8] px-1 leading-tight">
-          Удерживайте <kbd className="px-1 py-px rounded border border-[#e4e8eb] bg-white font-mono text-[9px] text-[#565b62]">M</kbd> или 🎙, чтобы записать голосом — отпустите для отправки.
-        </p>
-      )}
     </div>
   );
 }

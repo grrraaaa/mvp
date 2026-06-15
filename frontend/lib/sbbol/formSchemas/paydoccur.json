@@ -120,15 +120,6 @@
       "aliases": [
         "код назначения платежа"
       ]
-    },
-    {
-      "key": "CHARGES_TYPE",
-      "name": "forms.PAYDOCCUR.CHARGES_TYPE",
-      "label": "Способ удержания",
-      "type": "text",
-      "aliases": [
-        "способ удержания"
-      ]
     }
   ]
 }
