@@ -85,9 +85,15 @@ function matchNavigationIntent(
   for (const { pattern, route } of NAV_RULES) {
     if (pattern.test(text)) {
       if (!canFormatDocumentAi && /^\/payments(\/|$)/.test(route.path)) {
+        if (typeof window !== "undefined") {
+          console.warn("[assistant] navigation blocked (format_document_ai missing):", route.path);
+        }
         return null;
       }
       if (route.requiresOpenDocument && !canOpenDocument) {
+        if (typeof window !== "undefined") {
+          console.warn("[assistant] navigation blocked (open_document missing):", route.path);
+        }
         return null;
       }
       return route;
@@ -404,6 +410,33 @@ export function AssistantPanel({ variant = "default", compactMobile = false, onR
     async (text: string) => {
       if (!text.trim() || isLoading) return;
       const trimmed = text.trim();
+
+      /** Стоп-кран для admin: если запрос содержит триггер «открой/создай/…
+       *  документ/платёж/выписку/зарплату/контрагента в платежах» — НЕ отдаём
+       *  запрос в LLM, а сразу выдаём «недостаточно прав». Это страховка
+       *  для всех остальных путей (matchNavigationIntent, applyAssistantPayload,
+       *  ui_actions) — даже если что-то из них по какой-то причине пропустит,
+       *  этот guard всё равно сработает. */
+      if (
+        NAV_TRIGGERS.test(trimmed) &&
+        (/\b(документ|документы|документа|документов)\b/i.test(trimmed) ||
+          /\b(мгновенн|валют\w*\s+плат|usd\b|eur\b|paydoccur|оплата|оплатить|платить|перевод)\b/i.test(trimmed) ||
+          /\b(плат[её]ж|платёжк|поручен)\b/i.test(trimmed) ||
+          /\bвыписк\w+\b/i.test(trimmed) ||
+          /\bзарплат\w+\b/i.test(trimmed) ||
+          /\bназначен\w+\s+платеж|сумма\s+перевода|чек\b/i.test(trimmed)) &&
+        !canFormatDocumentAi &&
+        !canOpenDocument
+      ) {
+        setInput("");
+        setWelcomeOpen(false);
+        addMessage({ role: "user", content: trimmed });
+        addMessage({
+          role: "assistant",
+          content: `🚫 ${formatDenyTitle}\n\nИИ-ассистент не может работать с документами и платежами для вашей роли. Попробуйте обратиться как Руководитель или ИП.`,
+        });
+        return;
+      }
 
       /** Локальный intent: «Помоги заполнить платёж по фото счёта».
        *  Показываем запрос фото и сами открываем /payments/instant,
