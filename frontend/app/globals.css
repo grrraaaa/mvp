@@ -437,10 +437,51 @@ body {
   }
 }
 
-/* ── Document types modal — backdrop only (layout from main.bundle.css) ── */
+/* ── Document types modal — compact layout (override main.bundle 60% width) ── */
 .sbbol-doc-types-modal__backdrop {
   background: rgba(15, 23, 42, 0.55);
   backdrop-filter: blur(4px);
+}
+
+.sbbol-doc-types-modal__panel {
+  width: auto;
+  max-width: min(720px, calc(100vw - 32px));
+}
+
+.sbbol-doc-types-modal__content {
+  display: flex;
+  justify-content: center;
+}
+
+.sbbol-doc-types-modal [data-name="DocumentTypesModal"],
+.sbbol-doc-types-modal .Modal-modal-B6Fx {
+  width: auto !important;
+  min-width: 0 !important;
+  max-width: min(720px, calc(100vw - 32px));
+}
+
+.sbbol-doc-types-modal .DocumentTypesModal-modal-xwRC {
+  min-width: 0 !important;
+  width: auto !important;
+}
+
+.sbbol-doc-types-modal .DocumentTypesModal-content-EYrA {
+  width: min(686px, calc(100vw - 32px)) !important;
+  max-width: 100%;
+  box-sizing: border-box;
+}
+
+@media (max-width: 720px) {
+  .sbbol-doc-types-modal .DocumentTypesModal-link-okYJ {
+    flex: 0 0 50% !important;
+    min-height: 160px;
+    padding: 20px 0;
+  }
+
+  .sbbol-doc-types-modal .DocumentTypesModal-docIcon-SQIE svg {
+    width: 72px;
+    height: 56px;
+  }
 }
 
 /* ── Demo toast for stubbed SBBOL actions ── */

@@ -38,6 +38,8 @@ const PAYMENT_FIELD_KEYS = new Set([
   "COMMON_COLUMNS_DOC_NUMBER",
   "COMMON_COLUMNS_DOC_DATE",
   "PAYMENT_URGENCY",
+  "PAYMENT_PURPOSE_CODE",
+  "PAYMENT_PURPOSE_CATEGORY",
 ]);
 
 function dispatchInputEvents(el: HTMLElement): void {

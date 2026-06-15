@@ -17,7 +17,10 @@ FORM_TYPE_ALIASES = {
 }
 
 # Fields excluded from conversational fill (duplicate UI, radios, etc.)
-SKIP_FILL_KEYS = frozenset({"PAYMENT_INDICATION", "PAYMENT_PURPOSE_CATEGORY", "PAYMENT_PURPOSE_CODE"})
+SKIP_FILL_KEYS = frozenset({"PAYMENT_INDICATION"})
+
+# Parsed on request but not required for «все основные поля заполнены»
+OPTIONAL_FILL_KEYS = frozenset({"PAYMENT_PURPOSE_CATEGORY", "PAYMENT_PURPOSE_CODE"})
 
 
 @lru_cache(maxsize=8)
@@ -50,6 +53,10 @@ def fillable_fields(schema: dict[str, Any]) -> list[dict[str, Any]]:
             continue
         fields.append(field)
     return sorted(fields, key=lambda f: f.get("fillPriority", 99))
+
+
+def required_fillable_fields(schema: dict[str, Any]) -> list[dict[str, Any]]:
+    return [f for f in fillable_fields(schema) if f.get("key") not in OPTIONAL_FILL_KEYS]
 
 
 def field_by_key(schema: dict[str, Any], key: str) -> Optional[dict[str, Any]]:

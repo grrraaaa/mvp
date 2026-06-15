@@ -143,6 +143,8 @@ def parse_amount_value(raw: str) -> Optional[str]:
     text = (raw or "").strip()
     if not text:
         return None
+    if re.search(r"код\s+назначени", text, re.I):
+        return None
 
     from_words = parse_russian_integer(text)
     if from_words is not None:

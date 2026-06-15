@@ -160,6 +160,23 @@ def validate_purpose(
     return FieldHint("purpose", "ok", "Назначение платежа заполнено.")
 
 
+def hints_for_payment_date_check(*, exec_date: str = "") -> list[FieldHint]:
+    """Проверка реквизитов в демо — только дата документа."""
+    text = (exec_date or "").strip()
+    if not text:
+        return []
+    h = validate_exec_date(text)
+    if h:
+        return [h]
+    return [
+        FieldHint(
+            "exec_date",
+            "warn",
+            f"Дата «{text}» — не удалось проверить (ожидается ДД.ММ.ГГГГ).",
+        )
+    ]
+
+
 def hints_for_payment(
     *,
     unp: str = "",

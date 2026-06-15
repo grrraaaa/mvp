@@ -69,7 +69,7 @@ export function DocumentTypeSelectionModal({ html, onClose }: Props) {
       <div className="sbbol-doc-types-modal__backdrop absolute inset-0" aria-hidden />
 
       <div
-        className="sbbol-doc-types-modal__panel relative z-[1] w-full max-h-[calc(100vh-48px)] overflow-auto"
+        className="sbbol-doc-types-modal__panel relative z-[1] max-h-[calc(100vh-48px)] overflow-auto"
         role="dialog"
         aria-modal="true"
         aria-label="Новый документ"

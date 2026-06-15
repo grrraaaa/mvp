@@ -22,7 +22,7 @@ from services.banking.queries import (
 from services.onec.assistant import handle_onec_query
 from services.ui.page_actions import get_page_help, get_page_quick_actions, handle_page_ui_action
 from services.banking.services_consult import find_service, format_service_reply, compare_tariffs
-from services.forms.payment_validators import hints_for_payment
+from services.forms.payment_validators import hints_for_payment, hints_for_payment_date_check
 from services.navigation.navigation_service import NavigationService
 from services.navigation.demo_routes import (
     DEMO_ROUTE_LABELS,
@@ -36,6 +36,7 @@ from services.ai.form_schemas import (
     load_form_schema,
     schema_field_summary,
     fillable_fields,
+    required_fillable_fields,
     field_by_key,
     field_labels_for_keys,
 )
@@ -393,6 +394,7 @@ def _wants_payment_validation(message: str) -> bool:
 _FIELD_HINT_PATTERNS = (
     r"сумм",
     r"назначени",
+    r"код\s+назначени",
     r"получател",
     r"контрагент",
     r"номер",
@@ -504,10 +506,34 @@ def _save_form_session(session_id: str, state: _FormFillState) -> None:
 
 def _missing_field_keys(schema: dict, filled_names: set[str]) -> List[str]:
     missing: List[str] = []
-    for f in fillable_fields(schema):
+    for f in required_fillable_fields(schema):
         if f["name"] not in filled_names:
             missing.append(f["key"])
     return missing
+
+
+_PURPOSE_CODE_RE = re.compile(
+    r"код\s+назначени[яе]\s*(?:платеж\w*)?\s*[:—-]?\s*(\d+)",
+    re.I,
+)
+
+
+def _message_has_purpose_code(message: str) -> bool:
+    return bool(_PURPOSE_CODE_RE.search(message))
+
+
+def _parse_purpose_code_action(message: str, schema: dict) -> Optional[FormFieldAction]:
+    m = _PURPOSE_CODE_RE.search(message)
+    if not m:
+        return None
+    meta = field_by_key(schema, "PAYMENT_PURPOSE_CODE")
+    if not meta:
+        return None
+    return FormFieldAction(
+        field=meta["name"],
+        value=m.group(1),
+        label=meta.get("label"),
+    )
 
 
 def _sync_form_snapshot(
@@ -622,6 +648,11 @@ def _parse_pending_value(
             )
 
     if pending_key == "PAYMENT_PURPOSE":
+        if re.search(r"код\s+назначени", text, re.I):
+            code = _parse_purpose_code_action(text, schema)
+            if code:
+                return code
+            return None
         if re.search(r"контрагент|получател", text, re.I):
             return None
         value = re.sub(
@@ -632,6 +663,15 @@ def _parse_pending_value(
         ).strip()
         if len(value) >= 2:
             return FormFieldAction(field=meta["name"], value=value.rstrip(".,;"), label=meta.get("label"))
+
+    if pending_key == "PAYMENT_PURPOSE_CODE":
+        m = re.search(r"(\d+)", text)
+        if m:
+            return FormFieldAction(
+                field=meta["name"],
+                value=m.group(1),
+                label=meta.get("label"),
+            )
 
     if pending_key in ("CONTRAGENT_ID", "CONTRAGENT_ACCOUNT"):
         value = normalize_counterparty_query(text)
@@ -814,9 +854,12 @@ def _rule_based_form_fill(
         if pending_action:
             return [pending_action]
 
-    msg = message.lower()
-    actions: List[FormFieldAction] = []
     fields = schema.get("fields", [])
+    actions: List[FormFieldAction] = []
+
+    purpose_code_action = _parse_purpose_code_action(message, schema)
+    if purpose_code_action:
+        return [purpose_code_action]
 
     from services.forms.number_parse import (
         extract_doc_number_fragment,
@@ -825,12 +868,14 @@ def _rule_based_form_fill(
         parse_doc_number_value,
     )
 
+    msg = message.lower()
+
     amount_match = (
         SUM_LABELED_PATTERN.search(message)
         or AMOUNT_ONLY_PATTERN.match(message.strip())
         or AMOUNT_PATTERN.search(message)
     )
-    if amount_match and _message_mentions_amount(message):
+    if amount_match and _message_mentions_amount(message) and not _message_has_purpose_code(message):
         amount = parse_amount_value(amount_match.group(1))
         field = next((f for f in fields if f["key"] == "COMMON_COLUMNS_AMOUNT"), None)
         if field and amount:
@@ -881,7 +926,7 @@ def _rule_based_form_fill(
         )
     if not purpose:
         purpose = re.search(r"^оплат[аы]\s+(.+)$", message, re.I)
-    if purpose:
+    if purpose and not _message_has_purpose_code(message):
         field = next((f for f in fields if f["key"] == "PAYMENT_PURPOSE"), None)
         if field:
             actions.append(
@@ -992,6 +1037,10 @@ def _parse_bare_segment(part: str, schema: dict) -> Optional[List[FormFieldActio
     fields = schema.get("fields", [])
     actions: List[FormFieldAction] = []
 
+    purpose_code_action = _parse_purpose_code_action(text, schema)
+    if purpose_code_action:
+        return [purpose_code_action]
+
     boundary = _field_value_boundary()
 
     from services.forms.account_resolve import account_hint_from_message
@@ -1057,8 +1106,11 @@ def _parse_bare_segment(part: str, schema: dict) -> Optional[List[FormFieldActio
             ]
 
     amount_only = re.match(r"^\s*(.+?)\s*(?:руб|byn|р\.?)?\s*$", text, re.I)
-    if amount_only and re.search(r"\d|[а-яё]", text, re.I) and not re.search(
-        URGENCY_WORD_RE, text, re.I
+    if (
+        amount_only
+        and re.search(r"\d|[а-яё]", text, re.I)
+        and not re.search(URGENCY_WORD_RE, text, re.I)
+        and not _message_has_purpose_code(text)
     ):
         amount = parse_amount_value(amount_only.group(1))
         field = next((f for f in fields if f["key"] == "COMMON_COLUMNS_AMOUNT"), None)
@@ -1102,7 +1154,9 @@ def _parse_bare_segment(part: str, schema: dict) -> Optional[List[FormFieldActio
             ]
 
     purpose_value: Optional[str] = None
-    if re.search(r"^назначени", text, re.I):
+    if _message_has_purpose_code(text):
+        purpose_value = None
+    elif re.search(r"^назначени", text, re.I):
         purpose_value = re.sub(
             r"^назначени[ея]\s*(?:платеж\w*|оплаты?)?\s*[:—-]?\s*",
             "",
@@ -1323,38 +1377,19 @@ class AssistantService:
         _save_form_session(session_id, state)
 
         if _wants_payment_validation(message):
-            daily_limit = 5000.0
-            async with AsyncSessionLocal() as _db:
-                org_profile = await get_org_profile(_db, org_id)
-                daily_limit = getattr(org_profile, "daily_payment_limit", 5000.0) or 5000.0
             by_key = _filled_values_by_key(schema, state.filled)
-            hint_block = _payment_hints_from_state(
-                state.filled,
-                daily_limit=daily_limit,
-                schema=schema,
-                include_ok=True,
-            )
-            if not hint_block:
-                has_core = (
-                    by_key.get("CONTRAGENT_ID")
-                    and by_key.get("COMMON_COLUMNS_AMOUNT")
-                    and by_key.get("PAYMENT_PURPOSE")
-                )
-                if not has_core:
-                    return AssistantResponse(
-                        message="Пока нечего проверять — заполните получателя, сумму и назначение платежа.",
-                        session_id=session_id,
-                    )
+            exec_date = by_key.get("COMMON_COLUMNS_DOC_DATE", "")
+            if not exec_date:
                 return AssistantResponse(
-                    message=(
-                        "**Проверка реквизитов платежа:**\n"
-                        "🟢 Основные поля заполнены (получатель, сумма, назначение). "
-                        "Для мгновенного платежа УНП/IBAN в форме не требуются."
-                    ),
+                    message="Укажите дату документа — проверю, не выпадает ли она на выходной.",
                     session_id=session_id,
-                    form_fill_status="partial",
                 )
-            blocked = "🔴" in hint_block
+            date_hints = hints_for_payment_date_check(exec_date=exec_date)
+            hint_lines = [
+                f"{_HINT_MARKER.get(h.level, '•')} {h.message}" for h in date_hints
+            ]
+            hint_block = "\n".join(hint_lines)
+            blocked = any(h.level == "error" for h in date_hints)
             return AssistantResponse(
                 message=f"**Проверка реквизитов платежа:**\n{hint_block}",
                 session_id=session_id,
