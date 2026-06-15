@@ -61,9 +61,9 @@ const NAV_RULES: { pattern: RegExp; route: NavRoute }[] = [
   { pattern: /плат[её]жн\w+\s+поручен/i, route: { path: "/payments/paydocbyn", title: "Платёжное поручение (BYN)" } },
   { pattern: /валют\w*\s+плат|валюта|usd|eur|paydoccur/i, route: { path: "/payments/paydoccur", title: "Платежное поручение (валюта)" } },
   { pattern: /плат[её]жк\w+|плат[её]ж\b|созда\w+\s+плат/i, route: { path: "/payments/paydocbyn", title: "Платёжное поручение (BYN)" } },
-  { pattern: /выписк\w+/i, route: { path: "/statement", title: "Выписка" } },
-  { pattern: /зарплат\w+/i, route: { path: "/salary", title: "Зарплатный проект" } },
-  { pattern: /документ\w+/i, route: { path: "/other/documents", title: "Все документы" } },
+  { pattern: /выписк\w+/i, route: { path: "/statement", title: "Выписка", requiresOpenDocument: true } },
+  { pattern: /зарплат\w+/i, route: { path: "/salary", title: "Зарплатный проект", requiresOpenDocument: true } },
+  { pattern: /документ\w+/i, route: { path: "/other/documents", title: "Все документы", requiresOpenDocument: true } },
   { pattern: /контрагент|вернифика|проверь\s+контрагента/i, route: { path: "/other/counterparty", title: "Проверка контрагента" } },
   { pattern: /услуг\w+|сервис\w+/i, route: { path: "/services", title: "Услуги и сервисы" } },
   { pattern: /продукт\w+|кредит\w+|депозит\w+|карт\w+/i, route: { path: "/products", title: "Продукты" } },
@@ -79,11 +79,15 @@ const NAV_RULES: { pattern: RegExp; route: NavRoute }[] = [
 function matchNavigationIntent(
   text: string,
   canFormatDocumentAi: boolean,
+  canOpenDocument: boolean,
 ): NavRoute | null {
   if (!NAV_TRIGGERS.test(text)) return null;
   for (const { pattern, route } of NAV_RULES) {
     if (pattern.test(text)) {
       if (!canFormatDocumentAi && /^\/payments(\/|$)/.test(route.path)) {
+        return null;
+      }
+      if (route.requiresOpenDocument && !canOpenDocument) {
         return null;
       }
       return route;
@@ -285,7 +289,9 @@ export function AssistantPanel({ variant = "default", compactMobile = false, onR
             isDocumentUuid(
               new URL(target, window.location.origin).searchParams.get("highlight"),
             ) ||
-            /\/other\/documents\/view/.test(target) ||
+            /\/other\/documents(\/|$)/.test(target) ||
+            /^\/statement(\/|$)/.test(target) ||
+            /^\/salary(\/|$)/.test(target) ||
             /[?&]doc=/.test(target);
           const isPaymentNav = /^\/payments(\/|$)/.test(target);
           if (isDocNav && !canOpenDocument) {
@@ -341,7 +347,9 @@ export function AssistantPanel({ variant = "default", compactMobile = false, onR
               isDocumentUuid(
                 new URL(a.target, window.location.origin).searchParams.get("highlight"),
               ) ||
-              /\/other\/documents\/view/.test(a.target) ||
+              /\/other\/documents(\/|$)/.test(a.target) ||
+              /^\/statement(\/|$)/.test(a.target) ||
+              /^\/salary(\/|$)/.test(a.target) ||
               /[?&]doc=/.test(a.target);
             const isPaymentNav = /^\/payments(\/|$)/.test(a.target);
             if (isDocNav && !canOpenDocument) {
@@ -429,7 +437,7 @@ export function AssistantPanel({ variant = "default", compactMobile = false, onR
        *  /payments/instant и /payments/paydocbyn) ДО отправки в LLM — иначе
        *  бэкенд отвечает инструкциями «указажите поле», не понимая, что
        *  пользователь хочет перейти в другой раздел. */
-      const navRoute = matchNavigationIntent(trimmed, canFormatDocumentAi);
+      const navRoute = matchNavigationIntent(trimmed, canFormatDocumentAi, canOpenDocument);
       if (navRoute) {
         if (navRoute.requiresOpenDocument && !canOpenDocument) {
           setInput("");
@@ -458,7 +466,7 @@ export function AssistantPanel({ variant = "default", compactMobile = false, onR
        *  лог, который мы блокируем). Сопоставляем фразу с правилами без учёта
        *  прав и решаем, какое право нужно. */
       if (NAV_TRIGGERS.test(trimmed)) {
-        const wanted = matchNavigationIntent(trimmed, true);
+        const wanted = matchNavigationIntent(trimmed, true, true);
         if (wanted) {
           setInput("");
           setWelcomeOpen(false);
