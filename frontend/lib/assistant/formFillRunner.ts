@@ -1,6 +1,6 @@
 import { fillCustomerAccountField } from "@/hooks/useSbbolAccountPicker";
 import { highlightOcrFields } from "@/hooks/useSbbolPaymentValidation";
-import { dispatchAssistantAction } from "@/lib/assistant/uiBridge";
+import { dispatchAssistantNavigate } from "@/lib/assistant/uiBridge";
 import type { SbbolFormType } from "@/lib/sbbol/formContext";
 import type { FormFieldAction } from "@/store/assistantStore";
 import { useBankingStore } from "@/store/bankingStore";
@@ -290,16 +290,24 @@ export function fillReactAssistantFields(actions: FormFieldAction[]): FillResult
   return { filled, missed, failed };
 }
 
+function paymentFormRouteForActions(actions: FormFieldAction[]): string {
+  const fields = actions.map((a) => a.field).join(" ");
+  if (fields.includes("INSTANT")) return "/payments/instant";
+  if (fields.includes("PAYDOCCUR")) return "/payments/paydoccur";
+  return "/payments/paydocbyn";
+}
+
 export function ensurePaymentUiOpen(actions: FormFieldAction[], pathname: string): void {
   const hasPayment = actions.some(isPaymentFormAction);
   if (!hasPayment) return;
-  if (pathname.startsWith("/payments/paydocbyn") || pathname.startsWith("/payments/instant") || pathname.startsWith("/payments/paydoccur")) {
+  if (
+    pathname.startsWith("/payments/paydocbyn") ||
+    pathname.startsWith("/payments/instant") ||
+    pathname.startsWith("/payments/paydoccur")
+  ) {
     return;
   }
-  if (pathname.startsWith("/payments")) {
-    dispatchAssistantAction("open-payment-byn-modal");
-    return;
-  }
+  dispatchAssistantNavigate(paymentFormRouteForActions(actions));
 }
 
 export function findSbbolFormRoot(): HTMLElement | null {

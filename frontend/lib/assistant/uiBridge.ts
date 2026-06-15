@@ -29,6 +29,8 @@ const EVENT_ONLY_ACTIONS = new Set([
   "open-payment-instant",
   "open-payment-cur",
   "open-payment-byn-modal",
+  "open-payment-currency",
+  "open-payment-order",
   "open-statement-account",
   "open-statement-cert",
   "open-salary-project",
