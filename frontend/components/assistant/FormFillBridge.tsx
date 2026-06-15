@@ -33,6 +33,16 @@ export function FormFillBridge() {
       return;
     }
 
+    /** form_actions предназначены для формы платежа. Если мы НЕ на странице
+     *  платежа — значит, это либо «хвост» от прошлой команды, либо баг.
+     *  Ни в коем случае не применяем — иначе можно случайно заполнить
+     *  «Назначение платежа» на странице /other/documents или «Сумму перевода»
+     *  на странице настроек. */
+    if (!pathname.startsWith("/payments/")) {
+      clearFormActions();
+      return;
+    }
+
     runningRef.current = true;
     let cancelled = false;
 

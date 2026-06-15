@@ -435,6 +435,8 @@ export function AssistantPanel({ variant = "default", compactMobile = false, onR
           role: "assistant",
           content: `🚫 ${formatDenyTitle}\n\nИИ-ассистент не может работать с документами и платежами для вашей роли. Попробуйте обратиться как Руководитель или ИП.`,
         });
+        // Чистим form_actions, чтобы FormFillBridge ничего не применил.
+        useAssistantStore.getState().clearFormActions();
         return;
       }
 
@@ -461,6 +463,10 @@ export function AssistantPanel({ variant = "default", compactMobile = false, onR
             "Открываю страницу **Мгновенный платёж** — там нажмите иконку 📎 внизу чата, " +
             "выберите файл, и я сразу подставлю получателя, счёт, сумму и назначение.",
         });
+        // Очищаем form_actions: на новой странице FormFillBridge не должен
+        // применить что-то от прошлого LLM-ответа (например, заполнить
+        // "Назначение платежа" текстом не по фото).
+        useAssistantStore.getState().clearFormActions();
         router.push("/payments/instant");
         return;
       }
@@ -489,6 +495,11 @@ export function AssistantPanel({ variant = "default", compactMobile = false, onR
           role: "assistant",
           content: `Открываю **${navRoute.title}**…`,
         });
+        // Навигация по ассистенту означает, что мы уходим с текущей страницы.
+        // form_actions, лежащие в сторе от прошлого LLM-ответа, не должны
+        // применяться к форме на новой странице — иначе FormFillBridge мог бы
+        // заполнить, например, "Назначение платежа" на странице /other/documents.
+        useAssistantStore.getState().clearFormActions();
         router.push(navRoute.path);
         return;
       }
@@ -520,6 +531,10 @@ export function AssistantPanel({ variant = "default", compactMobile = false, onR
               content: `🚫 ${denyTitle("create_document")}\n\nИИ-ассистент не может создавать документы для вашей роли.`,
             });
           }
+          // При любом «открыть/создать» через ассистента чистим отложенные
+          // form_actions — иначе FormFillBridge может заполнить поле формы
+          // на текущей странице сразу после навигации.
+          useAssistantStore.getState().clearFormActions();
           return;
         }
       }
