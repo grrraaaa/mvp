@@ -211,6 +211,61 @@ def _is_greeting_or_empty(message: str) -> bool:
     )
 
 
+def _can_skip_reformulator(message: str, page_route: Optional[str] = None) -> bool:
+    """Решает, нужен ли LLM-нормализатор для этого сообщения.
+
+    Skip'аем (идём напрямую в rule-based pipeline), если сообщение УЖЕ матчится
+    одним из известных regex'ов: навигация, form fill, явная команда из INTENTS.
+    Это критично для бесплатных моделей OpenRouter — у них маленький контекст
+    и медленные ответы, лишний round-trip на каждую фразу «открой X» только
+    ухудшает UX (мусорный canonical, таймауты, двойные переходы).
+
+    Skip — НЕ значит «обработать хуже». Это значит «не дёргать LLM ради
+    переписывания того, что pipeline и так поймёт».
+    """
+    low = (message or "").strip()
+    if not low:
+        return True
+
+    # Явные команды из INTENTS (платежи / выписки / зарплата / кредиты / ...).
+    for intent_cfg in INTENTS:
+        for pat in intent_cfg.get("patterns", []):
+            if re.search(pat, low, re.I):
+                return True
+
+    # Навигация по демо-маршрутам.
+    if is_navigation_message(low):
+        return True
+
+    # Команды журнала документов / выписки — на бэке их тоже ловит queries.py,
+    # они не требуют LLM-нормализации.
+    try:
+        from services.banking.queries import (
+            is_banking_document_command,
+            is_statement_query,
+        )
+        if is_banking_document_command(low, page_route):
+            return True
+        if is_statement_query(low):
+            return True
+    except Exception:
+        pass
+
+    # Заполнение платёжки — триггеры из _looks_like_form_fill / _wants_form_fill_help.
+    if _looks_like_form_fill(low) or _wants_form_fill_help(low):
+        return True
+
+    # Фото-платежи.
+    if _wants_ocr_photo_payment_help(low):
+        return True
+
+    # Проверка реквизитов.
+    if _wants_payment_validation(low):
+        return True
+
+    return False
+
+
 _HINT_MARKER = {"error": "🔴", "warn": "🟡", "ok": "🟢"}
 
 
@@ -1255,35 +1310,43 @@ class AssistantService:
         if _is_greeting_or_empty(message):
             return await self._build_welcome(session_id, effective_org, page_route)
 
-        # ── LLM-нормализация: переписываем «здароу браток, последние переводы»
-        # в каноническую фразу, которую существующий pipeline уже понимает.
+        # ── Early-skip реформатора для команд, которые и так сматчатся regex'ом.
+        # Для бесплатных моделей OpenRouter (маленький контекст, медленные ответы)
+        # LLM-нормализация на каждом сообщении — лишний round-trip и шанс получить
+        # мусор вместо canonical. Если сообщение уже понятно pipeline'у — сразу идём
+        # дальше без LLM.
         reformulation_meta = None
-        try:
-            ref = await self._reformulator.areformulate(message)
-            min_conf = float(getattr(settings, "LLM_REF_MIN_CONFIDENCE", 0.6))
-            if (
-                ref.via_llm
-                and ref.confidence >= min_conf
-                and ref.canonical
-                and ref.canonical.strip() != message.strip()
-            ):
-                logger.info(
-                    "Reformulated: %r → %r (intent=%s, conf=%.2f, %dms)",
-                    message[:80], ref.canonical[:80], ref.intent,
-                    ref.confidence, ref.elapsed_ms,
-                )
-                reformulation_meta = {
-                    "original": message,
-                    "canonical": ref.canonical,
-                    "intent": ref.intent,
-                    "params": ref.params,
-                    "via_llm": ref.via_llm,
-                    "elapsed_ms": ref.elapsed_ms,
-                }
-                message = ref.canonical
-        except Exception as exc:  # noqa: BLE001
-            # Любая ошибка реформатора — не ломаем основной pipeline.
-            logger.warning("Reformulator skipped: %s", exc)
+        if _can_skip_reformulator(message, page_route):
+            logger.debug("Reformulator skipped (message already matches regex): %r", message[:80])
+        else:
+            # ── LLM-нормализация: переписываем «здароу браток, последние переводы»
+            # в каноническую фразу, которую существующий pipeline уже понимает.
+            try:
+                ref = await self._reformulator.areformulate(message)
+                min_conf = float(getattr(settings, "LLM_REF_MIN_CONFIDENCE", 0.6))
+                if (
+                    ref.via_llm
+                    and ref.confidence >= min_conf
+                    and ref.canonical
+                    and ref.canonical.strip() != message.strip()
+                ):
+                    logger.info(
+                        "Reformulated: %r → %r (intent=%s, conf=%.2f, %dms)",
+                        message[:80], ref.canonical[:80], ref.intent,
+                        ref.confidence, ref.elapsed_ms,
+                    )
+                    reformulation_meta = {
+                        "original": message,
+                        "canonical": ref.canonical,
+                        "intent": ref.intent,
+                        "params": ref.params,
+                        "via_llm": ref.via_llm,
+                        "elapsed_ms": ref.elapsed_ms,
+                    }
+                    message = ref.canonical
+            except Exception as exc:  # noqa: BLE001
+                # Любая ошибка реформатора — не ломаем основной pipeline.
+                logger.warning("Reformulator skipped: %s", exc)
 
         if _wants_ocr_photo_payment_help(message):
             return self._attach_reformulation(

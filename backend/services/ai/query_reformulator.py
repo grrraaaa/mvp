@@ -277,7 +277,7 @@ def _manifest_from_navigation() -> List[CommandSpec]:
 def build_manifest() -> List[Dict[str, Any]]:
     """Собрать манифест всех поддерживаемых команд в сериализуемый список dict.
 
-    Возвращаем list[dict] (а не list[CommandSpec]), чтобы LLM получал сразу JSON-ready
+    Возвращает list[dict] (а не list[CommandSpec]), чтобы LLM получал сразу JSON-ready
     структуру без dataclass-сериализации.
     """
     specs: List[CommandSpec] = []
@@ -288,7 +288,24 @@ def build_manifest() -> List[Dict[str, Any]]:
 
     # Сортируем по имени для стабильности (кэш + дебаг).
     specs.sort(key=lambda s: s.intent)
-    return [asdict(s) for s in specs]
+
+    # Экономим токены для бесплатных моделей OpenRouter:
+    #  - examples берутся из regex'ов через _safe_examples и часто получаются
+    #    мусорные («корпоративн …», «перевод …») — выкидываем;
+    #  - description для INTENTS — шаблонный («Команды категории "cards"…»)
+    #    тоже бесполезен — LLM хватит самого имени intent и section.
+    compact: List[Dict[str, Any]] = []
+    for s in specs:
+        item: Dict[str, Any] = {"intent": s.intent}
+        if s.section:
+            item["section"] = s.section
+        # description оставляем только для «человеческих» (banking/form/navigation),
+        # где он реально объясняет intent. Для INTENTS-производных он шаблонный —
+        # отбрасываем.
+        if s.intent not in {sp.intent for sp in _manifest_from_intents()}:
+            item["description"] = s.description
+        compact.append(item)
+    return compact
 
 
 # ─── LRU-кэш ──────────────────────────────────────────────────────────────────
@@ -320,31 +337,17 @@ class _LRU(OrderedDict):
 
 
 _SYSTEM_PROMPT_TEMPLATE = """\
-Ты — нормализатор запросов для ИИ-ассистента СберБизнес (банк для юрлиц в РБ).
-Пользователь пишет на русском языке, часто разговорно или с ошибками.
-Твоя задача — переписать его сообщение в каноническую форму, которую
-поддерживает существующий rule-based pipeline ассистента.
+Нормализатор запросов ИИ-ассистента СберБизнес (банк для юрлиц в РБ).
+Перепиши сообщение пользователя в каноническую фразу для rule-based pipeline.
 
-Список поддерживаемых команд (manifest):
-{manifest}
+Команды (кратко): {manifest}
 
-Правила:
-1. Верни СТРОГО JSON без пояснений и без markdown-обёрток.
-2. «canonical» — нормализованная фраза на русском, БЕЗ сленга, ошибок, лишних слов
-   («здароу», «браток», «слушай», «надо бы» и т.п.). Без вопросительных знаков в конце.
-3. «intent» — имя команды из manifest (точно как в списке), либо null, если запрос
-   не подходит ни под одну команду.
-4. «params» — извлечённые параметры: counterparty, amount (число), currency (RUB/BYN/USD/EUR),
-   doc_number, period, urgency, recipient, purpose и т.п. Используй только то, что явно
-   упомянуто в сообщении.
-5. «confidence» — число 0.0..1.0: насколько ты уверен, что запрос соответствует
-   одной из команд. 0.0 = точно не наша команда (свободный разговор / small talk).
-6. Если пользователь здоровается, матерится, пишет эмодзи без смысла или просто
-   благодарит — confidence 0.0, canonical = original, intent = null.
-7. НЕ выдумывай параметры: если контрагент не упомянут — не добавляй counterparty.
-
-Формат ответа:
-{{"canonical": "...", "intent": "...", "params": {{...}}, "confidence": 0.0}}
+Верни ТОЛЬКО JSON без markdown: {{"canonical": "...", "intent": "..." | null, "params": {{...}}, "confidence": 0.0..1.0}}
+- canonical: нормальная фраза на русском, без сленга/ошибок/лишних слов.
+- intent: имя команды из списка выше или null.
+- params: counterparty, amount, currency, doc_number, period, urgency, recipient, purpose — только то, что явно упомянуто.
+- confidence: 0.0 = small talk / приветствие / не команда, 0.6+ = уверенное соответствие.
+- НЕ выдумывай параметры. Не добавляй лишних слов в canonical.
 """
 
 
