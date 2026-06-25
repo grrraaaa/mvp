@@ -94,8 +94,8 @@ async def ocr_fill_form(request: OcrFillRequest):
     else:
         actions = rule_actions
         llm_note = ""
-        if settings.OPENAI_API_KEY:
-            llm_note = "\n\n_(OpenAI недоступен — использованы правила распознавания.)_"
+        if settings.OPENAI_API_KEY and not llm_actions:
+            llm_note = "\n\n_(LLM-парсинг не дал полей — использованы правила распознавания.)_"
 
     if not actions:
         preview = ocr_text[:400] + ("…" if len(ocr_text) > 400 else "")
