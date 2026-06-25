@@ -2207,6 +2207,7 @@ class AssistantService:
             ],
             "tools": TOOLS,
             "tool_choice": "auto",
+            "max_tokens": 512,  # OpenRouter free keys have tiny credit budgets
         }
         if is_knowledge:
             completion_kwargs["temperature"] = 0
