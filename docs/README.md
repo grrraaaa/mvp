@@ -1,6 +1,6 @@
 # Документация SBBOL Demo (MVP)
 
-Демо **СберБизнес** с AI-консультантом **Александр / Александра** (3 GLB-модели, 3 пресета), 3D-картой разделов, озвучкой ответов и AI-заполнением платёжных форм.
+Демо **СберБизнес** с AI-консультантом **Александр / Александра** (3 GLB-модели, 3 пресета), озвучкой ответов и AI-заполнением платёжных форм.
 
 **Начните здесь:** [FEATURE_MAP.md](./FEATURE_MAP.md) — карта фич с Mermaid-диаграммами.
 
@@ -14,13 +14,14 @@
 | [ARCHITECTURE.md](./ARCHITECTURE.md) | Архитектура и потоки данных |
 | [TECH_STACK.md](./TECH_STACK.md) | Стек и зависимости |
 | [FILE_STRUCTURE.md](./FILE_STRUCTURE.md) | Дерево каталогов |
+| **[PROJECT_MAP.md](./PROJECT_MAP.md)** | **Назначение каждой папки и каждого файла** |
 | [MODULES.md](./MODULES.md) | Модули frontend / backend |
 | [API.md](./API.md) | REST API (эндпоинты, примеры) |
 | [ASSISTANT.md](./ASSISTANT.md) | AI: только SBBOL, навигация, формы |
 | [WORKFLOW_DEMO.md](./WORKFLOW_DEMO.md) | 4 ключевых сценария приёмки демо |
 | [TZ-assistant-p1.md](./TZ-assistant-p1.md) | ТЗ: приоритеты ИИ-помощника P1/P2 |
 | [TTS.md](./TTS.md) | **Inworld TTS, state machine выбора голоса, все 7 провайдеров** |
-| [UI_AND_3D.md](./UI_AND_3D.md) | UI, адаптив, карта планет, чат |
+| [UI.md](./UI.md) | UI, адаптив, чат |
 | [CHARACTER_3D.md](./CHARACTER_3D.md) | 3D-консультант, камера, липсинг |
 
 **Прод:** https://mvp-beta-umber.vercel.app  
@@ -36,8 +37,7 @@ flowchart LR
     A[Shell СберБизнес] --> B[AI-чат Александр/Александра]
     B --> C[Навигация / формы / OCR]
     B --> D[3D + TTS]
-    E[Карта планет] --> A
-    D --> F[Inworld TTS ru-RU]
+    D --> F[Inworld TTS ru-RU]                                         
     D -.опц.-> G[Qwen / Google / Deepgram / Edge]
 ```
 
@@ -46,7 +46,7 @@ flowchart LR
 | **UI** | Shell, sidebar, 19+ маршрутов, captured HTML |
 | **AI** | LLM / rules, SBBOL-only, `navigation_path`, `form_actions` |
 | **Ввод** | текст, голос, фото OCR |
-| **3D** | планеты + GLB-консультант, vertex lip sync |
+| **3D** | GLB-консультант, vertex lip sync |
 | **TTS** | **Inworld AI** (4 голоса, primary) + Qwen / Google / Deepgram / Edge / gTTS (опц.), ручной выбор в UI |
 
 Подробная матрица и диаграммы → [FEATURE_MAP.md](./FEATURE_MAP.md).

@@ -8,7 +8,7 @@
 
 | Технология | Версия | Использование |
 |-----------|--------|---------------|
-| **Next.js** | 15.x | App Router, middleware, dynamic 3D |
+| **Next.js** | 15.x | App Router, middleware |
 | **React** | 19.x | UI |
 | **TypeScript** | 5.4 | Типизация |
 | **Tailwind CSS** | 3.4 | Стили, `sbbol-*`, `sber-*` |
@@ -23,10 +23,9 @@
 - 3D-тема: `lib/sber/theme.ts`
 - Иконки: `components/sbbol/SbbolIcons.tsx`
 
-### 3D (две сцены)
+### 3D (консультант)
 
-1. **Карта** — `SolarSystemScene`, `planetMap.ts`
-2. **Консультант** — `personage.glb` / `textured_sasha_lady1.glb` / `textured_sasha_lady2.glb`, `GlbCharacter3D`, vertex lip sync
+- `personage.glb` / `textured_sasha_lady1.glb` / `textured_sasha_lady2.glb`, `GlbCharacter3D`, vertex lip sync
 
 ### Не используется в UI
 
@@ -108,7 +107,6 @@
 
 ```
 Next.js · React · Tailwind · Zustand
- ├─ R3F: планеты (внутренние маршруты SBBOL)
  ├─ R3F: GLB-консультант + vertex lip sync
  └─ TTS UI + Web Speech input
          │ HTTP

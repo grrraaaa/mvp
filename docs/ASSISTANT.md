@@ -33,9 +33,6 @@
 1. Пользователь пишет запрос («выписка», «зарплатный проект», …).
 2. `AssistantService` сопоставляет intent с `demo_routes.py` / `navigation_service.py`.
 3. В ответе приходит `navigation_path` — фронт делает `router.push`.
-4. Подсветка на 3D-карте: `assistantStore.navigationPath` + `PlanetNavSlider`.
-
-Данные планет: `frontend/lib/sber/planetMap.ts` (URL = маршруты Next.js).
 
 ### Полный список маршрутов
 
@@ -112,14 +109,6 @@ Welcome-чипы по роли (бизнесмен / бухгалтер / ИП) 
 После каждого нового ответа ассистента `AssistantPanel` вызывает `speak(content)`. Голос (`qwen-male` / `qwen-female`) подбирается автоматически по полу модели, можно сменить вручную.
 
 См. [TTS.md](./TTS.md).
-
----
-
-## 3D-поведение
-
-`useCharacterBehavior` — состояния `idle` / `talk`, облачко речи, таймлайн губ.
-
-См. [CHARACTER_3D.md](./CHARACTER_3D.md).
 
 ---
 

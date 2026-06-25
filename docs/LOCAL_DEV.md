@@ -159,6 +159,6 @@ Invoke-RestMethod -Uri http://127.0.0.1:8000/api/chat/guest -Method POST `
 
 ## См. также
 
-- [UI_AND_3D.md](./UI_AND_3D.md) — UI и 3D-сцены  
+- [UI.md](./UI.md) — UI и адаптив  
 - [ASSISTANT.md](./ASSISTANT.md) — логика консультанта  
 - [API.md](./API.md) — все эндпоинты  

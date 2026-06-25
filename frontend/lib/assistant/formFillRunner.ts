@@ -329,11 +329,33 @@ export async function applyFormActionsWithRetry(
     await useBankingStore.getState().loadAll().catch(() => null);
   }
 
+  // form_actions предназначены для формы платежа. Если мы НЕ на странице
+  // платежа — не перенаправляем (иначе «открой все документы» после
+  // «открой мгновенный платёж» откроет /payments/instant и заполнит
+  // «Назначение платежа» вместо /other/documents) и не применяем.
+  if (!pathname.startsWith("/payments/")) {
+    return null;
+  }
+
+  // Дополнительная проверка внутри retry-цикла: даже если pathname в момент
+  // вызова был /payments/*, юзер мог уже нажать «открой все документы» и
+  // pathname сейчас другой. Без этой проверки runFormFillOnRoot находил бы
+  // .sbbol-orig-root от предыдущей страницы (React не успел размонтировать)
+  // и заполнял поля старой формы.
+  const isStillOnPaymentPage = () =>
+    typeof window !== "undefined" &&
+    window.location.pathname.startsWith("/payments/");
+
   ensurePaymentUiOpen(actions, pathname);
 
   let lastResult: FillResult = { filled: [], missed: [], failed: [] };
 
   for (let attempt = 0; attempt < maxAttempts; attempt++) {
+    if (!isStillOnPaymentPage()) {
+      // Юзер ушёл со страницы платежа во время retry — не применяем,
+      // чтобы случайно не заполнить «хвост» на новой странице.
+      return null;
+    }
     const sbbolRoot = findSbbolFormRoot();
     if (sbbolRoot) {
       lastResult = runFormFillOnRoot(sbbolRoot, actions);

@@ -1,6 +1,6 @@
 # Карта фич — SBBOL Demo (MVP)
 
-Визуальный обзор всего демо **СберБизнес**: интерфейс банка, AI-консультант **Александр / Александра**, 3D-навигация, озвучка, формы и интеграции.
+Визуальный обзор всего демо **СберБизнес**: интерфейс банка, AI-консультант **Александр / Александра**, 3D-аватар в чате, озвучка, формы и интеграции.
 
 > Учебный проект. Референс UI: [sbbol.bps-sberbank.by](https://sbbol.bps-sberbank.by/) · Прод: [mvp-beta-umber.vercel.app](https://mvp-beta-umber.vercel.app)
 
@@ -30,9 +30,7 @@ mindmap
       Быстрые чипы по странице
       Голосовой ввод Web Speech
       OCR фото платёжки
-    3D
-      Карта услуг планеты
-      PlanetNavSlider
+    3D консультант
       3 GLB модели
       Vertex lip sync
       Портретная камера
@@ -58,8 +56,8 @@ flowchart TB
         U1[Текст в чат]
         U2[Голос микрофон]
         U3[Фото документа]
-        U4[Клик планета / nav]
-        U5[Выбор голоса TTS]
+        U4[Клик раздел / nav]
+        U5[Выбор голоса TTS]                                         
     end
 
     subgraph FE["🖥 Frontend · Next.js 15"]
@@ -68,7 +66,6 @@ flowchart TB
         PAGES[Страницы /payments …]
         CHAT[AssistantFloatingChat]
         PANEL[AssistantPanel]
-        MAP[PlanetMapOverlay]
         CHAR[CharacterRoomScene]
         STORES[Zustand stores]
         SHELL --> PAGES
@@ -92,7 +89,7 @@ flowchart TB
 
     U1 & U2 --> CHAT
     U3 --> OCR_API
-    U4 --> MAP & SHELL
+    U4 --> SHELL
     U5 --> TTS_API
 
     CHAT --> CHAT_API
@@ -112,10 +109,7 @@ flowchart TB
 |---|------|----------|---------------|--------|
 | 1 | **Shell СберБизнес** | `SbbolShell` | — | ✅ |
 | 2 | **Sidebar + flyout** | `MAIN_NAV`, `SUB_NAV` | — | ✅ |
-| 3 | **Слайдер планет** | `PlanetNavSlider` | — | ✅ |
-| 4 | **3D карта услуг** | `PlanetMapOverlay` | `planetMap.ts` | ✅ |
-| 5 | **Hover только целевого объекта** | `PlanetLink` | — | ✅ |
-| 6 | **Dashboard** | `/`, `DashboardHome` | — | ✅ |
+| 3 | **Dashboard** | `/`, `DashboardHome` | — | ✅ |
 | 7 | **Страницы разделов** | `/payments`, `/statement`, … | — | ✅ |
 | 8 | **Формы платежей** | `paydocbyn`, `paydoccur`, `instant` | `form_actions` | ✅ |
 | 9 | **AI-чат (guest)** | `AssistantFloatingChat` | `POST /api/chat/guest` | ✅ |
@@ -183,38 +177,7 @@ flowchart LR
 
 ---
 
-## 5. 3D-карта разделов (планеты)
-
-```mermaid
-flowchart TB
-    SUN((☀ СберБизнес<br/>/))
-
-    SUN --- P1["🪐 Расчёты<br/>/payments"]
-    SUN --- P2["🪐 Выписка<br/>/statement"]
-    SUN --- P3["🪐 Зарплата<br/>/salary"]
-    SUN --- P4["🪐 Продукты<br/>/products"]
-    SUN --- P5["🪐 Сервисы<br/>/services"]
-    SUN --- P6["🪐 Прочее<br/>/other"]
-    SUN --- P7["🪐 Настройки<br/>/settings"]
-
-    P1 --> S11["Спутник: Поручение"]
-    P1 --> S12["Спутник: Контрагенты"]
-    P2 --> S21["Спутник: По счёту"]
-    P2 --> S22["Спутник: Справки"]
-
-    style SUN fill:#21A038,color:#fff
-    style P1 fill:#5eb8ff,color:#000
-    style P2 fill:#80cbc4,color:#000
-    style P3 fill:#ffd54f,color:#000
-```
-
-**Поведение:** клик → `router.push(url)` · hover → tooltip **только** у планеты или спутника под курсором · подсветка орбиты из `assistantStore.navigationPath`.
-
-Источник данных: `frontend/lib/sber/planetMap.ts`.
-
----
-
-## 6. AI-консультант: pipeline ответа
+## 5. AI-консультант: pipeline ответа
 
 ```mermaid
 flowchart TD
@@ -246,7 +209,7 @@ flowchart TD
 
 ---
 
-## 7. Сценарий: от вопроса до озвучки
+## 6. Сценарий: от вопроса до озвучки
 
 ```mermaid
 sequenceDiagram
@@ -272,7 +235,7 @@ sequenceDiagram
 
 ---
 
-## 8. Мультимодальный ввод в чат
+## 7. Мультимодальный ввод в чат
 
 ```mermaid
 flowchart LR
@@ -302,7 +265,7 @@ flowchart LR
 
 ---
 
-## 9. TTS: цепочка провайдеров
+## 8. TTS: цепочка провайдеров
 
 ```mermaid
 flowchart TD
@@ -325,7 +288,7 @@ flowchart TD
 
 ---
 
-## 10. 3D-консультант Александр/Александра
+## 9. 3D-консультант Александр/Александра
 
 ```mermaid
 flowchart TB
@@ -355,7 +318,7 @@ flowchart TB
 
 ---
 
-## 11. Деплой и runtime
+## 10. Деплой и runtime
 
 ```mermaid
 flowchart TB
@@ -379,7 +342,7 @@ flowchart TB
 
 ---
 
-## 12. Zustand stores (состояние UI)
+## 11. Zustand stores (состояние UI)
 
 ```mermaid
 classDiagram
@@ -406,10 +369,6 @@ classDiagram
         voiceGroups
         serverTts
     }
-    class solarSystemStore {
-        frozen
-        pauseOffset
-    }
     class modelCapabilitiesStore {
         headPortraitMode
         hasMorphTargets
@@ -418,14 +377,13 @@ classDiagram
     AssistantPanel --> assistantStore
     AssistantPanel --> characterBehaviorStore
     useAssistantSpeech --> ttsStore
-    PlanetMapOverlay --> solarSystemStore
     GlbCharacter3D --> modelCapabilitiesStore
     CharacterSettings --> characterStore
 ```
 
 ---
 
-## 13. Зависимости документации
+## 12. Зависимости документации
 
 ```mermaid
 flowchart LR
@@ -434,18 +392,19 @@ flowchart LR
     FM --> ASST[ASSISTANT.md]
     FM --> ASST_C[ASSISTANT_COMMANDS.md<br/>~130 команд × 12 категорий]
     FM --> TTS_D[TTS.md]
-    FM --> UI3D[UI_AND_3D.md]
+    FM --> UI3D[UI.md]
     FM --> CHAR[CHARACTER_3D.md]
     FM --> API_D[API.md]
     FM --> MOD[MODULES.md]
     FM --> DEV[LOCAL_DEV.md]
     FM --> DEP[VERCEL_DEPLOY.md]
+    FM --> MAP[PROJECT_MAP.md]
     ASST --> ASST_C
 ```
 
 ---
 
-## 14. Быстрые сценарии для демо
+## 13. Быстрые сценарии для демо
 
 | Сценарий | Действие | Ожидание |
 |----------|----------|----------|
@@ -455,13 +414,11 @@ flowchart LR
 | Голос | 🎤 → фраза | отправка в чат |
 | TTS | ответ ассистента | MP3 + губы |
 | Голос TTS | выпадающий список | Mikhail / George … |
-| 3D карта | hover спутник | один tooltip |
-| Планеты | клик «Расчёты» | `/payments` |
 | Каталог ИИ | `/learning` → вкладка «Команды ИИ» | 12 категорий, ~130 запросов с фильтром и поиском |
 
 ---
 
-## 15. Обучающий модуль и каталог команд ИИ
+## 14. Обучающий модуль и каталог команд ИИ
 
 Страница `/learning` (`frontend/app/learning/page.tsx` → `components/learning/LearningView.tsx`) — это **встроенная документация по ИИ-консультанту** в UI.
 
@@ -517,10 +474,9 @@ flowchart LR
 |---------|----------------|
 | Shell | `components/layout/SbbolShell.tsx` |
 | Чат | `components/assistant/*` |
-| 3D карта | `components/three/PlanetLink.tsx` |
+| 3D консультант | `components/assistant/character3d/*` |
 | AI | `backend/services/ai/assistant.py` |
 | Навигация | `backend/services/navigation/demo_routes.py` |
 | TTS | `backend/services/tts/` |
-| Планеты | `frontend/lib/sber/planetMap.ts` |
 
 Полное оглавление: [README.md](./README.md).

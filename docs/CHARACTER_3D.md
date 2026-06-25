@@ -145,4 +145,4 @@ NEXT_PUBLIC_CHARACTER_HEAD_PORTRAIT=false
 
 ⚙ **Настройки консультанта** (`CharacterSettings.tsx`): пресет (3 шт.), **голос озвучки** (Qwen: `qwen-male` / `qwen-female`).
 
-См. [TTS.md](./TTS.md), [UI_AND_3D.md](./UI_AND_3D.md).
+См. [TTS.md](./TTS.md), [UI.md](./UI.md).

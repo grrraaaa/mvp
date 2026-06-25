@@ -1,6 +1,6 @@
 # SBBOL Demo · AI-консультант (MVP)
 
-Демо интернет-банка [sbbol.bps-sberbank.by](https://sbbol.bps-sberbank.by) с AI-чатом, 3D-картой разделов, заполнением платёжных форм (текст / голос / фото OCR) и ссылками на [sber-bank.by](https://www.sber-bank.by).
+Демо интернет-банка [sbbol.bps-sberbank.by](https://sbbol.bps-sberbank.by) с AI-чатом, 3D-консультантом, заполнением платёжных форм (текст / голос / фото OCR) и ссылками на [sber-bank.by](https://www.sber-bank.by).
 
 > Учебный проект, не является официальным продуктом банка.
 
@@ -17,7 +17,7 @@
 | **Навигация** | «выписка по счёту» → `/statement` и др. |
 | **Формы** | AI-заполнение полей на страницах платежей |
 | **OCR** | ImageToText.com — фото → поля формы |
-| **3D** | Карта разделов + консультант Александр/Александра (GLB, 3 модели) |
+| **3D** | Консультант Александр/Александра (GLB, 3 модели) |
 | **TTS** | Qwen (Alibaba) + Edge TTS fallback, выбор голоса |
 
 ---
@@ -88,7 +88,7 @@ mvp/
 | [ASSISTANT.md](docs/ASSISTANT.md) | AI-консультант SBBOL |
 | [TTS.md](docs/TTS.md) | Qwen TTS, голоса |
 | [CHARACTER_3D.md](docs/CHARACTER_3D.md) | 3D Александр/Александра |
-| [UI_AND_3D.md](docs/UI_AND_3D.md) | UI и 3D-сцены |
+| [UI.md](docs/UI.md) | UI и адаптив |
 | [API.md](docs/API.md) | REST API |
 | [VERCEL_DEPLOY.md](docs/VERCEL_DEPLOY.md) | Деплой |
 

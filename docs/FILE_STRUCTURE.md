@@ -22,7 +22,7 @@ mvp/
 │   ├── API.md
 │   ├── ASSISTANT.md
 │   ├── TTS.md
-│   ├── UI_AND_3D.md
+│   ├── UI.md
 │   └── CHARACTER_3D.md
 │
 ├── frontend/
@@ -36,7 +36,7 @@ mvp/
 │   │   └── salary/
 │   │
 │   ├── components/
-│   │   ├── layout/           # SbbolShell, PlanetNavSlider
+│   │   ├── layout/           # SbbolShell
 │   │   ├── sbbol/            # CapturedSbbolPage, иконки
 │   │   ├── assistant/
 │   │   │   ├── AssistantFloatingChat.tsx
@@ -44,14 +44,13 @@ mvp/
 │   │   │   ├── AssistantVoicePicker.tsx
 │   │   │   ├── CharacterSettings.tsx
 │   │   │   └── character3d/  # GLB, камера, липсинг
-│   │   ├── three/
 │   │   └── map/
 │   │
 │   ├── lib/
 │   │   ├── api/              # baseUrl, tts, forms
 │   │   ├── assistant/        # glbCharacter, mouthVertexDeform, lipSync
 │   │   ├── sbbol/            # formContext, quickChips, captured HTML
-│   │   └── sber/             # planetMap, theme
+│   │   └── sber/             # theme
 │   │
 │   ├── store/                # assistant, character, tts, behavior
 │   ├── hooks/                # useAssistantSpeech, useWebSpeechInput, …

@@ -6,11 +6,10 @@
 
   Модуль   Файлы   Задача  
  -------- ------- -------- 
-  Shell   `SbbolShell`, `SbbolAppLayout`, `PlanetNavSlider`   Layout, nav, слайдер планет  
+  Shell   `SbbolShell`, `SbbolAppLayout`   Layout, nav  
   SBBOL pages   `CapturedSbbolPage`, `SbbolRoutePage`, `PaymentFormPageContent`   Страницы демо  
   AI Chat   `AssistantFloatingChat`, `AssistantPanel`, `ChatInput`   Чат, микрофон, OCR  
   TTS UI   `AssistantVoicePicker`, `useAssistantSpeech`, `ttsStore`   Озвучка и выбор голоса  
-  3D Map   `PlanetMapOverlay`, `SolarSystemScene`, `PlanetLink`   Карта разделов, hover tooltips  
   3D Character   `CharacterRoomScene`, `GlbCharacter3D`, `mouthVertexDeform`   Консультант Александр/Александра  
   Form AI   `useSbbolFormFill`, `assistantQuickChips`   Заполнение форм  
   Character settings   `CharacterSettings`, `characterStore`   Имя, пресеты, голос  
@@ -45,7 +44,6 @@ flowchart TB
     subgraph FE_M["Frontend modules"]
         SHELL[SbbolShell]
         CHAT[Assistant*]
-        MAP[PlanetMap*]
         CHAR[character3d/*]
         STORES[store/*]
     end
@@ -60,11 +58,10 @@ flowchart TB
 
     CHAT --> API_CHAT & API_TTS
     CHAT --> STORES
-    MAP --> STORES
     CHAR --> STORES
     API_CHAT --> SVC_AI
     API_TTS --> SVC_TTS
     CHAT --> API_FORMS
 ```
 
-См. [UI_AND_3D.md](./UI_AND_3D.md), [FILE_STRUCTURE.md](./FILE_STRUCTURE.md).
+См. [UI.md](./UI.md), [FILE_STRUCTURE.md](./FILE_STRUCTURE.md).

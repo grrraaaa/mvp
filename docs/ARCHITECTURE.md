@@ -9,7 +9,7 @@
 | Слой | Назначение |
 |------|------------|
 | **UI** | `SbbolShell`, страницы, плавающий AI-чат |
-| **3D** | Карта планет + GLB-консультант Александр / Александра |
+| **3D** | GLB-консультант Александр / Александра |
 | **AI** | OpenRouter / rule-based, SBBOL-only |
 | **TTS** | **Inworld AI** (server, primary) → Qwen / Google / Deepgram / Edge / gTTS (код есть, в роутер не подключены) → Puter.js (browser fallback) |
 | **OCR** | ImageToText для фото платёжек |
@@ -84,14 +84,8 @@ flowchart LR
         CHAR[3D Character]
     end
 
-    subgraph Map3D
-        SL[PlanetNavSlider]
-        PO[PlanetMapOverlay]
-    end
-
-    SHELL[SbbolShell] --> Pages & SL
+    SHELL[SbbolShell] --> Pages
     FAB --> AP --> CHAR
-    SL --> PO
 ```
 
 Ключевые файлы: [MODULES.md](./MODULES.md) · [FILE_STRUCTURE.md](./FILE_STRUCTURE.md).
@@ -151,11 +145,10 @@ sequenceDiagram
 
 ---
 
-## 6. 3D-подсистемы
+## 6. 3D-подсистема
 
 | Подсистема | Компоненты | Документ |
 |------------|------------|----------|
-| Карта планет | `SberSolarSystem`, `PlanetLink` | [UI_AND_3D.md](./UI_AND_3D.md) |
 | Консультант | `CharacterRoomScene`, `GlbCharacter3D` | [CHARACTER_3D.md](./CHARACTER_3D.md) |
 
 Портретная камера: Z ≈ **7.8**, Y offset **-0.30**.

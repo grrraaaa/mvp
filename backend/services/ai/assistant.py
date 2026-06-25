@@ -16,6 +16,7 @@ from services.banking.queries import (
     handle_banking_query,
     get_org_profile,
     is_banking_document_command,
+    is_statement_query,
     lookup_counterparty,
     normalize_counterparty_query,
 )
@@ -1389,6 +1390,20 @@ class AssistantService:
             return None
 
         if is_navigation_message(message):
+            return None
+
+        # Команды журнала документов («открой все документы», «покажи документы
+        # за март», «документы на подпись») обрабатываются в
+        # _maybe_banking_query → handle_banking_query → _list_documents_reply,
+        # а НЕ как назначение платежа. Без этого guard любой кириллический
+        # текст, не сматчившийся в _parse_bare_segment раньше, попадал в ветку
+        # «назначение платежа» и заполнял PAYMENT_PURPOSE значением вроде
+        # «открой все документы».
+        if is_banking_document_command(message, page_route=None):
+            return None
+        # Запросы выписки («выписка за март», «операции по счёту за неделю»)
+        # тоже не должны заполнять PAYMENT_PURPOSE.
+        if is_statement_query(message):
             return None
 
         if role == "admin":
